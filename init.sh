@@ -7,6 +7,15 @@
 
 set -e  # Exit on any error
 
+# Detect whether this script is being sourced or executed.
+# If sourced, we can activate the venv in the caller's shell. If executed,
+# any 'source' will only affect the child's shell and won't persist for the user.
+if [ "${BASH_SOURCE[0]}" != "$0" ]; then
+    _INIT_SOURCED=1
+else
+    _INIT_SOURCED=0
+fi
+
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$PROJECT_ROOT"
 
@@ -72,8 +81,6 @@ else
     echo "Run ./init.sh again after resolving the errors above."
     exit 1
 fi
-
-echo "✓ Initialization flag created (.init_complete)"
 echo ""
 
 echo "============================================================"
@@ -81,7 +88,15 @@ echo "✓ Initialization complete!"
 echo "============================================================"
 echo ""
 echo "Activating virtual environment..."
-source activate.sh
+if [ "${_INIT_SOURCED}" -eq 1 ]; then
+    # We're being sourced, so source the activation script into the caller shell
+    source activate.sh
+else
+    # We're being executed; activating here won't affect the user's shell
+    echo "Note: init.sh was executed, not sourced — the virtualenv was NOT activated in your shell."
+    echo "To activate the virtual environment in your current shell, run:" 
+    echo "  source activate.sh"
+fi
 echo ""
 echo "You can now run:"
 echo "  python utils/getExamples.py          # Download example files"
