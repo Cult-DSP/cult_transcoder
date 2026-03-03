@@ -227,7 +227,7 @@ Python's stdout reader.
 
 ## Runtime control smoothing & pause-click fixes (Phase 10 polishing)
 
-> **Status: ✅ Implemented** — `RealtimeBackend.hpp` rewritten. Build verified clean (`[100%] Built target sonoPleth_realtime`).
+> **Status: ✅ Implemented** — `RealtimeBackend.hpp` rewritten. Build verified clean (`[100%] Built target spatialroot_realtime`).
 
 ### Problem statement
 
@@ -367,7 +367,7 @@ Stack-allocated in `processBlock()`, passed by `const&` to `renderBlock()`. Life
 
 ## `dbapFocus` data race fix + `elevationMode` runtime switch (Feb 27 2026)
 
-> **Status: ✅ Implemented** — Build verified clean (`[100%] Built target sonoPleth_realtime`, zero warnings).
+> **Status: ✅ Implemented** — Build verified clean (`[100%] Built target spatialroot_realtime`, zero warnings).
 
 ### `dbapFocus` promoted to `std::atomic<float>` (closes Invariant 9)
 

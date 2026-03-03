@@ -1,4 +1,4 @@
-// sonoPleth Spatial Renderer for AlloSphere
+// spatialroot Spatial Renderer for AlloSphere
 // 
 // renders spatial audio using Vector Base Amplitude Panning (VBAP),
 // Distance-Based Amplitude Panning (DBAP), or Layer-Based Amplitude Panning (LBAP)
@@ -27,9 +27,9 @@
 namespace fs = std::filesystem;
 
 void printUsage() {
-    std::cout << "sonoPleth Spatial Renderer\n\n";
+    std::cout << "spatialroot Spatial Renderer\n\n";
     std::cout << "Usage:\n"
-              << "  sonoPleth_spatial_render \\\n"
+              << "  spatialroot_spatial_render \\\n"
               << "    --layout layout.json \\\n"
               << "    --positions spatial.json \\\n"
               << "    --sources <folder> \\\n"

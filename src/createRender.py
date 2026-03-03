@@ -87,7 +87,7 @@ def runSpatialRender(
     project_root = Path(__file__).parent.parent.resolve()
 
     deleteRenderOutput(output_file)
-    executable = project_root / "spatial_engine" / "spatialRender" / "build" / "sonoPleth_spatial_render"
+    executable = project_root / "spatial_engine" / "spatialRender" / "build" / "spatialroot_spatial_render"
     
     # Check if executable exists
     if not executable.exists():

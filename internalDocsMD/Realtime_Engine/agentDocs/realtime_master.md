@@ -654,7 +654,7 @@ The real-time engine compiles three `.cpp` files from the offline renderer's
 `spatial_engine/src/` directory (see `realtimeEngine/CMakeLists.txt` lines 29-33):
 
 ```
-add_executable(sonoPleth_realtime
+add_executable(spatialroot_realtime
     src/main.cpp
     ../src/JSONLoader.cpp      # Parses scene.lusid.json → SpatialData struct
     ../src/LayoutLoader.cpp    # Parses speaker_layout.json → SpeakerLayout struct
@@ -665,7 +665,7 @@ add_executable(sonoPleth_realtime
 These are the **exact same source files** the offline renderer
 (`spatial_engine/spatialRender/`) uses. Any changes to these shared files affect
 both the offline and real-time pipelines. The offline renderer is at
-`spatial_engine/spatialRender/build/sonoPleth_spatial_render`.
+`spatial_engine/spatialRender/build/spatialroot_spatial_render`.
 
 ### Circular Header Pattern (MultichannelReader ↔ Streaming)
 
@@ -789,8 +789,8 @@ auditable specification of what each thread owns and what the rules are.
 
 | Artifact                          | Path                                                                                        |
 | --------------------------------- | ------------------------------------------------------------------------------------------- |
-| Real-time C++ executable          | `spatial_engine/realtimeEngine/build/sonoPleth_realtime`                                    |
-| Offline C++ executable            | `spatial_engine/spatialRender/build/sonoPleth_spatial_render`                               |
+| Real-time C++ executable          | `spatial_engine/realtimeEngine/build/spatialroot_realtime`                                  |
+| Offline C++ executable            | `spatial_engine/spatialRender/build/spatialroot_spatial_render`                             |
 | CMakeLists (real-time)            | `spatial_engine/realtimeEngine/CMakeLists.txt`                                              |
 | Shared JSONLoader                 | `spatial_engine/src/JSONLoader.cpp` / `.hpp`                                                |
 | Shared LayoutLoader               | `spatial_engine/src/LayoutLoader.cpp` / `.hpp`                                              |
@@ -819,14 +819,14 @@ python runRealtime.py sourceData/lusid_package \
 
 # C++ engine directly (ADM mode):
 cd spatial_engine/realtimeEngine
-./build/sonoPleth_realtime \
+./build/spatialroot_realtime \
     --layout ../speaker_layouts/translab-sono-layout.json \
     --scene ../../processedData/stageForRender/scene.lusid.json \
     --adm ../../sourceData/SWALE-ATMOS-LFE.wav \
     --gain 0.5 --buffersize 512
 
 # C++ engine directly (mono mode):
-./build/sonoPleth_realtime \
+./build/spatialroot_realtime \
     --layout ../speaker_layouts/allosphere_layout.json \
     --scene ../../processedData/stageForRender/scene.lusid.json \
     --sources ../../sourceData/lusid_package \
@@ -840,7 +840,7 @@ make -j4
 
 ### Python Environment
 
-- **Venv**: `sonoPleth/bin/python` (Python 3.12.2)
+- **Venv**: `spatialroot/bin/python` (Python 3.12.2)
 - **Activation**: `source activate.sh` (from project root)
 - **Key packages**: PySide6 (GUI), lxml (legacy XML), gdown (example downloads)
 

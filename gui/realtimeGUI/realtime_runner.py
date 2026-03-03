@@ -1,6 +1,6 @@
 """
 realtime_runner.py — RealtimeRunner: QProcess wrapper + OSC sender for the
-sonoPleth Real-Time Spatial Audio Engine.
+spatialroot Real-Time Spatial Audio Engine.
 
 Responsible for:
   - Building and launching the runRealtime.py command via QProcess.

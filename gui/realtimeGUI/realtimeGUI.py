@@ -1,6 +1,6 @@
 """
 realtimeGUI.py — RealtimeWindow: top-level PySide6 window for the
-sonoPleth Real-Time Spatial Audio Engine GUI.
+spatialroot Real-Time Spatial Audio Engine GUI.
 
 Wires together:
   RealtimeInputPanel     → launch-time config
@@ -46,7 +46,7 @@ class RealtimeWindow(QMainWindow):
     Parameters
     ----------
     repo_root : str
-        Absolute path to the sonoPleth project root. Passed to RealtimeRunner
+        Absolute path to the spatialroot project root. Passed to RealtimeRunner
         so QProcess working directory resolves runRealtime.py correctly.
     """
 

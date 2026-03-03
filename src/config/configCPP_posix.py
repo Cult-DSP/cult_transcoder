@@ -128,7 +128,7 @@ def buildSpatialRenderer(build_dir="spatial_engine/spatialRender/build", source_
     """
     project_root = get_repo_root()
     build_path = project_root / build_dir
-    executable = project_root / build_dir / "sonoPleth_spatial_render"
+    executable = project_root / build_dir / "spatialroot_spatial_render"
     
     # Check if executable already exists
     if executable.exists():
@@ -171,7 +171,7 @@ def buildRealtimeEngine(build_dir="spatial_engine/realtimeEngine/build", source_
     """
     project_root = get_repo_root()
     build_path = project_root / build_dir
-    executable = project_root / build_dir / "sonoPleth_realtime"
+    executable = project_root / build_dir / "spatialroot_realtime"
     
     # Check if executable already exists
     if executable.exists():
@@ -339,12 +339,12 @@ def buildAdmExtractor(
     source_dir="src/adm_extract",
 ):
     """
-    Build the embedded ADM extractor tool (sonopleth_adm_extract) using CMake.
+    Build the embedded ADM extractor tool (spatialroot_adm_extract) using CMake.
     Extracts the axml chunk from BW64/RF64/WAV files using the EBU libbw64 library.
     Only builds if the executable is not already present (idempotent).
 
     The resulting binary is placed at:
-        tools/adm_extract/build/sonopleth_adm_extract
+        tools/adm_extract/build/spatialroot_adm_extract
 
     Parameters:
     -----------
@@ -361,7 +361,7 @@ def buildAdmExtractor(
     project_root = get_repo_root()
     build_path   = project_root / build_dir
     source_path  = project_root / source_dir
-    executable   = build_path / "sonopleth_adm_extract"
+    executable   = build_path / "spatialroot_adm_extract"
 
     if executable.exists():
         print(f"✓ ADM extractor already built at: {executable}")
@@ -382,7 +382,7 @@ def buildAdmExtractor(
 
     build_path.mkdir(parents=True, exist_ok=True)
 
-    print("Building embedded ADM extractor (sonopleth_adm_extract)...")
+    print("Building embedded ADM extractor (spatialroot_adm_extract)...")
     print(f"  Source:    {source_path}")
     print(f"  Build dir: {build_path}")
 

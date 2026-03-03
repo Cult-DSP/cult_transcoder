@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(sonopleth_adm_extract CXX)
+project(spatialroot_adm_extract CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -22,17 +22,17 @@ add_library(libbw64 INTERFACE)
 target_include_directories(libbw64 INTERFACE "${LIBBW64_DIR}/include")
 
 # ---------------------------------------------------------------------------
-# sonopleth_adm_extract executable
+# spatialroot_adm_extract executable
 # ---------------------------------------------------------------------------
-add_executable(sonopleth_adm_extract main.cpp)
-target_link_libraries(sonopleth_adm_extract PRIVATE libbw64)
+add_executable(spatialroot_adm_extract main.cpp)
+target_link_libraries(spatialroot_adm_extract PRIVATE libbw64)
 
 # Ensure it lands in the build directory root (predictable path for Python)
-set_target_properties(sonopleth_adm_extract PROPERTIES
+set_target_properties(spatialroot_adm_extract PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
 )
 
 # ---------------------------------------------------------------------------
 # Install (optional — used if someone does `cmake --install`)
 # ---------------------------------------------------------------------------
-install(TARGETS sonopleth_adm_extract RUNTIME DESTINATION bin)
+install(TARGETS spatialroot_adm_extract RUNTIME DESTINATION bin)

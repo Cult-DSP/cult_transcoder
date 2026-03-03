@@ -1,4 +1,4 @@
-"""Drop-shadow helpers for sonoPleth GUI cards and buttons."""
+"""Drop-shadow helpers for spatialroot GUI cards and buttons."""
 from __future__ import annotations
 
 from PySide6.QtWidgets import QWidget, QGraphicsDropShadowEffect

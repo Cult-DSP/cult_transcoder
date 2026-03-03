@@ -51,7 +51,7 @@ sourceData/*
 
 
 #jupyter 
-sonoPleth/etc/jupyter/
+spatialroot/etc/jupyter/
 
 
 # Ignore WAV files

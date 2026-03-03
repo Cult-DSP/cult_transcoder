@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.12)
 # Workaround for allolib's old CMake version requirement
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
-project(sonoPleth_realtime_engine)
+project(spatialroot_realtime_engine)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -24,7 +24,7 @@ add_subdirectory(
 # ── Executable ────────────────────────────────────────────────────────────
 # Phase 1: minimal main + shared utilities (JSONLoader, LayoutLoader, WavUtils)
 # These are the same files the offline renderer uses, shared from spatial_engine/src/
-add_executable(sonoPleth_realtime
+add_executable(spatialroot_realtime
     src/main.cpp
     ../src/JSONLoader.cpp
     ../src/LayoutLoader.cpp
@@ -32,7 +32,7 @@ add_executable(sonoPleth_realtime
 )
 
 # ── Include paths ─────────────────────────────────────────────────────────
-target_include_directories(sonoPleth_realtime PRIVATE
+target_include_directories(spatialroot_realtime PRIVATE
     # AlloLib headers
     ${CMAKE_CURRENT_SOURCE_DIR}/../../thirdparty/allolib/include
     # Shared spatial_engine/src headers (JSONLoader.hpp, LayoutLoader.hpp, WavUtils.hpp)
@@ -45,7 +45,7 @@ target_include_directories(sonoPleth_realtime PRIVATE
 
 # ── Link libraries ────────────────────────────────────────────────────────
 # 'al' is the AlloLib target; 'Gamma' is the audio DSP library bundled with it
-target_link_libraries(sonoPleth_realtime
+target_link_libraries(spatialroot_realtime
     al
     Gamma
 )

@@ -1,7 +1,7 @@
 Cult DSP — Open Spatial Audio Infrastructure  
 Lead Developer: Lucian Parisi
 
-# sonoPleth
+# spatialroot
 
 This repository contains a comprehensive spatial audio infrastructure for decoding Audio Definition Model Broadcast WAV (ADM BWF) files — Atmos masters — with mapping to speaker arrays using multiple spatializers (DBAP, VBAP, LBAP). Includes both offline rendering pipeline and real-time spatial audio engine with GUI interfaces.
 
@@ -14,16 +14,16 @@ Run this **once** to set up everything:
 **macOS/Linux:**
 
 ```bash
-git clone https://github.com/lucianpar/sonoPleth.git
-cd sonoPleth
+git clone https://github.com/Cult-DSP/spatialroot.git
+cd spatialroot
 source init.sh
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-git clone https://github.com/lucianpar/sonoPleth.git
-cd sonoPleth
+git clone https://github.com/Cult-DSP/spatialroot.git
+cd spatialroot
 .\init.ps1
 ```
 
@@ -32,22 +32,23 @@ cd sonoPleth
 **If you need to reactivate the virtual environment in a new PowerShell session:**
 
 ```powershell
-cd sonoPleth
-. .\sonoPleth\bin\Activate.ps1
+cd spatialroot
+. .\spatialroot\bin\Activate.ps1
 ```
 
-You'll know the virtual environment is active when you see `(sonoPleth)` in your PowerShell prompt.
+You'll know the virtual environment is active when you see `(spatialroot)` in your PowerShell prompt.
 
 The setup scripts will:
 
-- Create a Python virtual environment (`sonoPleth/`)
+-- Create a Python virtual environment (`spatialroot/`)
+
 - Install all Python dependencies
 - Initialize git submodules (AlloLib, libbw64, libadm)
-- Build the embedded ADM extractor (`sonopleth_adm_extract[.exe]`)
+  -- Build the embedded ADM extractor (`spatialroot_adm_extract[.exe]`)
 - Build the Spatial renderer (supports DBAP, VBAP, LBAP)
 - Activate the virtual environment automatically
 
-After setup completes, you'll see `(sonoPleth)` in your terminal prompt.
+After setup completes, you'll see `(spatialroot)` in your terminal prompt.
 
 ### Get Example Files
 
@@ -202,11 +203,11 @@ See [`internalDocsMD/Realtime_Engine/realtimeEngine_designDoc.md`](internalDocsM
 **IMPORTANT:** If you close your terminal and come back later, you need to reactivate the virtual environment:
 
 ```bash
-cd sonoPleth
+cd spatialroot
 source activate.sh
 ```
 
-You'll know the virtual environment is active when you see `(sonoPleth)` at the start of your terminal prompt.
+You'll know the virtual environment is active when you see `(spatialroot)` at the start of your terminal prompt.
 
 **Why?** Virtual environments only last for your current terminal session. This is standard Python practice and keeps your system Python clean and isolated from project dependencies.
 
@@ -224,7 +225,7 @@ You'll know the virtual environment is active when you see `(sonoPleth)` at the 
 source activate.sh
 ```
 
-Check that you see `(sonoPleth)` in your prompt. If you don't see it, the venv is not active.
+Check that you see `(spatialroot)` in your prompt. If you don't see it, the venv is not active.
 
 ### Dependency or build errors
 
@@ -287,8 +288,8 @@ make -j$(sysctl -n hw.ncpu)
 
 The built executables will be at:
 
-- `spatial_engine/spatialRender/build/sonoPleth_spatial_render`
-- `spatial_engine/realtimeEngine/build/sonoPleth_realtime`
+- `spatial_engine/spatialRender/build/spatialroot_spatial_render`
+- `spatial_engine/realtimeEngine/build/spatialroot_realtime`
 
 ## Manual Setup
 
@@ -296,13 +297,13 @@ If `init.sh` fails, you can set up manually:
 
 ```bash
 # 1. Create virtual environment
-python3 -m venv sonoPleth
+python3 -m venv spatialroot
 
 # 2. Install Python dependencies
-sonoPleth/bin/pip install -r requirements.txt
+spatialroot/bin/pip install -r requirements.txt
 
 # 3. Initialize submodules and build all C++ tools (ADM extractor + renderer)
-sonoPleth/bin/python -c "from src.config.configCPP import setupCppTools; setupCppTools()"
+spatialroot/bin/python -c "from src.config.configCPP import setupCppTools; setupCppTools()"
 ```
 
 ## Utilities
@@ -319,7 +320,7 @@ sonoPleth/bin/python -c "from src.config.configCPP import setupCppTools; setupCp
 
 1. **Check Initialization** - Verify all dependencies are installed
 2. **Setup C++ Tools** - Initialize AlloLib, libbw64, libadm submodules; build embedded ADM extractor and spatial renderer
-3. **Extract Metadata** - Use embedded `sonopleth_adm_extract` to extract ADM XML from WAV
+3. **Extract Metadata** - Use embedded `spatialroot_adm_extract` to extract ADM XML from WAV
 4. **Parse ADM** - Convert ADM XML to internal data structure
 5. **Analyze Audio** - Detect which channels contain audio content
 6. **Package for Render** - Split audio stems (X.1.wav naming) and build LUSID scene (scene.lusid.json)
@@ -350,7 +351,7 @@ The spatial renderer supports multiple spatializers (DBAP, VBAP, LBAP) and rende
 ### Command Line Usage
 
 ```bash
-./sonoPleth_spatial_render <input.json> <layout.json> <output.wav> [options]
+./spatialroot_spatial_render <input.json> <layout.json> <output.wav> [options]
 
 Options:
   --render_resolution <mode>  Set render mode: block (recommended), sample, smooth
@@ -392,8 +393,8 @@ Example ADM files: https://zenodo.org/records/15268471
 ### Platform-specific notes
 
 - **macOS**: Fully supported via `./init.sh`
-- **Windows/Linux**: CMake + make/ninja required to build `sonopleth_adm_extract`
+- **Windows/Linux**: CMake + make/ninja required to build `spatialroot_adm_extract`
 
 ### ADM extraction
 
-- **Primary**: `sonopleth_adm_extract` (embedded, built by `init.sh`) — no external install needed
+- **Primary**: `spatialroot_adm_extract` (embedded, built by `init.sh`) — no external install needed

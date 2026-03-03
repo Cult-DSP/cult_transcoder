@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.12)
 # Workaround for allolib's old CMake version requirement
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
-project(sonoPleth_spatial_render)
+project(spatialroot_spatial_render)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -21,7 +21,7 @@ add_subdirectory(
 
 # Source files are in spatial_engine/src (one level up from spatialRender)
 # SpatialRenderer is in renderer subdirectory
-add_executable(sonoPleth_spatial_render
+add_executable(spatialroot_spatial_render
     ../src/main.cpp
     ../src/renderer/SpatialRenderer.cpp
     ../src/JSONLoader.cpp
@@ -30,12 +30,12 @@ add_executable(sonoPleth_spatial_render
 )
 
 # Include AlloLib headers and renderer for SpatialRenderer.hpp
-target_include_directories(sonoPleth_spatial_render PRIVATE
+target_include_directories(spatialroot_spatial_render PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../thirdparty/allolib/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/renderer
 )
 
-target_link_libraries(sonoPleth_spatial_render
+target_link_libraries(spatialroot_spatial_render
     al
     Gamma
 )

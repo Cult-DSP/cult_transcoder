@@ -1,4 +1,4 @@
-"""iOS-style toggle switch widget for sonoPleth GUI."""
+"""iOS-style toggle switch widget for spatialroot GUI."""
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal, QRectF, QPropertyAnimation, Property, QEasingCurve

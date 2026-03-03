@@ -29,7 +29,7 @@
 // PHASE 7: Output Remap Agent — adds --remap <csv> flag.
 //
 // Usage:
-//   ./sonoPleth_realtime_engine \
+//   ./spatialroot_realtime_engine \
 //       --layout ../speaker_layouts/allosphere_layout.json \
 //       --scene ../../processedData/stageForRender/scene.lusid.json \
 //       --sources ../../sourceData/lusid_package \
@@ -120,7 +120,7 @@ static bool hasArg(int argc, char* argv[], const std::string& flag) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 static void printUsage(const char* progName) {
-    std::cout << "\nsonoPleth Real-Time Spatial Audio Engine (Phase 10 — GUI Agent)\n"
+    std::cout << "\nspatialroot Real-Time Spatial Audio Engine (Phase 10 — GUI Agent)\n"
               << "─────────────────────────────────────────────────────────────────\n"
               << "Usage: " << progName << " [options]\n\n"
               << "Required:\n"
@@ -166,7 +166,7 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << "\n╔══════════════════════════════════════════════════════════╗" << std::endl;
-    std::cout << "║  sonoPleth Real-Time Spatial Audio Engine  (Phase 10)   ║" << std::endl;
+    std::cout << "║  spatialroot Real-Time Spatial Audio Engine  (Phase 10)   ║" << std::endl;
     std::cout << "╚══════════════════════════════════════════════════════════╝\n" << std::endl;
 
     // ── Parse arguments ──────────────────────────────────────────────────

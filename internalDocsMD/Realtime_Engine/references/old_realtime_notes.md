@@ -1,11 +1,11 @@
 Internal Context + File Dependency Notes (for Deep Research + RealtimeEngine.md)
 Goal of the upcoming deep research doc
 
-Produce a comprehensive, paper-grade RealtimeEngine.md design document for sonoPleth’s hard-realtime spatial engine, with:
+Produce a comprehensive, paper-grade RealtimeEngine.md design document for spatialroot’s hard-realtime spatial engine, with:
 
 External citations for real-world audio-engine practices (realtime constraints, buffering, ramping, CPU safety, backend comparisons, DBAP references, WAV/RF64 streaming considerations).
 
-Internal references that point to repo files/paths for “how we do it in sonoPleth” (no need to quote lines; just reference the internal docs and code locations).
+Internal references that point to repo files/paths for “how we do it in spatialroot” (no need to quote lines; just reference the internal docs and code locations).
 
 Core engine scope (explicit)
 

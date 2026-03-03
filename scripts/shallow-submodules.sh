@@ -3,7 +3,7 @@
 # scripts/shallow-submodules.sh
 #
 # PURPOSE
-#   Re-initialize all sonoPleth git submodules as shallow clones (--depth 1)
+#   Re-initialize all spatialroot git submodules as shallow clones (--depth 1)
 #   to reduce the clone/build footprint.
 #
 #   The primary target is thirdparty/allolib, whose full git history currently
@@ -87,7 +87,7 @@ if [ ${#SUBMODULE_PATHS[@]} -eq 0 ]; then
 fi
 
 echo ""
-echo "sonoPleth — shallow-submodules.sh"
+echo "spatialroot — shallow-submodules.sh"
 hr
 echo "Repo root : $REPO_ROOT"
 echo "Submodules: ${SUBMODULE_PATHS[*]}"

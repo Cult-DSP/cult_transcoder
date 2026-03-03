@@ -1,5 +1,5 @@
 #!/bin/bash
-# init.sh - Complete setup script for sonoPleth project
+# init.sh - Complete setup script for spatialroot project
 # This script handles:
 # 1. Python virtual environment creation
 # 2. Python dependencies installation
@@ -11,28 +11,28 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$PROJECT_ROOT"
 
 echo "============================================================"
-echo "sonoPleth Initialization"
+echo "spatialroot Initialization"
 echo "============================================================"
 echo ""
 
 # Step 1: Create Python virtual environment
 echo "Step 1: Setting up Python virtual environment..."
-if [ -d "sonoPleth/bin" ]; then
-    echo "✓ Virtual environment already exists at sonoPleth/"
+if [ -d "spatialroot/bin" ]; then
+    echo "✓ Virtual environment already exists at spatialroot/"
 else
     echo "Creating virtual environment..."
-    python3 -m venv sonoPleth
+    python3 -m venv spatialroot
     echo "✓ Virtual environment created"
 fi
 
 # Fix activation script permissions
-chmod +x sonoPleth/bin/activate 2>/dev/null || true
+chmod +x spatialroot/bin/activate 2>/dev/null || true
 echo ""
 
 # Step 2: Install Python dependencies (using venv's Python directly)
 echo "Step 2: Installing Python dependencies..."
 
-if sonoPleth/bin/pip install -r requirements.txt; then
+if spatialroot/bin/pip install -r requirements.txt; then
     echo "✓ Python dependencies installed"
 else
     echo "✗ Error installing Python dependencies"
@@ -46,22 +46,32 @@ echo ""
 # To deepen later: git -C thirdparty/allolib fetch --unshallow
 # To apply opt-in sparse checkout (trims working tree): ./scripts/sparse-allolib.sh
 echo "Step 3: Setting up C++ tools (allolib, embedded ADM extractor, spatial renderers)..."
-if sonoPleth/bin/python -c "from src.config.configCPP import setupCppTools; exit(0 if setupCppTools() else 1)"; then
+if spatialroot/bin/python -c "from src.config.configCPP import setupCppTools; exit(0 if setupCppTools() else 1)"; then
     echo "✓ C++ tools setup complete"
+    cpp_ok=1
 else
     echo "⚠ Warning: C++ tools setup had issues — run ./init.sh again or check CMake logs"
+    cpp_ok=0
 fi
 echo ""
 
 # Step 4: Create initialization flag file
-echo "Step 4: Creating initialization flag..."
+echo "Step 4: Creating initialization flag file (only if all setup steps succeeded)"
+if [ "${cpp_ok}" -eq 1 ]; then
 cat > .init_complete << EOF
-# sonoPleth initialization complete
+# spatialroot initialization complete
 # Generated: $(date)
-# Python venv: sonoPleth/
+# Python venv: spatialroot/
 # This file indicates that init.sh has been run successfully.
 # Delete this file to force re-initialization.
 EOF
+
+echo "✓ Initialization flag created (.init_complete)"
+else
+    echo "⚠ Initialization incomplete: not creating .init_complete"
+    echo "Run ./init.sh again after resolving the errors above."
+    exit 1
+fi
 
 echo "✓ Initialization flag created (.init_complete)"
 echo ""

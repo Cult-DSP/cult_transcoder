@@ -6,7 +6,7 @@
 #
 # PURPOSE
 #   Apply a sparse-checkout filter inside thirdparty/allolib to limit the
-#   working tree to the paths sonoPleth actually uses (Keep list) plus the
+#   working tree to the paths spatialroot actually uses (Keep list) plus the
 #   components retained for near-term real-time audio development (Likely-
 #   Future list).  This removes ~14 MB of graphics/UI/window source files
 #   from disk while leaving all audio, math, spatial, system, OSC, and
@@ -20,7 +20,7 @@
 #   CMakeLists.txt unconditionally lists every source file, so a trimmed tree
 #   will cause a CMake configure error unless you either:
 #     (a) patch AlloLib's CMakeLists.txt to skip missing files, OR
-#     (b) accept that build will be limited to the sonoPleth subset only.
+#     (b) accept that build will be limited to the spatialroot subset only.
 #
 #   Default init.sh and CI use a FULL working-tree checkout.  This script is
 #   for developers who understand the trade-off and want faster local builds.
@@ -29,7 +29,7 @@
 #   (does not delete from git history — only hides from checkout)
 #   • include/al/graphics/    — OpenGL graphics
 #   • src/graphics/           — OpenGL graphics sources
-#   • include/al/ui/          — Parameter/preset GUI (Qt-based in sonoPleth)
+#   • include/al/ui/          — Parameter/preset GUI (Qt-based in spatialroot)
 #   • src/ui/                 — GUI sources
 #   • include/al/sphere/      — AlloSphere-specific projection
 #   • src/sphere/             — AlloSphere sources
@@ -176,7 +176,7 @@ PATTERNS=(
     # Gamma DSP — linked today
     "external/Gamma/"
 
-    # nlohmann/json — used by AlloLib CMake and sonoPleth JSONLoader
+    # nlohmann/json — used by AlloLib CMake and spatialroot JSONLoader
     "external/json/"
 
     # --- LIKELY-FUTURE: real-time audio engine ---
@@ -244,10 +244,10 @@ echo ""
 echo "⚠️  IMPORTANT NOTES:"
 echo "   1. AlloLib's CMakeLists.txt lists ALL source files unconditionally."
 echo "      CMake will error on missing files (graphics/ui/sphere/stb/glad)."
-echo "      To build sonoPleth after sparse checkout, you must either:"
+echo "      To build spatialroot after sparse checkout, you must either:"
 echo "        a) Use ALLOLIB_USE_DUMMY_AUDIO + skip graphics in your cmake flags"
 echo "        b) Or wait for a minimal-fork of AlloLib (see allolib-audit.md §4 Step 3)"
-echo "      The current sonoPleth CMakeLists.txt does NOT patch this — full"
+echo "      The current spatialroot CMakeLists.txt does NOT patch this — full"
 echo "      AlloLib checkout is the supported build path."
 echo ""
 echo "   2. If you update the pinned allolib commit, rerun this script to"

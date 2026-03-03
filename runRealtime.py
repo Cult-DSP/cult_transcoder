@@ -1,5 +1,5 @@
 """
-runRealtime.py — Python entry point for the sonoPleth Real-Time Spatial Audio Engine
+runRealtime.py — Python entry point for the spatialroot Real-Time Spatial Audio Engine
 
 Mirrors runPipeline.py: accepts the same inputs (ADM WAV or LUSID package +
 speaker layout), runs the same preprocessing pipeline, then launches the
@@ -60,17 +60,17 @@ def _launch_realtime_engine(
     This is the final step of both the ADM and LUSID pipelines. It takes
     already-prepared paths (scene JSON, source input, speaker layout)
     and launches the C++ executable.
-
-    Two input modes (mutually exclusive):
-    - sources_folder: Path to folder containing mono source WAV files (LUSID mode)
-    - adm_file: Path to multichannel ADM WAV file (ADM direct streaming mode)
-
-    Parameters
-    ----------
+        executable = (
+            project_root
+            / "spatial_engine"
+            / "realtimeEngine"
+            / "build"
+            / "spatialroot_realtime"
+        )
     scene_json : str or Path
         Path to scene.lusid.json (positions/trajectories).
     speaker_layout : str or Path
-        Path to speaker layout JSON.
+        print("║     spatialroot Real-Time Engine — Launching             ║")
     sources_folder : str or Path, optional
         Path to folder containing mono source WAV files (X.1.wav, LFE.wav).
     adm_file : str or Path, optional
@@ -119,7 +119,7 @@ def _launch_realtime_engine(
         / "spatial_engine"
         / "realtimeEngine"
         / "build"
-        / "sonoPleth_realtime"
+        / "spatialroot_realtime"
     )
 
     if not executable.exists():
@@ -182,7 +182,7 @@ def _launch_realtime_engine(
 
     # Print launch info
     print("\n╔══════════════════════════════════════════════════════════╗")
-    print("║     sonoPleth Real-Time Engine — Launching               ║")
+    print("║     spatialroot Real-Time Engine — Launching               ║")
     print("╚══════════════════════════════════════════════════════════╝\n")
     print(f"  Scene:          {scene_path}")
     print(f"  {source_label}")
@@ -503,7 +503,7 @@ def checkSourceType(arg):
 # ─────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    print("sonoPleth Real-Time Engine Launcher")
+    print("spatialroot Real-Time Engine Launcher")
     print("=" * 60)
 
     if len(sys.argv) >= 2:

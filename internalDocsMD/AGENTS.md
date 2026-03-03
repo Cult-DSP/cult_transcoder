@@ -1,7 +1,7 @@
-# sonoPleth — Comprehensive Agent Context
+# spatialroot — Comprehensive Agent Context
 
-**Last Updated:** March 2, 2026  
-**Project:** sonoPleth - Open Spatial Audio Infrastructure  
+**Last Updated:** March 3, 2026  
+**Project:** spatialroot - Open Spatial Audio Infrastructure  
 **Lead Developer:** Lucian Parisi
 
 ---
@@ -45,7 +45,7 @@ Switching from BWF MetaEdit to embedded EBU parsing submodules (TRACK A — COMP
 
 Replace the external `bwfmetaedit` dependency with **embedded EBU libraries** while keeping the existing ADM parsing + LUSID conversion behavior unchanged. **Completed.**
 
-- Output: `processedData/currentMetaData.xml` (ADM XML string extracted from WAV via `sonopleth_adm_extract`)
+- Output: `processedData/currentMetaData.xml` (ADM XML string extracted from WAV via `spatialroot_adm_extract`)
 - Downstream modules at the time of Track A: `src/analyzeADM/parser.py` (lxml) and `LUSID/src/xmlParser.py` were the active parsers. **Both are now archived** — replaced by `xml_etree_parser.py` (single-step stdlib).
 - This is a **plumbing swap only**. ADM support not broadened in Track A (Track B documented below as future work).
 
@@ -56,7 +56,7 @@ Whenever a change impacts the toolchain dataflow, CLI flags, on-disk artifacts, 
 For Track A (embedded ADM extractor) the following docs MUST be kept consistent:
 
 - `AGENTS.md` (this file): Track A plan + non-goals + build wiring
-- `LUSID/LUSID_AGENTS.md`: pipeline diagram reflects `sonopleth_adm_extract` (embedded); note added that Track A does **not** change LUSID parsing semantics
+- `LUSID/LUSID_AGENTS.md`: pipeline diagram reflects `spatialroot_adm_extract` (embedded); note added that Track A does **not** change LUSID parsing semantics
 - `toolchain_AGENTS.md`: if any contract-level path/filename/artifact changes (should not happen in Track A), update it
 - `CHANGELOG_TOOLCHAIN.md`: add an entry if the contract changes (new required/optional dependency, new artifact, changed path, new validation step). If Track A only changes the preferred extractor implementation but preserves outputs, record it as an **implementation** note only if your changelog policy allows; otherwise omit.
 
@@ -84,21 +84,23 @@ Rules:
    - Document how to initialize them: `git submodule update --init --recursive`
 
 2. Build an **embedded ADM XML extractor tool**
-   - Create a small C++ CLI tool in the sonoPleth repo that:
+   - Create a small C++ CLI tool in the spatialroot repo that:
      - opens a WAV/RF64/BW64 file,
      - extracts the `axml` chunk (ADM XML),
      - writes it to a file path supplied by the user (or prints to stdout).
    - Recommended placement:
      - `tools/adm_extract/` (new)
-     - CMake target name: `sonopleth_adm_extract`
-   - The tool should not interpret ADM semantics; it is only a chunk extractor.
-   - Keep the output stable: `processedData/currentMetaData.xml` remains the same format (raw ADM XML string).
+
+- CMake target name: `spatialroot_adm_extract`
+- The tool should not interpret ADM semantics; it is only a chunk extractor.
+- Keep the output stable: `processedData/currentMetaData.xml` remains the same format (raw ADM XML string).
 
 3. Wire the pipeline to use the new tool (no semantic changes)
    - Update `src/analyzeADM/extractMetadata.py` to use the embedded tool exclusively:
-     - Run `sonopleth_adm_extract` to generate `processedData/currentMetaData.xml`.
-     - Raise `FileNotFoundError` with a clear message if the binary is not built.
-   - Preserve current filenames and directories so everything downstream stays compatible.
+
+- Run `spatialroot_adm_extract` to generate `processedData/currentMetaData.xml`.
+  - Raise `FileNotFoundError` with a clear message if the binary is not built.
+- Preserve current filenames and directories so everything downstream stays compatible.
 
 4. Update `init.sh` to build the tool
    - `init.sh` should:
@@ -128,7 +130,7 @@ Rules:
 
 **Problem:** `thirdparty/allolib` had full git history (1,897 commits). `.git/modules/thirdparty/allolib` = **511 MB**; working tree = 38 MB.
 
-#### Headers directly `#include`d by sonoPleth
+#### Headers directly `#include`d by spatialroot
 
 | Header                                                                                           | Module |
 | ------------------------------------------------------------------------------------------------ | ------ |
@@ -236,7 +238,7 @@ additional:
 
 ### Purpose
 
-sonoPleth is a Python+C++ prototype for decoding and rendering Audio Definition Model (ADM) Broadcast WAV files (Dolby Atmos masters) to arbitrary speaker arrays using multiple spatialization algorithms.
+spatialroot is a Python+C++ prototype for decoding and rendering Audio Definition Model (ADM) Broadcast WAV files (Dolby Atmos masters) to arbitrary speaker arrays using multiple spatialization algorithms.
 
 ### Key Features
 
@@ -254,7 +256,7 @@ sonoPleth is a Python+C++ prototype for decoding and rendering Audio Definition 
 - **Python 3.8+**: Pipeline orchestration, ADM parsing, data processing
 - **C++17**: High-performance spatial audio renderer (AlloLib-based)
 - **AlloLib**: Audio spatialization framework (DBAP, VBAP, LBAP)
-- **sonopleth_adm_extract**: Embedded EBU/libbw64-based tool for extracting ADM XML from WAV files (built by `init.sh`)
+- **spatialroot_adm_extract**: Embedded EBU/libbw64-based tool for extracting ADM XML from WAV files (built by `init.sh`)
 - **CMake 3.12+**: Build system for C++ components
 
 ---
@@ -266,7 +268,7 @@ sonoPleth is a Python+C++ prototype for decoding and rendering Audio Definition 
 ```
 ADM BWF WAV File
     │
-    ├─► sonopleth_adm_extract (embedded) → currentMetaData.xml (ADM XML)
+  ├─► spatialroot_adm_extract (embedded) → currentMetaData.xml (ADM XML)
     │
     ├─► checkAudioChannels.py → containsAudio.json
     │
@@ -330,11 +332,11 @@ The C++ renderer reads LUSID directly — no intermediate format conversion.
 
 ### 1. ADM Metadata Extraction & Parsing
 
-#### `sonopleth_adm_extract` (embedded)
+#### `spatialroot_adm_extract` (embedded)
 
 - **Purpose**: Extract ADM XML from BWF WAV file using the EBU libbw64 library
 - **Type**: Embedded C++ CLI tool, built by `init.sh` / `src/configCPP.py`
-- **Source**: `src/adm_extract/` — compiled to `src/adm_extract/build/sonopleth_adm_extract`
+- **Source**: `src/adm_extract/` — compiled to `src/adm_extract/build/spatialroot_adm_extract`
 - **Output**: `processedData/currentMetaData.xml`
 - **Error handling**: Raises `FileNotFoundError` with instructions to run `./init.sh` if binary not built
 
@@ -563,7 +565,7 @@ Core dataclasses for LUSID Scene v0.5.2:
                │ src/createRender.py   │
                │ runSpatialRender()    │
                │  → subprocess.run()   │
-               │    sonoPleth_spatial_  │
+               │    spatialroot_spatial_  │
                │    render --layout …  │
                │    --master_gain …    │
                └───────────────────────┘
@@ -806,14 +808,14 @@ Core dataclasses for LUSID Scene v0.5.2:
 
 ```bash
 # Default render with DBAP
-./sonoPleth_spatial_render \
+./spatialroot_spatial_render \
   --layout allosphere_layout.json \
   --positions scene.lusid.json \
   --sources ./stageForRender/ \
   --out render.wav
 
 # Use VBAP for precise localization
-./sonoPleth_spatial_render \
+./spatialroot_spatial_render \
   --layout allosphere_layout.json \
   --positions scene.lusid.json \
   --sources ./stageForRender/ \
@@ -821,7 +823,7 @@ Core dataclasses for LUSID Scene v0.5.2:
   --spatializer vbap
 
 # DBAP with tight focus
-./sonoPleth_spatial_render \
+./spatialroot_spatial_render \
   --spatializer dbap \
   --dbap_focus 3.0 \
   --layout translab_layout.json \
@@ -830,7 +832,7 @@ Core dataclasses for LUSID Scene v0.5.2:
   --out render_tight.wav
 
 # Debug single source with diagnostics
-./sonoPleth_spatial_render \
+./spatialroot_spatial_render \
   --solo_source "11.1" \
   --debug_dir ./debug_output/ \
   --layout allosphere_layout.json \
@@ -938,14 +940,14 @@ The CMake config (`CMakeLists.txt`) compiles `src/main.cpp` plus shared loaders 
 
 ```bash
 # Mono file mode (from LUSID package with pre-split stems):
-./build/sonoPleth_realtime \
+./build/spatialroot_realtime \
     --layout ../speaker_layouts/allosphere_layout.json \
     --scene ../../processedData/stageForRender/scene.lusid.json \
     --sources ../../sourceData/lusid_package \
     --gain 0.1 --buffersize 512
 
 # ADM direct streaming mode (reads from original multichannel WAV):
-./build/sonoPleth_realtime \
+./build/spatialroot_realtime \
     --layout ../speaker_layouts/translab-sono-layout.json \
     --scene ../../processedData/stageForRender/scene.lusid.json \
     --adm ../../sourceData/SWALE-ATMOS-LFE.wav \
@@ -1028,7 +1030,7 @@ After the realtime GUI prototype is working:
 ### Project Root
 
 ```
-sonoPleth/
+spatialroot/
 ├── activate.sh                      # Reactivate venv (use: source activate.sh)
 ├── init.sh                          # One-time setup (use: source init.sh)
 ├── requirements.txt                 # Python dependencies (lxml removed; python-osc added)
@@ -1109,7 +1111,7 @@ sonoPleth/
 │   ├── analyzeADM/
 │   │   ├── parser.py                # lxml ADM XML parser (ARCHIVED to old_XML_parse/)
 │   │   ├── checkAudioChannels.py   # Detect silent channels
-│   │   └── extractMetadata.py      # ADM extractor wrapper (sonopleth_adm_extract)
+│   │   └── extractMetadata.py      # ADM extractor wrapper (spatialroot_adm_extract)
 │   ├── packageADM/
 │   │   ├── packageForRender.py     # Orchestrator
 │   │   ├── splitStems.py           # Multichannel → mono
@@ -1169,7 +1171,7 @@ sonoPleth/
 - `LUSID/src/old_schema/transcoder.py` — LUSID → renderInstructions.json
 - `LUSID/tests/old_schema/test_transcoder.py`
 
-**sonoPleth old schema:**
+**spatialroot old schema:**
 
 - `src/packageADM/old_schema/createRenderInfo.py` — processedData → renderInstructions
 - `spatial_engine/src/old_schema_loader/JSONLoader.cpp/.hpp` — renderInstructions parser
@@ -1182,7 +1184,7 @@ sonoPleth/
 
 ### Critical: Use Project Virtual Environment
 
-sonoPleth uses a virtual environment located at the **project root** (`sonoPleth/bin/`).
+spatialroot uses a virtual environment located at the **project root** (`spatialroot/bin/`).
 
 **Activation:**
 
@@ -1196,8 +1198,8 @@ source activate.sh
 
 **Verification:**
 
-- Check for `(sonoPleth)` prefix in terminal prompt
-- Run `which python` → should show `/path/to/sonoPleth/bin/python`
+-- Check for `(spatialroot)` prefix in terminal prompt
+-- Run `which python` → should show `/path/to/spatialroot/bin/python`
 
 ### Common Mistake: Using System Python
 
@@ -1225,9 +1227,9 @@ python LUSID/tests/benchmark*.py    # Uses venv Python
 - `matplotlib` — Render analysis plots
 - Others: see `requirements.txt`
 
-**External Tools:**
+- **External Tools:**
 
-- `sonopleth_adm_extract` — embedded ADM metadata extractor (built by `init.sh`; see `src/adm_extract/`)
+- `spatialroot_adm_extract` — embedded ADM metadata extractor (built by `init.sh`; see `src/adm_extract/`)
 - `cmake`, `make`, C++ compiler — C++ renderer build
 
 ---
@@ -1239,7 +1241,7 @@ python LUSID/tests/benchmark*.py    # Uses venv Python
 **Issue:** `ModuleNotFoundError: No module named 'lxml'`  
 **Solution:** `lxml` is no longer required by the active pipeline. If you still see this, activate venv (`source activate.sh`) and ensure you're not running archived code from `old_XML_parse/`.
 
-**Issue:** `sonopleth_adm_extract` binary not found  
+**Issue:** `spatialroot_adm_extract` binary not found
 **Solution:** Run `./init.sh` to build the embedded ADM extractor.
 
 **Issue:** Empty scene / no frames after parsing  
@@ -1350,7 +1352,7 @@ speaker.azimuth = s.azimuth * 180.0f / M_PI;
    ```
 3. **Test manually**:
    ```bash
-   ./spatial_engine/spatialRender/build/sonoPleth_spatial_render \
+   ./spatial_engine/spatialRender/build/spatialroot_spatial_render \
      --layout spatial_engine/speaker_layouts/allosphere_layout.json \
      --positions processedData/stageForRender/scene.lusid.json \
      --sources processedData/stageForRender/ \
@@ -1435,7 +1437,7 @@ python -c "from LUSID.src import parse_file; scene = parse_file('processedData/s
 python -c "from src.configCPP import buildSpatialRenderer; buildSpatialRenderer()"
 
 # Test DBAP render
-./spatial_engine/spatialRender/build/sonoPleth_spatial_render \
+./spatial_engine/spatialRender/build/spatialroot_spatial_render \
   --layout spatial_engine/speaker_layouts/allosphere_layout.json \
   --positions processedData/stageForRender/scene.lusid.json \
   --sources processedData/stageForRender/ \
@@ -1450,7 +1452,7 @@ ffprobe test_dbap.wav 2>&1 | grep "Stream.*Audio"
 
 ```bash
 # XML parsing performance comparison
-cd sonoPleth_root
+cd spatialroot_root
 python LUSID/tests/benchmark_xml_parsers.py
 
 # Results documented in LUSID/internalDocs/xml_benchmark.md
@@ -1632,8 +1634,8 @@ python LUSID/tests/benchmark_xml_parsers.py
   - May not be worth complexity
 
 - [ ] **Bundle as CLI tool**
-  - Package entire pipeline as installable command (`pip install sonopleth`)
-  - Single entry point: `sonopleth render <adm_file> --layout <layout>`
+  - Package entire pipeline as installable command (`pip install spatialroot`)
+  - Single entry point: `spatialroot render <adm_file> --layout <layout>`
 
 ### Known Limitations
 
@@ -1723,7 +1725,7 @@ python LUSID/tests/benchmark_xml_parsers.py
 
 **Updated:** February 23, 2026
 
-sonoPleth now supports cross-platform C++ tool building with OS-specific implementations. The configuration system automatically detects the operating system and routes to the appropriate build scripts.
+spatialroot now supports cross-platform C++ tool building with OS-specific implementations. The configuration system automatically detects the operating system and routes to the appropriate build scripts.
 
 ### Architecture
 
@@ -1751,8 +1753,8 @@ All OS implementations provide the same API:
 
 ### Build Products
 
-- **ADM Extractor:** `src/adm_extract/build/sonopleth_adm_extract[.exe]`
-- **Spatial Renderer:** `spatial_engine/spatialRender/build/sonoPleth_spatial_render[.exe]`
+- **ADM Extractor:** `src/adm_extract/build/spatialroot_adm_extract[.exe]`
+- **Spatial Renderer:** `spatial_engine/spatialRender/build/spatialroot_spatial_render[.exe]`
 
 ### Integration
 
@@ -1778,7 +1780,7 @@ All OS implementations provide the same API:
 
 **Project Lead:** Lucian Parisi  
 **Organization:** Cult DSP  
-**Repository:** https://github.com/Cult-DSP/sonoPleth
+**Repository:** https://github.com/Cult-DSP/spatialroot
 
 For questions or contributions, open an issue or PR on GitHub.
 

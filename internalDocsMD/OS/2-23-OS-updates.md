@@ -6,7 +6,7 @@
 
 ## Overview
 
-sonoPleth has been updated to support cross-platform C++ tool building with OS-specific implementations. This enables Windows developers to build and use the spatial audio toolchain natively, while maintaining full compatibility with existing POSIX (Linux/macOS) workflows.
+spatialroot has been updated to support cross-platform C++ tool building with OS-specific implementations. This enables Windows developers to build and use the spatial audio toolchain natively, while maintaining full compatibility with existing POSIX (Linux/macOS) workflows.
 
 ## Changes Made
 
@@ -130,10 +130,10 @@ This works because both files are at `repo/src/config/configCPP_*.py`.
 
 ### Executable Products
 
-| Tool             | POSIX Path                                                    | Windows Path                                                      |
-| ---------------- | ------------------------------------------------------------- | ----------------------------------------------------------------- |
-| ADM Extractor    | `src/adm_extract/build/sonopleth_adm_extract`                 | `src/adm_extract/build/sonopleth_adm_extract.exe`                 |
-| Spatial Renderer | `spatial_engine/spatialRender/build/sonoPleth_spatial_render` | `spatial_engine/spatialRender/build/sonoPleth_spatial_render.exe` |
+| Tool             | POSIX Path                                                      | Windows Path                                                        |
+| ---------------- | --------------------------------------------------------------- | ------------------------------------------------------------------- |
+| ADM Extractor    | `src/adm_extract/build/spatialroot_adm_extract`                 | `src/adm_extract/build/spatialroot_adm_extract.exe`                 |
+| Spatial Renderer | `spatial_engine/spatialRender/build/spatialroot_spatial_render` | `spatial_engine/spatialRender/build/spatialroot_spatial_render.exe` |
 
 ## Testing & Validation
 
@@ -195,7 +195,7 @@ python -c "from src.config.configCPP import setupCppTools; print('Import success
 
 ```bash
 python -c "from src.config.configCPP_posix import get_repo_root; print(get_repo_root())"
-# Should print: /path/to/sonoPleth
+# Should print: /path/to/spatialroot
 ```
 
 ### Test Init Script

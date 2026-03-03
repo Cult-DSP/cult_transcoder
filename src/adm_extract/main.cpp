@@ -1,11 +1,11 @@
 /**
- * sonopleth_adm_extract
+ * spatialroot_adm_extract
  *
  * Minimal CLI tool that opens a BW64/RF64/WAV file, extracts the raw `axml`
  * chunk bytes (ADM XML), and writes them to a file.
  *
  * Usage:
- *   sonopleth_adm_extract --in <input.wav> --out <output.xml>
+ *   spatialroot_adm_extract --in <input.wav> --out <output.xml>
  *
  * Exit codes:
  *   0  success

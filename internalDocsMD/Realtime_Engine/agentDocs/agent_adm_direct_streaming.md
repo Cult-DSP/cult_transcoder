@@ -195,10 +195,10 @@ When `--adm` is NOT provided (existing behavior):
 
 ```
 # Current mono mode:
-./sonoPleth_realtime --layout L --scene S --sources folder/
+./spatialroot_realtime --layout L --scene S --sources folder/
 
 # New multichannel mode:
-./sonoPleth_realtime --layout L --scene S --adm sourceData/SWALE-ATMOS-LFE.wav
+./spatialroot_realtime --layout L --scene S --adm sourceData/SWALE-ATMOS-LFE.wav
 ```
 
 ---

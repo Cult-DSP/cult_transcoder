@@ -18,7 +18,7 @@ class HeaderBar(QFrame):
         left_lay.setContentsMargins(0, 0, 0, 0)
         left_lay.setSpacing(10)
 
-        self.title = QLabel("sonoPleth", self)
+        self.title = QLabel("spatialroot", self)
         self.title.setObjectName("Title")
         left_lay.addWidget(self.title, alignment=Qt.AlignVCenter)
         lay.addWidget(left, alignment=Qt.AlignLeft)

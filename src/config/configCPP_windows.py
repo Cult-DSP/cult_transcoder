@@ -85,7 +85,7 @@ def buildSpatialRenderer(
 ) -> bool:
     project_root = get_repo_root()
     build_path = project_root / build_dir
-    executable = build_path / exe("sonoPleth_spatial_render")
+    executable = build_path / exe("spatialroot_spatial_render")
 
     if executable.exists():
         print(f"✓ Spatial renderer already built at: {executable}")
@@ -101,7 +101,7 @@ def buildRealtimeEngine(
 ) -> bool:
     project_root = get_repo_root()
     build_path = project_root / build_dir
-    executable = build_path / exe("sonoPleth_realtime")
+    executable = build_path / exe("spatialroot_realtime")
 
     if executable.exists():
         print(f"✓ Realtime engine already built at: {executable}")
@@ -227,7 +227,7 @@ def buildAdmExtractor(build_dir="src/adm_extract/build", source_dir="src/adm_ext
     project_root = get_repo_root()
     build_path = project_root / build_dir
     source_path = project_root / source_dir
-    executable = build_path / exe("sonopleth_adm_extract")
+    executable = build_path / exe("spatialroot_adm_extract")
 
     if executable.exists():
         print(f"✓ ADM extractor already built at: {executable}")
@@ -246,7 +246,7 @@ def buildAdmExtractor(build_dir="src/adm_extract/build", source_dir="src/adm_ext
 
     build_path.mkdir(parents=True, exist_ok=True)
 
-    print("Building embedded ADM extractor (sonopleth_adm_extract)...")
+    print("Building embedded ADM extractor (spatialroot_adm_extract)...")
     print(f"  Source:    {source_path}")
     print(f"  Build dir: {build_path}")
 

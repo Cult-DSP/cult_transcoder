@@ -1,8 +1,8 @@
 """
-theme.py — Colour tokens and QSS factory for sonoPleth / Cult DSP brand.
+theme.py — Colour tokens and QSS factory for spatialroot / Cult DSP brand.
 
 Two modes: DARK (default) and LIGHT.
-Reference: sonopleth-realtime-gui.html (dark) / -light.html (light).
+Reference: spatialroot-realtime-gui.html (dark) / -light.html (light).
 """
 from __future__ import annotations
 from dataclasses import dataclass, field

@@ -1,8 +1,8 @@
-# Repository Cleanup Audit - sonoPleth
+# Repository Cleanup Audit - spatialroot
 
 **Date:** February 23, 2026  
 **Auditor:** GitHub Copilot  
-**Repository:** Cult-DSP/sonoPleth  
+**Repository:** Cult-DSP/spatialroot  
 **Current Branch:** windows
 
 ## Executive Summary ✅ PHASE 1 COMPLETE
@@ -142,7 +142,7 @@ This audit identified files and directories that can be safely removed to clean 
 - **Largest contributors:**
   - `sourceData/`: 19 GB (ADM WAV files for testing) [LEAVE]
   - `processedData/`: 11 GB (rendered multichannel audio outputs) [LEAVE]
-  - `sonoPleth/`: 1.6 GB (Python virtual environment) [LEAVE]
+  - `spatialroot/`: 1.6 GB (Python virtual environment) [LEAVE]
 - **Code size:** ~122 MB (actual source code and dependencies)
 
 ### Storage Savings
@@ -226,4 +226,4 @@ After cleanup:
 - Some "old" files may contain useful historical context or alternative implementations
 - Consider archiving rather than deleting if historical preservation is desired
 - The repository appears well-maintained with clear deprecation markers and archival documentation</content>
-  <parameter name="filePath">/Users/lucian/projects/sonoPleth/REPO_CLEANUP_AUDIT.md
+  <parameter name="filePath">/Users/lucian/projects/spatialroot/REPO_CLEANUP_AUDIT.md

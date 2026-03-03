@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-realtimeMain.py — Standalone launcher for the sonoPleth Real-Time Engine GUI.
+realtimeMain.py — Standalone launcher for the spatialroot Real-Time Engine GUI.
 
 Usage:
     python realtimeMain.py
@@ -28,7 +28,7 @@ def main() -> None:
     args = parser.parse_args()
 
     app = QApplication(sys.argv)
-    app.setApplicationName("sonoPleth")
+    app.setApplicationName("spatialroot")
 
     here = Path(__file__).resolve().parent
 

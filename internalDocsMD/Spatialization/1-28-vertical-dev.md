@@ -239,7 +239,7 @@ To profile the overhead:
 
 ```bash
 # Render same content with and without robustness
-time ./sonoPleth_spatial_render --layout ... --positions ... --sources ... --out test.wav
+time ./spatialroot_spatial_render --layout ... --positions ... --sources ... --out test.wav
 
 # Compare diag summary to see how often features trigger
 ```
@@ -267,7 +267,7 @@ time ./sonoPleth_spatial_render --layout ... --positions ... --sources ... --out
 
 - **Renamed** `VBAPRenderer` → `SpatialRenderer`
 - **Renamed** directories: `vbap_src/` → `renderer/`, `vbapRender/` → `spatialRender/`
-- **Renamed** executable: `sonoPleth_vbap_render` → `sonoPleth_spatial_render`
+- **Renamed** executable: `spatialroot_vbap_render` → `spatialroot_spatial_render`
 - **Added** DBAP (Distance-Based Amplitude Panning) support via `al::Dbap`
 - **Added** LBAP (Layer-Based Amplitude Panning) support via `al::Lbap`
 - **Added** `PannerType` enum (DBAP, VBAP, LBAP)

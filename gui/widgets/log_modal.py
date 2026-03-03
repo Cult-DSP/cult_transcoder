@@ -1,4 +1,4 @@
-"""Raw log modal for sonoPleth GUI."""
+"""Raw log modal for spatialroot GUI."""
 from __future__ import annotations
 
 from PySide6.QtCore import Qt

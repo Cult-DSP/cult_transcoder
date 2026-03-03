@@ -1,6 +1,6 @@
 # JSON Schema Documentation
 
-This document describes the JSON file formats used by the sonoPleth spatial audio renderer.
+This document describes the JSON file formats used by the spatialroot spatial audio renderer.
 
 ## LUSID Scene JSON (`scene.lusid.json`) — Primary Format
 

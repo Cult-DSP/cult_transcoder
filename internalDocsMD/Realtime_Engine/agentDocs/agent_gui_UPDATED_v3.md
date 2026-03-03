@@ -326,7 +326,7 @@ On every Start, reset all runtime control widgets to these defaults.
 
 ```python
 #!/usr/bin/env python3
-"""realtimeMain.py — Launch the sonoPleth Real-Time GUI as a standalone window."""
+"""realtimeMain.py — Launch the spatialroot Real-Time GUI as a standalone window."""
 import sys
 from pathlib import Path
 from PySide6.QtWidgets import QApplication

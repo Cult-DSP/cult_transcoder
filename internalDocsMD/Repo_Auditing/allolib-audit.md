@@ -13,16 +13,16 @@
 | `thirdparty/allolib/` (working tree) | 38 MB      | All source files on disk                    |
 | `.git/modules/thirdparty/allolib`    | **511 MB** | Full history — 1,897 commits, never shallow |
 | `external/json`                      | 16 MB      | nlohmann/json (header-only)                 |
-| `external/imgui`                     | 5.1 MB     | Dear ImGui — not used by sonoPleth          |
-| `external/glfw`                      | 4.5 MB     | Window/GL context — not used by sonoPleth   |
-| `external/Gamma`                     | 2.3 MB     | DSP library — **linked by sonoPleth**       |
+| `external/imgui`                     | 5.1 MB     | Dear ImGui — not used by spatialroot        |
+| `external/glfw`                      | 4.5 MB     | Window/GL context — not used by spatialroot |
+| `external/Gamma`                     | 2.3 MB     | DSP library — **linked by spatialroot**     |
 | `external/rtaudio`                   | 1.3 MB     | Audio I/O — needed for real-time path       |
-| `external/stb`                       | 2.0 MB     | Image loading — not used by sonoPleth       |
-| `external/dr_libs`                   | 744 KB     | Audio decoding — not used by sonoPleth      |
+| `external/stb`                       | 2.0 MB     | Image loading — not used by spatialroot     |
+| `external/dr_libs`                   | 744 KB     | Audio decoding — not used by spatialroot    |
 | `external/rtmidi`                    | 548 KB     | MIDI I/O — not used today                   |
-| `external/glad`                      | 336 KB     | OpenGL loader — not used by sonoPleth       |
-| `external/serial`                    | 324 KB     | Serial port — not used by sonoPleth         |
-| `external/cpptoml`                   | 316 KB     | TOML parser — not used by sonoPleth         |
+| `external/glad`                      | 336 KB     | OpenGL loader — not used by spatialroot     |
+| `external/serial`                    | 324 KB     | Serial port — not used by spatialroot       |
+| `external/cpptoml`                   | 316 KB     | TOML parser — not used by spatialroot       |
 | `external/oscpack`                   | 692 KB     | OSC protocol — not used today               |
 
 **Primary problem:** The `.git/modules` history (511 MB) dwarfs the working tree (38 MB).  
@@ -30,7 +30,7 @@ A `--depth 1` shallow clone reduces this to ~a few MB of pack objects.
 
 ---
 
-## 2. `#include` Audit — sonoPleth → AlloLib
+## 2. `#include` Audit — spatialroot → AlloLib
 
 Scanned all `.cpp` / `.hpp` files under `spatial_engine/src/`.
 
@@ -63,7 +63,7 @@ Scanned all `.cpp` / `.hpp` files under `spatial_engine/src/`.
 
 ```cmake
 # spatial_engine/spatialRender/CMakeLists.txt
-target_link_libraries(sonoPleth_spatial_render
+target_link_libraries(spatialroot_spatial_render
     al      # full AlloLib static lib
     Gamma   # DSP library (AlloLib external)
 )
@@ -80,13 +80,13 @@ No other CMakeLists outside `thirdparty/` reference AlloLib (confirmed by search
 These modules are **directly referenced** and must be present for the current
 offline spatial renderer to compile and link.
 
-| Module             | Headers used                                                                        | Source files compiled                                                               | Why needed                                                                                            |
-| ------------------ | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| **sound**          | `al_Vbap.hpp`, `al_Dbap.hpp`, `al_Lbap.hpp`, `al_Spatializer.hpp`, `al_Speaker.hpp` | `al_Vbap.cpp`, `al_Dbap.cpp`, `al_Lbap.cpp`, `al_Spatializer.cpp`, `al_Speaker.cpp` | Core spatializers (DBAP/VBAP/LBAP) and base class                                                     |
-| **math**           | `al_Vec.hpp`                                                                        | `al_StdRandom.cpp` (minor)                                                          | 3-D vector arithmetic used throughout renderer                                                        |
-| **spatial**        | `al_Pose.hpp`                                                                       | `al_Pose.cpp`, `al_HashSpace.cpp`                                                   | Pulled in by `al_Spatializer.hpp`; azimuth/elevation geometry                                         |
-| **io/AudioIOData** | `al_AudioIOData.hpp`                                                                | `al_AudioIOData.cpp`                                                                | Buffer/channel descriptor passed to spatializers                                                      |
-| **external/Gamma** | (linked as `Gamma` CMake target)                                                    | Full Gamma lib                                                                      | Linked by `sonoPleth_spatial_render`; provides DSP primitives used internally by AlloLib sound module |
+| Module             | Headers used                                                                        | Source files compiled                                                               | Why needed                                                                                              |
+| ------------------ | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **sound**          | `al_Vbap.hpp`, `al_Dbap.hpp`, `al_Lbap.hpp`, `al_Spatializer.hpp`, `al_Speaker.hpp` | `al_Vbap.cpp`, `al_Dbap.cpp`, `al_Lbap.cpp`, `al_Spatializer.cpp`, `al_Speaker.cpp` | Core spatializers (DBAP/VBAP/LBAP) and base class                                                       |
+| **math**           | `al_Vec.hpp`                                                                        | `al_StdRandom.cpp` (minor)                                                          | 3-D vector arithmetic used throughout renderer                                                          |
+| **spatial**        | `al_Pose.hpp`                                                                       | `al_Pose.cpp`, `al_HashSpace.cpp`                                                   | Pulled in by `al_Spatializer.hpp`; azimuth/elevation geometry                                           |
+| **io/AudioIOData** | `al_AudioIOData.hpp`                                                                | `al_AudioIOData.cpp`                                                                | Buffer/channel descriptor passed to spatializers                                                        |
+| **external/Gamma** | (linked as `Gamma` CMake target)                                                    | Full Gamma lib                                                                      | Linked by `spatialroot_spatial_render`; provides DSP primitives used internally by AlloLib sound module |
 
 #### Concrete paths to preserve in `thirdparty/allolib/`
 
@@ -112,7 +112,7 @@ src/system/al_ThreadNative.cpp
 src/system/al_Time.cpp
 src/math/al_StdRandom.cpp
 external/Gamma/
-external/json/         (nlohmann — used by AlloLib CMake and sonoPleth JSONLoader)
+external/json/         (nlohmann — used by AlloLib CMake and spatialroot JSONLoader)
 external/CMakeLists.txt
 CMakeLists.txt
 ```
@@ -141,25 +141,25 @@ components should **not** be discarded even though they are unused today.
 ### 3c. TRIM / DO-NOT-NEED LIST — Safe to exclude from working tree
 
 These are unused today **and** have no plausible near-term path to use in
-sonoPleth's audio pipeline. They are also the heaviest contributors to
+spatialroot's audio pipeline. They are also the heaviest contributors to
 working-tree size.
 
-| Component                           | AlloLib paths                                                                                      | Size        | Why safe to drop                                              |
-| ----------------------------------- | -------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------- |
-| **Graphics**                        | `include/al/graphics/`, `src/graphics/`                                                            | ~248 KB src | sonoPleth has its own PySide6 GUI; no OpenGL rendering needed |
-| **GLFW**                            | `external/glfw/`                                                                                   | 4.5 MB      | Window creation — only needed for graphics                    |
-| **OpenGL/glad**                     | `external/glad/`                                                                                   | 336 KB      | GL loader — graphics only                                     |
-| **ImGui**                           | `external/imgui/`, `src/io/al_Imgui.cpp`, `src/io/al_imgui_impl.cpp`, `include/al/io/al_Imgui.hpp` | 5.1 MB      | Immediate-mode debug UI — sonoPleth uses Qt                   |
-| **stb**                             | `external/stb/`                                                                                    | 2.0 MB      | Image/font loading — graphics only                            |
-| **dr_libs**                         | `external/dr_libs/`                                                                                | 744 KB      | Audio file decoding — sonoPleth uses libsndfile               |
-| **serial**                          | `external/serial/`                                                                                 | 324 KB      | Serial port — no hardware I/O in sonoPleth                    |
-| **UI layer**                        | `include/al/ui/`, `src/ui/`                                                                        | 324 KB      | AlloLib parameter/preset GUI — replaced by Qt                 |
-| **Sphere**                          | `include/al/sphere/`, `src/sphere/`                                                                | 52 KB       | AlloSphere-specific projection — not a target venue           |
-| **types/Color**                     | `include/al/types/al_Color.hpp`, `src/types/al_Color.cpp`                                          | —           | Color type — graphics only                                    |
-| **Window / GLFW IO**                | `include/al/io/al_Window.hpp`, `src/io/al_Window.cpp`, `src/io/al_WindowGLFW.cpp`                  | —           | Window management — graphics only                             |
-| **ControlNav / File / MIDI IO**     | `al_ControlNav`, `al_File`, `al_PersistentConfig`, `al_SerialIO`, `al_Toml`, `al_CSVReader`        | —           | Utility IO not used by renderer                               |
-| **App graphics domains**            | `al_GUIDomain`, `al_OpenGLGraphicsDomain`, `al_OmniRendererDomain`, `al_StateDistributionDomain`   | —           | Graphics rendering domains                                    |
-| **Distributed / CommandConnection** | `al_DistributedApp`, `al_CommandConnection`                                                        | —           | Multi-machine cluster support — not in scope                  |
+| Component                           | AlloLib paths                                                                                      | Size        | Why safe to drop                                                |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------- | ----------- | --------------------------------------------------------------- |
+| **Graphics**                        | `include/al/graphics/`, `src/graphics/`                                                            | ~248 KB src | spatialroot has its own PySide6 GUI; no OpenGL rendering needed |
+| **GLFW**                            | `external/glfw/`                                                                                   | 4.5 MB      | Window creation — only needed for graphics                      |
+| **OpenGL/glad**                     | `external/glad/`                                                                                   | 336 KB      | GL loader — graphics only                                       |
+| **ImGui**                           | `external/imgui/`, `src/io/al_Imgui.cpp`, `src/io/al_imgui_impl.cpp`, `include/al/io/al_Imgui.hpp` | 5.1 MB      | Immediate-mode debug UI — spatialroot uses Qt                   |
+| **stb**                             | `external/stb/`                                                                                    | 2.0 MB      | Image/font loading — graphics only                              |
+| **dr_libs**                         | `external/dr_libs/`                                                                                | 744 KB      | Audio file decoding — spatialroot uses libsndfile               |
+| **serial**                          | `external/serial/`                                                                                 | 324 KB      | Serial port — no hardware I/O in spatialroot                    |
+| **UI layer**                        | `include/al/ui/`, `src/ui/`                                                                        | 324 KB      | AlloLib parameter/preset GUI — replaced by Qt                   |
+| **Sphere**                          | `include/al/sphere/`, `src/sphere/`                                                                | 52 KB       | AlloSphere-specific projection — not a target venue             |
+| **types/Color**                     | `include/al/types/al_Color.hpp`, `src/types/al_Color.cpp`                                          | —           | Color type — graphics only                                      |
+| **Window / GLFW IO**                | `include/al/io/al_Window.hpp`, `src/io/al_Window.cpp`, `src/io/al_WindowGLFW.cpp`                  | —           | Window management — graphics only                               |
+| **ControlNav / File / MIDI IO**     | `al_ControlNav`, `al_File`, `al_PersistentConfig`, `al_SerialIO`, `al_Toml`, `al_CSVReader`        | —           | Utility IO not used by renderer                                 |
+| **App graphics domains**            | `al_GUIDomain`, `al_OpenGLGraphicsDomain`, `al_OmniRendererDomain`, `al_StateDistributionDomain`   | —           | Graphics rendering domains                                      |
+| **Distributed / CommandConnection** | `al_DistributedApp`, `al_CommandConnection`                                                        | —           | Multi-machine cluster support — not in scope                    |
 
 ---
 

@@ -274,7 +274,7 @@ PortAudio Documentation – Realtime Programming Guidelines. (Emphasizes avoidin
 
 Tyson, M. “Four Common Mistakes in Audio Development.” atastypixel.com. (Highlights the importance of not blocking the audio thread and maintaining glitch-free performance.)
 
-AlloSphere Research Group – AlloLib and Audio framework (2026). (AlloLib’s AudioIO provides the multi-channel audio callback system used in our prototype, see mainplayer.cpp in sonoPleth for usage.)
+AlloSphere Research Group – AlloLib and Audio framework (2026). (AlloLib’s AudioIO provides the multi-channel audio callback system used in our prototype, see mainplayer.cpp in spatialroot for usage.)
 
 Generalist Programmer. "Game Audio Programming: Complete Sound Engine Guide 2025." (Discusses voice management and lock-free communication, principles we applied in our CPU safety and threading model.)
 

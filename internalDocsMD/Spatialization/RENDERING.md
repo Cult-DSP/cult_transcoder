@@ -1,4 +1,4 @@
-# sonoPleth Rendering System
+# spatialroot Rendering System
 
 This document explains the spatial rendering system used to spatialize audio for the AlloSphere's speaker array.
 
@@ -64,7 +64,7 @@ And produces:
 ## CLI Usage
 
 ```bash
-./sonoPleth_spatial_render \
+./spatialroot_spatial_render \
   --layout allosphere_layout.json \
   --positions spatial.json \
   --sources ./mono_stems/ \
@@ -166,14 +166,14 @@ Designed for multi-layer speaker setups.
 
 ```bash
 # Default render with DBAP (reads LUSID scene directly)
-./sonoPleth_spatial_render \
+./spatialroot_spatial_render \
   --layout allosphere_layout.json \
   --positions scene.lusid.json \
   --sources ./stems/ \
   --out render.wav
 
 # Use VBAP for precise localization
-./sonoPleth_spatial_render \
+./spatialroot_spatial_render \
   --layout allosphere_layout.json \
   --positions scene.lusid.json \
   --sources ./stems/ \
@@ -181,7 +181,7 @@ Designed for multi-layer speaker setups.
   --spatializer vbap
 
 # Use LBAP for multi-ring layout with high dispersion
-./sonoPleth_spatial_render \
+./spatialroot_spatial_render \
   --layout translab_layout.json \
   --positions scene.lusid.json \
   --sources ./stems/ \
@@ -190,7 +190,7 @@ Designed for multi-layer speaker setups.
   --lbap_dispersion 0.8
 
 # DBAP with tight focus
-./sonoPleth_spatial_render \
+./spatialroot_spatial_render \
   --layout allosphere_layout.json \
   --positions scene.lusid.json \
   --sources ./stems/ \
@@ -199,7 +199,7 @@ Designed for multi-layer speaker setups.
   --dbap_focus 3.0
 
 # Debug a single source with diagnostics
-./sonoPleth_spatial_render \
+./spatialroot_spatial_render \
   --layout allosphere_layout.json \
   --positions scene.lusid.json \
   --sources ./stems/ \
@@ -208,7 +208,7 @@ Designed for multi-layer speaker setups.
   --debug_dir ./debug_output/
 
 # Render just 10-20 second window at full gain
-./sonoPleth_spatial_render \
+./spatialroot_spatial_render \
   --layout allosphere_layout.json \
   --positions scene.lusid.json \
   --sources ./stems/ \
@@ -694,7 +694,7 @@ cmake ..
 make
 ```
 
-The executable is `sonoPleth_spatial_render` in the build directory.
+The executable is `spatialroot_spatial_render` in the build directory.
 
 Or use the Python setup:
 

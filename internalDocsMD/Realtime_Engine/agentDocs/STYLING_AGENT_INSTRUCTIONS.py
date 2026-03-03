@@ -1,13 +1,13 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# sonoPleth — Real-Time GUI  ·  Brand Styling Agent Instructions
+# spatialroot — Real-Time GUI  ·  Brand Styling Agent Instructions
 # Phase 10 · Cult DSP Visual Identity
 # ═══════════════════════════════════════════════════════════════════════════════
 #
 # PURPOSE
 # -------
 # This document tells a coding agent exactly how to translate the two HTML
-# reference mockups (sonopleth-realtime-gui.html = DARK,
-# sonopleth-realtime-gui-light.html = LIGHT) into the five PySide6 source files:
+# reference mockups (spatialroot-realtime-gui.html = DARK,
+# spatialroot-realtime-gui-light.html = LIGHT) into the five PySide6 source files:
 #
 #   realtimeGUI.py               ← RealtimeWindow (QMainWindow)
 #   RealtimeInputPanel.py        ← launch-time config
@@ -37,10 +37,10 @@
 # │ theme.py
 # └─────────────────────────────────────────────────────────────────────────────
 """
-theme.py — Colour tokens and QSS factory for sonoPleth / Cult DSP brand.
+theme.py — Colour tokens and QSS factory for spatialroot / Cult DSP brand.
 
 Two modes: DARK (default) and LIGHT.
-Reference: sonopleth-realtime-gui.html (dark) / -light.html (light).
+Reference: spatialroot-realtime-gui.html (dark) / -light.html (light).
 """
 from __future__ import annotations
 from dataclasses import dataclass, field
@@ -450,7 +450,7 @@ def make_qss(t: Dict[str, str]) -> str:
 # │ brand_widgets.py
 # └─────────────────────────────────────────────────────────────────────────────
 """
-brand_widgets.py — Purely decorative widgets for sonoPleth brand identity.
+brand_widgets.py — Purely decorative widgets for spatialroot brand identity.
 
 All widgets here are visual-only; they emit no signals and hold no state.
 Reference: the corner-marks, eye-ornament, sacred-geometry background,
@@ -712,7 +712,7 @@ class SacredGeometryBackground(QWidget):
 #       self._connect_runner()
 #       # Apply master QSS AFTER _build_ui so objectNames are set
 #       QApplication.instance().setStyleSheet(make_qss(self._theme))
-#       self.setWindowTitle("sonoPleth — Real-Time Engine")
+#       self.setWindowTitle("spatialroot — Real-Time Engine")
 #       self.resize(820, 900)
 #
 # 3.4  _build_ui() — changes to make
@@ -745,8 +745,8 @@ class SacredGeometryBackground(QWidget):
 #    header_layout.addWidget(logo_glyph)
 #    header_layout.addSpacing(10)
 #
-#    # Wordmark: "sonoPleth  Real-Time Engine"
-#    wordmark = QLabel("sonoPleth")
+#    # Wordmark: "spatialroot  Real-Time Engine"
+#    wordmark = QLabel("spatialroot")
 #    wordmark.setObjectName("Title")
 #    wordmark.setFont(QFont("Cormorant Garamond", 15))
 #    header_layout.addWidget(wordmark)
@@ -1221,7 +1221,7 @@ class SacredGeometryBackground(QWidget):
 #       args = parser.parse_args()
 #
 #       app = QApplication(sys.argv)
-#       app.setApplicationName("sonoPleth")
+#       app.setApplicationName("spatialroot")
 #
 #       win = RealtimeWindow(repo_root=args.repo_root, theme=args.theme)
 #       win.show()

@@ -1,8 +1,8 @@
 # agentGUI_v2.md
 
-## sonoPleth GUI: Visual Parity Pass v2 (PySide6, Light Mode)
+## spatialroot GUI: Visual Parity Pass v2 (PySide6, Light Mode)
 
-Goal: Move the current GUI (screenshot 2026-02-17) toward close visual parity with the approved mockup (`sonoPleth-mockup.png`), focusing on layout, hierarchy, and widget fidelity.
+Goal: Move the current GUI (screenshot 2026-02-17) toward close visual parity with the approved mockup (`spatialroot-mockup.png`), focusing on layout, hierarchy, and widget fidelity.
 
 This spec is written for a strong coding model. It assumes the GUI already runs and the pipeline works.
 
@@ -53,7 +53,7 @@ This spec is written for a strong coding model. It assumes the GUI already runs 
 
 ### 0.1 Golden target
 
-- `docs/gui/reference/sonoPleth-mockup.png` (copy from your source mockup)
+- `docs/gui/reference/spatialroot-mockup.png` (copy from your source mockup)
 
 ### 0.2 Current output to improve
 
@@ -360,7 +360,7 @@ To drive parity with the mockup, add a simple screenshot export:
 Optional pixel diff:
 
 - `python gui/tools/diff_mockup.py`
-  - loads `reference/sonoPleth-mockup.png` and `latest.png`
+  - loads `reference/spatialroot-mockup.png` and `latest.png`
   - outputs a diff heatmap and a numeric score
 
 Acceptance:

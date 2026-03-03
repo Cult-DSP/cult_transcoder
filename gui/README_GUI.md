@@ -1,6 +1,6 @@
-# sonoPleth PySide6 GUI scaffold (Light Mode)
+# spatialroot PySide6 GUI scaffold (Light Mode)
 
-This is a starter scaffold aligned to `sonoPleth-mockup.png` (light mode).
+This is a starter scaffold aligned to `spatialroot-mockup.png` (light mode).
 
 ## Install
 

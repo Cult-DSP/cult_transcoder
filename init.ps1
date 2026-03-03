@@ -1,5 +1,5 @@
 ### NEEDS TO BE UPDATED BASED ON INIT.SH WITH REALTIME ENGINE CHANGES
-# init.ps1 - Native Windows setup for sonoPleth (PowerShell)
+# init.ps1 - Native Windows setup for spatialroot (PowerShell)
 # Mirrors init.sh steps:
 # 1) Create Python venv
 # 2) Install Python deps
@@ -15,7 +15,7 @@
 
 [CmdletBinding()]
 param(
-  [string]$VenvDir = "sonoPleth"
+  [string]$VenvDir = "spatialroot"
 )
 
 $ErrorActionPreference = "Continue"  # Don't stop on errors, handle them explicitly
@@ -114,17 +114,23 @@ Write-Host ""
 
 Write-Host "Step 4: Creating initialization flag..."
 
-$flagPath = Join-Path $ProjectRoot ".init_complete"
-$timestamp = Get-Date
+if ($cppOk) {
+  $flagPath = Join-Path $ProjectRoot ".init_complete"
+  $timestamp = Get-Date
 
-@"
-# sonoPleth initialization complete
+  @"
+# spatialroot initialization complete
 # Generated: $timestamp
 # Python venv: $VenvDir/
 # Delete this file to force re-initialization.
 "@ | Set-Content -Path $flagPath -Encoding UTF8
 
-Write-Host "✓ Initialization flag created (.init_complete)"
+  Write-Host "✓ Initialization flag created (.init_complete)"
+} else {
+  Write-Host "⚠ Initialization incomplete: not creating .init_complete" -ForegroundColor Yellow
+  Write-Host "Run .\init.ps1 again after resolving the errors above." -ForegroundColor Yellow
+  exit 1
+}
 Write-Host ""
 
 Section "✓ Initialization complete!"
@@ -161,7 +167,7 @@ Write-Host "  python utils/getExamples.py          # Download example files"
 Write-Host "  python runPipeline.py <file.wav>     # Run the pipeline"
 Write-Host ""
 Write-Host "To reactivate the environment later, run:"
-Write-Host "  .\sonoPleth\bin\Activate.ps1"
+Write-Host "  .\spatialroot\bin\Activate.ps1"
 Write-Host ""
 Write-Host "If you encounter dependency errors, delete .init_complete and re-run:"
 Write-Host "  Remove-Item .init_complete; .\init.ps1"

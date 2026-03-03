@@ -25,7 +25,7 @@ class MainWindow(QWidget):
         super().__init__()
         self.setObjectName("Root")
         self.repo_root = repo_root
-        self.setWindowTitle("sonoPleth")
+        self.setWindowTitle("spatialroot")
         self.resize(1100, 800)
         self.setMinimumSize(1000, 700)
 

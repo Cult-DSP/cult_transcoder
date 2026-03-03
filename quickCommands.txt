@@ -1,15 +1,15 @@
 
 
 translab LFE: 
-python runPipeline.py sourceData/CANYON-ATMOS-LFE.wav /Users/lucian/projects/sonoPleth/spatial_engine/speaker_layouts/translab-sono-layout.json dbap 1.5
+python runPipeline.py sourceData/CANYON-ATMOS-LFE.wav /Users/lucian/projects/spatialroot/spatial_engine/speaker_layouts/translab-sono-layout.json dbap 1.5
 
-python runPipeline.py sourceData/SWALE-ATMOS-LFE.wav /Users/lucian/projects/sonoPleth/spatial_engine/speaker_layouts/translab-sono-layout.json dbap 1.5 0.5
+python runPipeline.py sourceData/SWALE-ATMOS-LFE.wav /Users/lucian/projects/spatialroot/spatial_engine/speaker_layouts/translab-sono-layout.json dbap 1.5 0.5
 
-python runPipeline.py sourceData/ASCENT-ATMOS-LFE.wav /Users/lucian/projects/sonoPleth/spatial_engine/speaker_layouts/translab-sono-layout.json dbap 1.5 0.5
+python runPipeline.py sourceData/ASCENT-ATMOS-LFE.wav /Users/lucian/projects/spatialroot/spatial_engine/speaker_layouts/translab-sono-layout.json dbap 1.5 0.5
 
-python runPipeline.py sourceData/OFFERING-ATMOS-LFE.wav /Users/lucian/projects/sonoPleth/spatial_engine/speaker_layouts/translab-sono-layout.json dbap 1.5 0.5
+python runPipeline.py sourceData/OFFERING-ATMOS-LFE.wav /Users/lucian/projects/spatialroot/spatial_engine/speaker_layouts/translab-sono-layout.json dbap 1.5 0.5
 
-python runPipeline.py sourceData/EDEN-ATMOS-MIX-LFE.wav /Users/lucian/projects/sonoPleth/spatial_engine/speaker_layouts/translab-sono-layout.json dbap 1.5
+python runPipeline.py sourceData/EDEN-ATMOS-MIX-LFE.wav /Users/lucian/projects/spatialroot/spatial_engine/speaker_layouts/translab-sono-layout.json dbap 1.5
 
 
 
@@ -33,12 +33,12 @@ python runPipeline.py sourceData/360RA_test.wav spatial_engine/speaker_layouts/a
 
 
 LUSID -> translab:
-python createFromLUSID.py sourceData/lusid_package /Users/lucian/projects/sonoPleth/spatial_engine/speaker_layouts/translab-sono-layout.json
+python createFromLUSID.py sourceData/lusid_package /Users/lucian/projects/spatialroot/spatial_engine/speaker_layouts/translab-sono-layout.json
 
 
 
 LUSID -> allosphere:
-python createFromLUSID.py sourceData/lusid_package /Users/lucian/projects/sonoPleth/spatial_engine/speaker_layouts/allosphere_layout.json
+python createFromLUSID.py sourceData/lusid_package /Users/lucian/projects/spatialroot/spatial_engine/speaker_layouts/allosphere_layout.json
 
 
 

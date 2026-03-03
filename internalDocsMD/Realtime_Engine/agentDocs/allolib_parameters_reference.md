@@ -1,4 +1,4 @@
-# AlloLib Parameter System — Reference for sonoPleth Real-Time Engine
+# AlloLib Parameter System — Reference for spatialroot Real-Time Engine
 
 > **Scope:** This document is the canonical reference for adding AlloLib's
 > `al::Parameter` / `al::ParameterBool` / `al::ParameterBundle` /
@@ -99,7 +99,7 @@ parameters by their full OSC address.
 #include "al/ui/al_ParameterServer.hpp"
 
 // Constructor: ParameterServer(address="127.0.0.1", port=9010, autoStart=true)
-// sonoPleth uses port 9009 (project default).
+// spatialroot uses port 9009 (project default).
 al::ParameterServer paramServer{"127.0.0.1", 9009};
 
 // Register individual parameters:
@@ -269,11 +269,11 @@ the UI subsystem (`al::Parameter`, `al::ParameterServer`, etc.). The
 `al/ui/al_ParameterServer.hpp` header is already in the include path via:
 
 ```cmake
-target_include_directories(sonoPleth_realtime PRIVATE
+target_include_directories(spatialroot_realtime PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../thirdparty/allolib/include
     ...
 )
-target_link_libraries(sonoPleth_realtime al Gamma)
+target_link_libraries(spatialroot_realtime al Gamma)
 ```
 
 **No new CMake changes needed.** Just add the `#include` directives to

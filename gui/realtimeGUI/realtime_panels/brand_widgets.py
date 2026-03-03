@@ -1,5 +1,5 @@
 """
-brand_widgets.py — Purely decorative widgets for sonoPleth brand identity.
+brand_widgets.py — Purely decorative widgets for spatialroot brand identity.
 
 All widgets here are visual-only; they emit no signals and hold no state.
 Reference: the corner-marks, eye-ornament, sacred-geometry background,
