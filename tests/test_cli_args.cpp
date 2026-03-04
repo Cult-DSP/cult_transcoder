@@ -13,16 +13,16 @@
 // limitations under the License.
 
 // ---------------------------------------------------------------------------
-// test_cli_args.cpp — Unit tests for transcode() arg validation (Phase 1)
+// test_cli_args.cpp — Unit tests for transcode() arg validation
 //
 // Tests the transcode() function in transcoder.cpp via TranscodeRequest,
 // verifying that:
 //   - Missing input file produces status="fail" + error in report.
 //   - Unknown --in-format produces status="fail".
 //   - Unknown --out-format produces status="fail".
-//   - Valid args with a real file produce status="success" (Phase 1 stub).
-//   - Phase 1 stub warning is present on success.
-//   - report.args mirrors the request values exactly.
+//   - Empty XML input produces status="fail" (parse error).
+//   - report.args mirrors the request values exactly (even on failure).
+//   - summary.timeUnit is always "seconds" on success.
 // ---------------------------------------------------------------------------
 
 #include "cult_transcoder.hpp"
@@ -127,8 +127,8 @@ TEST_CASE("transcode: empty out path returns fail", "[cli][validation]") {
     REQUIRE(result.report.status == "fail");
 }
 
-TEST_CASE("transcode: valid args with existing file returns success (Phase 1 stub)",
-          "[cli][stub]") {
+TEST_CASE("transcode: empty XML input returns fail (parse error)",
+          "[cli][validation]") {
     TempFile tmp(".xml");
     cult::TranscodeRequest req;
     req.inPath     = tmp.path.string();
@@ -139,10 +139,10 @@ TEST_CASE("transcode: valid args with existing file returns success (Phase 1 stu
 
     auto result = cult::transcode(req);
 
-    REQUIRE(result.success);
-    REQUIRE(result.report.status == "success");
-    // Phase 1 stub must warn that no real conversion happened
-    REQUIRE(containsWarning(result.report, "Phase 1 stub"));
+    // Empty XML cannot be parsed — conversion must fail
+    REQUIRE_FALSE(result.success);
+    REQUIRE(result.report.status == "fail");
+    REQUIRE((containsError(result.report, "parse") || containsError(result.report, "XML")));
 }
 
 TEST_CASE("transcode: report.args mirrors request values", "[cli][report]") {
@@ -157,6 +157,7 @@ TEST_CASE("transcode: report.args mirrors request values", "[cli][report]") {
 
     auto result = cult::transcode(req);
 
+    // Args must be populated regardless of success/failure
     const auto& a = result.report.args;
     REQUIRE(a.inPath       == req.inPath);
     REQUIRE(a.inFormat     == req.inFormat);
@@ -177,6 +178,6 @@ TEST_CASE("transcode: summary.timeUnit is always 'seconds'", "[cli][summary]") {
 
     auto result = cult::transcode(req);
 
-    // timeUnit must be "seconds" even in stub — pinned by AGENTS §4
+    // timeUnit must be "seconds" regardless of success/failure — pinned by AGENTS §4
     REQUIRE(result.report.summary.timeUnit == "seconds");
 }

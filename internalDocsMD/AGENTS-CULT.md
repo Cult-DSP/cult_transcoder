@@ -70,19 +70,20 @@ No behavior change without doc change.
 
 ---
 
-## 1. Repo Layout (Phase 1 — current state)
+## 1. Repo Layout (Phase 2 — current state)
 
 ```
 cult_transcoder/
-├── .github/
-│   └── workflows/
-│       └── ci.yml                     # macOS + Windows CI matrix
-├── CMakeLists.txt                     # C++17, Catch2 FetchContent, git SHA injection
+├── .gitignore                         # excludes build/, .DS_Store, IDE dirs
+├── CMakeLists.txt                     # C++17, Catch2 + pugixml FetchContent, git SHA injection
+├── OVERVIEW.md                        # project overview with phase table
 ├── internalDocsMD/
 │   ├── AGENTS-CULT.md                 # this file
 │   ├── DEV-PLAN-CULT.md
-│   └── DESIGN-DOC-V1-CULT.MD
+│   ├── DESIGN-DOC-V1-CULT.MD
+│   └── design-reference-CULT.md       # research/literature design reference
 ├── include/
+│   ├── adm_to_lusid.hpp              # Phase 2: LusidNode/Frame/Scene structs, convertAdmToLusid()
 │   ├── cult_transcoder.hpp            # TranscodeRequest / TranscodeResult / transcode()
 │   ├── cult_report.hpp                # Report model (LossLedgerEntry, ReportSummary, …)
 │   └── cult_version.hpp               # kVersionString, kReportSchemaVersion, gitCommit()
@@ -90,30 +91,34 @@ cult_transcoder/
 │   └── cult-transcoder.bat            # Windows wrapper — call via this, not .exe directly
 ├── src/
 │   ├── main.cpp                       # CLI entry point, atomic report write, exit codes
-│   ├── transcoder.cpp                 # Phase 1 stub: validates args, returns fail/success
-│   └── report.cpp                     # JSON serializer (zero external deps in Phase 1)
-├── transcoding/
+│   ├── transcoder.cpp                 # Phase 2: validates args → convertAdmToLusid → writeLusidScene
+│   ├── adm_to_lusid.cpp              # Phase 2: ADM XML → LUSID conversion (pugixml, encounter order)
+│   └── report.cpp                     # JSON serializer (zero external deps)
+├── transcoding/                       # Phase 3+ stubs — not compiled yet
 │   ├── adm/
-│   │   ├── adm_reader.cpp             # Phase 2 stub
-│   │   ├── adm_to_lusid.cpp           # Phase 2 stub
-│   │   └── adm_profile_resolver.cpp   # Phase 4+ stub
+│   │   ├── adm_reader.cpp             # Phase 3: ADM WAV ingestion (libbw64 + axml extraction)
+│   │   ├── adm_to_lusid.cpp           # Phase 3+: orchestration adapter over src/adm_to_lusid.cpp
+│   │   └── adm_profile_resolver.cpp   # Phase 4: Dolby Atmos / Sony 360RA profile detection
 │   └── lusid/
-│       ├── lusid_writer.cpp           # Phase 2 stub
-│       └── lusid_validate.cpp         # Phase 2 stub
+│       ├── lusid_writer.cpp           # Phase 3+: enhanced writer (atomic writes, schema versions)
+│       └── lusid_validate.cpp         # Phase 3+: LUSID schema validation before output
 └── tests/
-    ├── test_main.cpp                  # Catch2 entry point (intentionally minimal)
-    ├── test_report.cpp                # 9 tests — §7 report schema contract
+    ├── test_report.cpp                # 10 tests — §7 report schema contract
     ├── test_cli_args.cpp              # 7 tests — transcode() arg validation
     └── parity/
-        ├── run_parity.cpp             # Phase 2 placeholder (skipped in Phase 1)
+        ├── run_parity.cpp             # Phase 2: real parity tests against Python oracle
         └── fixtures/
-            └── .gitkeep               # placeholder — ADM fixtures added in Phase 2
+            ├── .gitkeep
+            ├── test_input.xml         # ADM XML test fixture (Dolby Atmos master)
+            └── reference_scene.lusid.json  # Python oracle output (contains_audio=None)
 ```
 
-**Build output** (after `cmake -B build && cmake --build build`):
+**Note on test_main.cpp**: Catch2 v3 provides its own entry point via
+`Catch2::Catch2WithMain`; a separate `test_main.cpp` is not needed.
 
-- macOS/Linux: `build/cult-transcoder`
-- Windows: `build/cult-transcoder.exe` — call via `scripts/cult-transcoder.bat`
+**Note on transcoding/**: These files are Phase 3+ stubs with development notes.
+They are not compiled or linked in Phase 2. Each file documents its intended
+purpose, dependencies, and activation phase.
 
 ---
 

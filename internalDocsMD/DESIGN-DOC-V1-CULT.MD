@@ -6,7 +6,6 @@ Next-generation audio formats enable immersive spatial audio experiences by movi
 
 ## Implementation Contract (Pinned Project Decisions)
 
-
 These decisions are part of the execution contract for CULT Transcoder in the Spatial Root toolchain. They exist to reduce ambiguity and prevent destructive regressions.
 
 - **Canonical format**: LUSID Scene v0.5 JSON is the canonical intermediate representation.

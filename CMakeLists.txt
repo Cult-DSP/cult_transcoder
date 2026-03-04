@@ -123,8 +123,7 @@ else()
     target_compile_options(cult-transcoder PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 
-# Phase 2: link libadm + libbw64
-# target_link_libraries(cult-transcoder PRIVATE adm bw64)
+target_link_libraries(cult-transcoder PRIVATE pugixml::pugixml)
 
 # ---------------------------------------------------------------------------
 # Tests — Catch2
@@ -134,10 +133,12 @@ enable_testing()
 add_executable(cult_tests
     tests/test_report.cpp
     tests/test_cli_args.cpp
+    tests/parity/run_parity.cpp
 
     # Same source files the main binary uses, so tests exercise real code
     src/report.cpp
     src/transcoder.cpp
+    src/adm_to_lusid.cpp
 )
 
 target_include_directories(cult_tests
@@ -148,11 +149,13 @@ target_include_directories(cult_tests
 target_compile_definitions(cult_tests
     PRIVATE
         CULT_GIT_COMMIT="${CULT_GIT_COMMIT}"
+        PARITY_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/parity/fixtures"
 )
 
 target_link_libraries(cult_tests
     PRIVATE
         Catch2::Catch2WithMain
+        pugixml::pugixml
 )
 
 if(MSVC)
@@ -181,7 +184,6 @@ message(STATUS "  Build type  : ${CMAKE_BUILD_TYPE}")
 message(STATUS "  C++ standard: ${CMAKE_CXX_STANDARD}")
 message(STATUS "  Binary path : ${CMAKE_BINARY_DIR}/cult-transcoder")
 message(STATUS "  Tests       : enabled (Catch2 v3)")
-message(STATUS "  libadm      : DISABLED (Phase 1 stub — enable in Phase 2)")
-message(STATUS "  libbw64     : DISABLED (Phase 1 stub — enable in Phase 2)")
+message(STATUS "  XML parser  : pugixml (encounter-order parity with Python oracle)")
 message(STATUS "===========================================")
 message(STATUS "")

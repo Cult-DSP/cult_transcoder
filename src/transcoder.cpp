@@ -13,23 +13,22 @@
 // limitations under the License.
 
 // ---------------------------------------------------------------------------
-// transcoder.cpp — Core transcode() implementation (Phase 1 stub)
+// transcoder.cpp — Core transcode() implementation
 //
-// Phase 1 behaviour:
+// Phase 2 behaviour:
 //   - Validates that --in file exists on disk.
-//   - Validates that --in-format is a recognised value.
-//   - Validates that --out-format is a recognised value.
+//   - Validates that --in-format / --out-format are recognised.
 //   - On any failure: fills report with status="fail" + error message.
-//   - On success: fills report with status="success" + zeroed summary.
-//     No actual ADM parsing or LUSID output is produced yet.
+//   - On success: converts ADM XML → LUSID Scene JSON via adm_to_lusid,
+//     writes output file, populates report summary with real stats.
 //
-// Phase 2 will replace the stub body with real ADM→LUSID conversion using
-// libadm.  The function signature (TranscodeRequest / TranscodeResult) must
-// NOT change.
+// The function signature (TranscodeRequest / TranscodeResult) is stable and
+// must NOT change between phases.
 // ---------------------------------------------------------------------------
 
 #include "cult_transcoder.hpp"
 #include "cult_version.hpp"
+#include "adm_to_lusid.hpp"
 
 #include <filesystem>
 #include <set>
@@ -40,14 +39,14 @@ namespace {
 
 // Formats recognised by the CLI contract (§2).  Only adm_xml→lusid_json is
 // implemented; others are rejected with a clear error so the contract exit
-// code semantics are exercised in Phase 1.
+// code semantics are exercised.
 const std::set<std::string> kKnownInFormats  = { "adm_xml" };
 const std::set<std::string> kKnownOutFormats = { "lusid_json" };
 
 } // anonymous namespace
 
 // ---------------------------------------------------------------------------
-// transcode() — Phase 1 stub
+// transcode()
 // ---------------------------------------------------------------------------
 TranscodeResult transcode(const TranscodeRequest& req) {
     TranscodeResult result;
@@ -96,17 +95,39 @@ TranscodeResult transcode(const TranscodeRequest& req) {
         return result;
     }
 
-    // --- Phase 1 stub success path ---
-    // No actual conversion happens yet.  Return a zeroed summary so the
-    // report schema is fully exercised.
+    // --- ADM → LUSID Conversion ---
+    auto conversion = convertAdmToLusid(req.inPath);
+
+    // Forward warnings from conversion
+    for (auto& w : conversion.warnings)
+        report.warnings.push_back(w);
+
+    if (!conversion.success) {
+        for (auto& e : conversion.errors)
+            report.errors.push_back(e);
+        report.status = "fail";
+        return result;
+    }
+
+    // Write LUSID scene JSON
+    if (!writeLusidScene(conversion.scene, req.outPath)) {
+        report.errors.push_back(
+            "Failed to write output file: '" + req.outPath + "'");
+        report.status = "fail";
+        return result;
+    }
+
+    // --- Populate report summary ---
     report.status = "success";
-    report.summary.timeUnit = "seconds"; // pinned (§4)
+    report.summary.timeUnit    = "seconds";
+    report.summary.numFrames   = conversion.numFrames;
+    report.summary.sampleRate  = conversion.scene.sampleRate;
+    report.summary.durationSec = (conversion.scene.duration >= 0.0)
+                                    ? conversion.scene.duration
+                                    : 0.0;
+    report.summary.countsByNodeType = conversion.countsByNodeType;
+
     result.success = true;
-
-    report.warnings.push_back(
-        "Phase 1 stub: no ADM parsing or LUSID output was produced. "
-        "Implement Phase 2 to enable real transcoding.");
-
     return result;
 }
 

@@ -49,47 +49,39 @@ All phases must preserve the toolchain contract authority: `LUSID/internalDocsMD
 
 ## Phase 2 — ADM XML → LUSID JSON (Mirror Python Oracle Exactly)
 
+**Status: ✅ CORE COMPLETE — 25/25 tests passing (including byte-for-byte parity)**
+
 ### Goals
 
-- Implement C++ ADM→LUSID conversion using libadm.
+- Implement C++ ADM→LUSID conversion using pugixml (raw encounter-order traversal).
 - Output must match Python oracle under parsed-object equality, with stable ordering mirroring Python.
 - timeUnit fixed to `"seconds"`.
 
 ### Inputs/Outputs
 
-- Input: `processedData/currentMetaData.xml` (produced by existing extractor) :contentReference[oaicite:22]{index=22}
-- Output: `processedData/stageForRender/scene.lusid.json` :contentReference[oaicite:23]{index=23}
+- Input: `processedData/currentMetaData.xml` (produced by existing extractor)
+- Output: `processedData/stageForRender/scene.lusid.json`
 - Report: default `<out>.report.json`
 
 ### Required behavior parity
 
-- Mirror `LUSID/src/xml_etree_parser.py` behavior as oracle. :contentReference[oaicite:24]{index=24}
+- Mirror `LUSID/src/xml_etree_parser.py` behavior as oracle.
 - Stable ordering matches Python.
-- LFE hardcode behavior matches Python (C1). :contentReference[oaicite:25]{index=25}
-- Remove/comment out `containsAudio` from pipeline; Phase 2 does not use it. :contentReference[oaicite:26]{index=26}
+- LFE hardcode behavior matches Python (C1).
+- Remove/comment out `containsAudio` from pipeline; Phase 2 does not use it.
 
 ### Work items
 
-1. Replace libadm/libbw64 FetchContent stubs with **pugixml** (MIT, header-friendly).
-   - Rationale: Python oracle uses `xml.etree.ElementTree` with raw encounter-order
-     iteration over `audioChannelFormat` elements. libadm's internal data model and
-     traversal order differ, making ordering parity fragile. pugixml mirrors the
-     Python approach exactly: iterate children in document order.
-2. Implement `src/adm_to_lusid.cpp` / `include/adm_to_lusid.hpp`:
-   - Parse ADM XML via pugixml, extract DirectSpeakers + Objects in encounter order
-   - Build LUSID frames: DS at t=0, Objects grouped by rtime
-   - LFE detection: hardcoded channel 4 (1-based), matching `_DEV_LFE_HARDCODED`
-   - `containsAudio` is **not used** — all channels assumed active (AGENTS §4)
-3. Implement LUSID JSON writer (manual serialization, same as report.cpp pattern)
-4. Wire into `transcoder.cpp`: replace Phase 1 stub with real pipeline
-5. Implement atomic write behavior (already in main.cpp for report; extend to LUSID output)
-6. Implement parity test runner:
-   - generate Python LUSID via oracle (`contains_audio=None`)
-   - generate CULT LUSID from same XML
-   - parse both and compare deep equality
-   - hard fail mismatch
-7. Update Spatial Root pipeline to call `spatialroot/cult-transcoder/build/cult-transcoder` for adm_xml→lusid_json
-8. Remove/comment out `containsAudio` dependency in pipeline and docs
+| #   | Work Item                                                                                                                                                                                                  | Status                                                         |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| 1   | Replace libadm/libbw64 FetchContent stubs with **pugixml** (MIT, header-friendly). Rationale: Python oracle uses `xml.etree.ElementTree` with raw encounter-order iteration. pugixml mirrors this exactly. | ✅                                                             |
+| 2   | Implement `src/adm_to_lusid.cpp` / `include/adm_to_lusid.hpp`: parse ADM XML, extract DS + Objects in encounter order, build frames, LFE hardcoded ch4, no containsAudio.                                  | ✅                                                             |
+| 3   | Implement LUSID JSON writer (`lusidSceneToJson()`, `writeLusidScene()` — manual serialization matching `json.dump(indent=2)`)                                                                              | ✅                                                             |
+| 4   | Wire into `transcoder.cpp`: replace Phase 1 stub with real pipeline (`convertAdmToLusid` → `writeLusidScene`, populate report summary)                                                                     | ✅                                                             |
+| 5   | Implement atomic write behavior (already in main.cpp for report; extend to LUSID output)                                                                                                                   | ⏳ deferred to Phase 3                                         |
+| 6   | Implement parity test runner: generate Python ref (`contains_audio=None`), compare C++ output, hard fail on mismatch. Tests in `tests/parity/run_parity.cpp`, fixtures in `tests/parity/fixtures/`.        | ✅ 8 parity tests passing (including byte-for-byte JSON match) |
+| 7   | Update Spatial Root pipeline to call `cult-transcoder` binary for adm_xml→lusid_json                                                                                                                       | ⏳ pending (integration step)                                  |
+| 8   | Remove/comment out `containsAudio` dependency in pipeline and docs                                                                                                                                         | ⏳ pending (integration step)                                  |
 
 ### Gates
 
