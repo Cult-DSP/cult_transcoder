@@ -29,6 +29,7 @@
 #include "cult_transcoder.hpp"
 #include "cult_version.hpp"
 #include "adm_to_lusid.hpp"
+#include "adm_reader.hpp"   // Phase 3: BW64 axml extraction
 
 #include <filesystem>
 #include <set>
@@ -37,10 +38,10 @@ namespace cult {
 
 namespace {
 
-// Formats recognised by the CLI contract (§2).  Only adm_xml→lusid_json is
-// implemented; others are rejected with a clear error so the contract exit
-// code semantics are exercised.
-const std::set<std::string> kKnownInFormats  = { "adm_xml" };
+// Formats recognised by the CLI contract (§2).
+// adm_xml  → Phase 2: input is a pre-extracted ADM XML file
+// adm_wav  → Phase 3: input is a BW64/RF64 WAV containing an axml chunk
+const std::set<std::string> kKnownInFormats  = { "adm_xml", "adm_wav" };
 const std::set<std::string> kKnownOutFormats = { "lusid_json" };
 
 } // anonymous namespace
@@ -96,7 +97,33 @@ TranscodeResult transcode(const TranscodeRequest& req) {
     }
 
     // --- ADM → LUSID Conversion ---
-    auto conversion = convertAdmToLusid(req.inPath);
+    ConversionResult conversion;
+
+    if (req.inFormat == "adm_xml") {
+        // Phase 2 path: input is a pre-extracted ADM XML file.
+        conversion = convertAdmToLusid(req.inPath);
+
+    } else {
+        // Phase 3 path: input is a BW64/WAV file containing an axml chunk.
+        // extractAxmlFromWav() opens the WAV, extracts the axml chunk,
+        // writes the debug XML artifact to processedData/currentMetaData.xml
+        // (hardcoded per D2), and returns the XML in-memory for parsing.
+        auto axmlResult = extractAxmlFromWav(req.inPath);
+
+        // Forward warnings from extraction (e.g. debug XML artifact write failure)
+        for (auto& w : axmlResult.warnings)
+            report.warnings.push_back(w);
+
+        if (!axmlResult.success) {
+            for (auto& e : axmlResult.errors)
+                report.errors.push_back(e);
+            report.status = "fail";
+            return result;
+        }
+
+        // Parse directly from the in-memory XML buffer — no disk re-read.
+        conversion = convertAdmToLusidFromBuffer(axmlResult.xmlData);
+    }
 
     // Forward warnings from conversion
     for (auto& w : conversion.warnings)
@@ -109,12 +136,29 @@ TranscodeResult transcode(const TranscodeRequest& req) {
         return result;
     }
 
-    // Write LUSID scene JSON
-    if (!writeLusidScene(conversion.scene, req.outPath)) {
-        report.errors.push_back(
-            "Failed to write output file: '" + req.outPath + "'");
-        report.status = "fail";
-        return result;
+    // Write LUSID scene JSON — atomic write (work item 5, Phase 3).
+    // Write to a temp file first, then rename to final path so no partial
+    // artifact is ever visible at the final path (AGENTS §2 atomic rule).
+    {
+        const std::string tmpOut = req.outPath + ".tmp";
+        if (!writeLusidScene(conversion.scene, tmpOut)) {
+            report.errors.push_back(
+                "Failed to write output file: '" + req.outPath + "'");
+            report.status = "fail";
+            // Clean up temp file if it exists
+            std::filesystem::remove(tmpOut);
+            return result;
+        }
+        std::error_code ec;
+        std::filesystem::rename(tmpOut, req.outPath, ec);
+        if (ec) {
+            report.errors.push_back(
+                "Failed to finalize output file (rename failed): '" +
+                req.outPath + "': " + ec.message());
+            report.status = "fail";
+            std::filesystem::remove(tmpOut);
+            return result;
+        }
     }
 
     // --- Populate report summary ---

@@ -193,23 +193,12 @@ std::string indent(int level) {
 // ---------------------------------------------------------------------------
 // convertAdmToLusid — main entry point
 // ---------------------------------------------------------------------------
-ConversionResult convertAdmToLusid(const std::string& xmlPath) {
+// ---------------------------------------------------------------------------
+// parseAdmDocument() — internal helper shared by both public entry points.
+// Called after the pugi::xml_document has been loaded (from file or buffer).
+// ---------------------------------------------------------------------------
+static ConversionResult parseAdmDocument(pugi::xml_document& doc) {
     ConversionResult result;
-
-    // -- Parse XML --
-    pugi::xml_document doc;
-    // Parse without namespace processing so element names appear without
-    // the {ns} prefix, matching Python's ElementTree iter() behavior when
-    // we search by local name.  However, EBU ADM XML typically has xmlns on
-    // the root element which means child names are namespace-qualified in
-    // pugixml's default mode.  We need to handle both cases.
-    auto parseResult = doc.load_file(xmlPath.c_str());
-    if (!parseResult) {
-        result.errors.push_back(
-            "Failed to parse XML: " + std::string(parseResult.description()) +
-            " at offset " + std::to_string(parseResult.offset));
-        return result;
-    }
 
     // -- Find EBU root --
     auto ebuRoot = findEbuRoot(doc);
@@ -428,6 +417,51 @@ ConversionResult convertAdmToLusid(const std::string& xmlPath) {
 
     result.success = true;
     return result;
+}
+
+// ---------------------------------------------------------------------------
+// convertAdmToLusid() — public API, parses from file path
+// ---------------------------------------------------------------------------
+ConversionResult convertAdmToLusid(const std::string& xmlPath) {
+    ConversionResult result;
+
+    pugi::xml_document doc;
+    // Parse without namespace processing so element names appear without
+    // the {ns} prefix, matching Python's ElementTree iter() behavior when
+    // we search by local name.  However, EBU ADM XML typically has xmlns on
+    // the root element which means child names are namespace-qualified in
+    // pugixml's default mode.  We need to handle both cases.
+    auto parseResult = doc.load_file(xmlPath.c_str());
+    if (!parseResult) {
+        result.errors.push_back(
+            "Failed to parse XML: " + std::string(parseResult.description()) +
+            " at offset " + std::to_string(parseResult.offset));
+        return result;
+    }
+
+    return parseAdmDocument(doc);
+}
+
+// ---------------------------------------------------------------------------
+// convertAdmToLusidFromBuffer() — public API, parses from in-memory string
+//
+// Phase 3: used when the XML was extracted from a BW64 WAV in-memory by
+// extractAxmlFromWav(). Avoids a disk write+re-read cycle. All parity rules
+// from AGENTS-CULT §3/§5 apply identically — same parseAdmDocument() call.
+// ---------------------------------------------------------------------------
+ConversionResult convertAdmToLusidFromBuffer(const std::string& xmlBuffer) {
+    ConversionResult result;
+
+    pugi::xml_document doc;
+    auto parseResult = doc.load_string(xmlBuffer.c_str());
+    if (!parseResult) {
+        result.errors.push_back(
+            "Failed to parse XML buffer: " + std::string(parseResult.description()) +
+            " at offset " + std::to_string(parseResult.offset));
+        return result;
+    }
+
+    return parseAdmDocument(doc);
 }
 
 // ---------------------------------------------------------------------------

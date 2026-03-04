@@ -13,38 +13,116 @@
 // limitations under the License.
 
 // ---------------------------------------------------------------------------
-// transcoding/adm/adm_reader.cpp — ADM WAV Ingestion (Phase 3+)
+// transcoding/adm/adm_reader.cpp — ADM WAV Ingestion (Phase 3)
 //
-// DEVELOPMENT NOTES
-// =================
-// Phase: 3
-// Status: Stub — not compiled or linked yet.
+// Implements extractAxmlFromWav() declared in adm_reader.hpp.
 //
-// Purpose:
-//   Read an ADM-BWF (.wav) file, extract the axml metadata chunk, and
-//   optionally write it as a debug artifact to processedData/currentMetaData.xml
-//   (pinned behavior D2 — AGENTS-CULT §8).
+// Pipeline (AGENTS-CULT §8, DEV-PLAN Phase 3):
+//   1. Open WAV as a BW64/RF64 container via libbw64 (git submodule,
+//      thirdparty/libbw64, Apache-2.0, header-only).
+//   2. Extract the raw axml chunk bytes.
+//   3. Write bytes verbatim to the debug artifact path
+//      (default: processedData/currentMetaData.xml, hardcoded per D2).
+//      A warning is emitted if the write fails but processing continues.
+//   4. Return the XML string to the caller (transcoder.cpp) for immediate
+//      in-memory parsing by convertAdmToLusid() — no disk re-read.
 //
-// Phase 3 responsibilities:
-//   - Accept --in-format adm_wav in the CLI.
-//   - Extract axml chunk from BW64 container (libbw64 or manual chunk reader).
-//   - Pass extracted XML buffer to the existing adm_to_lusid converter
-//     (src/adm_to_lusid.cpp).
-//   - Write debug XML artifact (enabled by default, AGENTS §8).
-//   - Output LUSID + report, same as Phase 2 but from WAV input directly.
-//
-// Dependencies:
-//   - libbw64 (FetchContent, Apache-2.0) — for BW64/RF64 chunk reading.
-//   - pugixml (already available) — for parsing the extracted axml buffer.
-//
-// Design considerations:
-//   - Parse directly from extracted buffer (avoid writing then re-reading XML).
-//   - pugixml supports load_buffer() for in-memory XML parsing.
-//   - Debug XML artifact written via pugixml save_file() or raw buffer dump.
-//   - Gate: parity against Phase 2 output for same input WAV.
+// This replaces spatialroot's spatialroot_adm_extract binary + extractMetaData()
+// Python wrapper entirely. Those are now deprecated (AGENTS.md updated).
 //
 // References:
 //   - AGENTS-CULT §8 (Phase 3 Ingestion)
 //   - DEV-PLAN-CULT Phase 3
-//   - DESIGN-DOC-V1-CULT §ADM and Object Metadata
 // ---------------------------------------------------------------------------
+
+#include "adm_reader.hpp"
+
+#include <bw64/bw64.hpp>
+
+#include <filesystem>
+#include <fstream>
+#include <stdexcept>
+
+namespace cult {
+
+AxmlResult extractAxmlFromWav(
+    const std::string& wavPath,
+    const std::string& debugXmlPath
+) {
+    AxmlResult result;
+
+    // --- Validate input path ---
+    if (wavPath.empty()) {
+        result.errors.push_back("extractAxmlFromWav: wavPath is empty");
+        return result;
+    }
+    if (!std::filesystem::exists(wavPath)) {
+        result.errors.push_back("Input WAV file not found: '" + wavPath + "'");
+        return result;
+    }
+
+    // --- Open BW64/RF64/WAV container ---
+    std::shared_ptr<bw64::Bw64Reader> reader;
+    try {
+        reader = bw64::readFile(wavPath);
+    } catch (const std::exception& e) {
+        result.errors.push_back(
+            "Failed to open BW64 file '" + wavPath + "': " + e.what());
+        return result;
+    }
+
+    // --- Extract axml chunk ---
+    auto axmlChunk = reader->axmlChunk();
+    if (!axmlChunk) {
+        result.errors.push_back(
+            "No axml chunk found in '" + wavPath + "'. "
+            "Is this a valid ADM BW64 file?");
+        return result;
+    }
+
+    result.xmlData = axmlChunk->data();
+
+    if (result.xmlData.empty()) {
+        result.errors.push_back(
+            "axml chunk is present but empty in '" + wavPath + "'");
+        return result;
+    }
+
+    // --- Write debug XML artifact (D2 — always written by default) ---
+    // Path is hardcoded to processedData/currentMetaData.xml relative to CWD
+    // (the spatialroot repo root). This preserves the artifact that downstream
+    // tools and humans rely on for debugging. Failure to write is a warning,
+    // not a hard error — in-memory parsing proceeds regardless.
+    if (!debugXmlPath.empty()) {
+        try {
+            std::filesystem::path xmlOut(debugXmlPath);
+            // Create parent directory if it does not exist
+            if (xmlOut.has_parent_path()) {
+                std::filesystem::create_directories(xmlOut.parent_path());
+            }
+            std::ofstream outFile(xmlOut, std::ios::binary);
+            if (!outFile) {
+                result.warnings.push_back(
+                    "Could not open debug XML artifact for writing: '" +
+                    debugXmlPath + "' — in-memory parsing will still proceed.");
+            } else {
+                outFile.write(result.xmlData.data(),
+                              static_cast<std::streamsize>(result.xmlData.size()));
+                if (!outFile) {
+                    result.warnings.push_back(
+                        "Write failed for debug XML artifact: '" +
+                        debugXmlPath + "' — in-memory parsing will still proceed.");
+                }
+            }
+        } catch (const std::exception& e) {
+            result.warnings.push_back(
+                std::string("Exception writing debug XML artifact: ") + e.what() +
+                " — in-memory parsing will still proceed.");
+        }
+    }
+
+    result.success = true;
+    return result;
+}
+
+} // namespace cult

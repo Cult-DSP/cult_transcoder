@@ -36,9 +36,11 @@ These decisions are final and must not be changed without a doc-update PR.
 | Test framework       | Catch2 (CMake FetchContent, no install)                                                                                                           |
 | License              | Apache-2.0, Cult-DSP copyright in every source file                                                                                               |
 | XML parser           | pugixml (FetchContent, MIT license) — mirrors Python oracle's raw XML traversal for ordering parity. **Not** libadm (different traversal order).  |
+| BW64 reader          | libbw64 (git submodule at `thirdparty/libbw64`, Apache-2.0, header-only) — Phase 3. Used only for axml chunk extraction. **Not** FetchContent.   |
 | Windows binary       | `build/cult-transcoder.exe` called via `scripts/cult-transcoder.bat` wrapper                                                                      |
 | `.bat` wrapper rule  | Must be committed; every call-site in Spatial Root pipeline must have an inline comment explaining the indirection                                |
 | Fail-report behavior | On any error (missing file, unsupported format, etc.) the CLI writes a best-effort `status: "fail"` report to the default path and exits non-zero |
+| Atomic output        | All output files written to `<path>.tmp` first, then `std::filesystem::rename()` to final path. Temp cleaned on failure. Enforced Phase 2+.      |
 
 ---
 
@@ -70,12 +72,12 @@ No behavior change without doc change.
 
 ---
 
-## 1. Repo Layout (Phase 2 — current state)
+## 1. Repo Layout (Phase 3 — current state)
 
 ```
 cult_transcoder/
 ├── .gitignore                         # excludes build/, .DS_Store, IDE dirs
-├── CMakeLists.txt                     # C++17, Catch2 + pugixml FetchContent, git SHA injection
+├── CMakeLists.txt                     # C++17, Catch2 + pugixml FetchContent, libbw64 submodule, git SHA injection
 ├── OVERVIEW.md                        # project overview with phase table
 ├── internalDocsMD/
 │   ├── AGENTS-CULT.md                 # this file
@@ -83,7 +85,7 @@ cult_transcoder/
 │   ├── DESIGN-DOC-V1-CULT.MD
 │   └── design-reference-CULT.md       # research/literature design reference
 ├── include/
-│   ├── adm_to_lusid.hpp              # Phase 2: LusidNode/Frame/Scene structs, convertAdmToLusid()
+│   ├── adm_to_lusid.hpp              # Phase 2+3: structs + convertAdmToLusid() + convertAdmToLusidFromBuffer()
 │   ├── cult_transcoder.hpp            # TranscodeRequest / TranscodeResult / transcode()
 │   ├── cult_report.hpp                # Report model (LossLedgerEntry, ReportSummary, …)
 │   └── cult_version.hpp               # kVersionString, kReportSchemaVersion, gitCommit()
@@ -91,20 +93,24 @@ cult_transcoder/
 │   └── cult-transcoder.bat            # Windows wrapper — call via this, not .exe directly
 ├── src/
 │   ├── main.cpp                       # CLI entry point, atomic report write, exit codes
-│   ├── transcoder.cpp                 # Phase 2: validates args → convertAdmToLusid → writeLusidScene
-│   ├── adm_to_lusid.cpp              # Phase 2: ADM XML → LUSID conversion (pugixml, encounter order)
+│   ├── transcoder.cpp                 # Phase 3: validates args → adm_xml or adm_wav dispatch → atomic write
+│   ├── adm_to_lusid.cpp              # Phase 2+3: ADM XML → LUSID (pugixml, encounter order, parseAdmDocument helper)
 │   └── report.cpp                     # JSON serializer (zero external deps)
-├── transcoding/                       # Phase 3+ stubs — not compiled yet
+├── thirdparty/
+│   └── libbw64/                       # Phase 3: git submodule (ebu/libbw64, Apache-2.0, header-only)
+│                                      #   CMake INTERFACE target 'libbw64'
+│                                      #   Used only in transcoding/adm/adm_reader.cpp
+├── transcoding/
 │   ├── adm/
-│   │   ├── adm_reader.cpp             # Phase 3: ADM WAV ingestion (libbw64 + axml extraction)
-│   │   ├── adm_to_lusid.cpp           # Phase 3+: orchestration adapter over src/adm_to_lusid.cpp
-│   │   └── adm_profile_resolver.cpp   # Phase 4: Dolby Atmos / Sony 360RA profile detection
+│   │   ├── adm_reader.hpp             # Phase 3: AxmlResult struct, extractAxmlFromWav() declaration
+│   │   ├── adm_reader.cpp             # Phase 3: BW64 → axml extraction, debug XML artifact write
+│   │   └── adm_profile_resolver.cpp   # Phase 4: Dolby Atmos / Sony 360RA profile detection (stub)
 │   └── lusid/
-│       ├── lusid_writer.cpp           # Phase 3+: enhanced writer (atomic writes, schema versions)
-│       └── lusid_validate.cpp         # Phase 3+: LUSID schema validation before output
+│       ├── lusid_writer.cpp           # Phase 3+: enhanced writer (stub)
+│       └── lusid_validate.cpp         # Phase 3+: LUSID schema validation (stub)
 └── tests/
     ├── test_report.cpp                # 10 tests — §7 report schema contract
-    ├── test_cli_args.cpp              # 7 tests — transcode() arg validation
+    ├── test_cli_args.cpp              # 10 tests — transcode() arg validation (3 Phase 3 tests added)
     └── parity/
         ├── run_parity.cpp             # Phase 2: real parity tests against Python oracle
         └── fixtures/
@@ -116,9 +122,9 @@ cult_transcoder/
 **Note on test_main.cpp**: Catch2 v3 provides its own entry point via
 `Catch2::Catch2WithMain`; a separate `test_main.cpp` is not needed.
 
-**Note on transcoding/**: These files are Phase 3+ stubs with development notes.
-They are not compiled or linked in Phase 2. Each file documents its intended
-purpose, dependencies, and activation phase.
+**Note on transcoding/ stubs**: `adm_reader.hpp` and `adm_reader.cpp` are Phase 3
+*implemented* files, fully compiled and linked. `adm_profile_resolver.cpp`,
+`lusid_writer.cpp`, and `lusid_validate.cpp` remain Phase 4+ stubs (not compiled).
 
 ---
 
@@ -126,11 +132,17 @@ purpose, dependencies, and activation phase.
 
 Command:
 
+```
 cult-transcoder transcode
---in <path> --in-format adm_xml
---out <path> --out-format lusid_json
-[--report <path>]
-[--stdout-report]
+  --in <path> --in-format <adm_xml|adm_wav>
+  --out <path> --out-format lusid_json
+  [--report <path>]
+  [--stdout-report]
+```
+
+Known `--in-format` values:
+- `adm_xml` (Phase 2): input is a bare ADM XML file (e.g. `currentMetaData.xml`)
+- `adm_wav` (Phase 3): input is a BW64 WAV with embedded axml chunk
 
 Defaults:
 
@@ -144,8 +156,9 @@ Exit codes:
 
 Atomic output rule (non-negotiable):
 
-- Write output and report to temporary filenames first, validate, then atomic rename to final paths.
+- Write output and report to temporary filenames (`<path>.tmp`) first, validate, then atomic rename to final paths.
 - On failure: remove temp outputs; do not leave partial artifacts.
+- Implemented in Phase 2 (LUSID write) and Phase 3 (report write via main.cpp).
 
 ---
 
@@ -269,22 +282,61 @@ No heavy hashing in v0.1 (no input SHA).
 
 ---
 
-## 8. Phase 3 Ingestion (Pinned)
+## 8. Phase 3 Ingestion — **IMPLEMENTED (2026-03-04)**
 
-Phase 3 goal:
+Phase 3 goal: Move ADM WAV ingestion/extraction into CULT entirely, replacing
+`spatialroot_adm_extract` + the Python `extractMetaData()` subprocess.
 
-- Move ADM WAV ingestion/extraction into CULT.
-- Keep `processedData/currentMetaData.xml` as a debug artifact, but parsing can occur directly from extracted axml buffer.
+**Status: COMPLETE.** All items below are implemented and 28/28 tests pass.
 
-Pinned behavior (D2):
+### What was built
 
-- Default: parse directly, and write XML when debug output is enabled by default.
-- Keep the XML artifact in the same location for continuity.
+| Component | File | Description |
+|-----------|------|-------------|
+| libbw64 submodule | `thirdparty/libbw64/` | EBU libbw64, Apache-2.0, header-only. Added as git submodule. |
+| BW64 reader | `transcoding/adm/adm_reader.hpp` + `.cpp` | `extractAxmlFromWav()`: opens BW64 WAV, reads axml chunk, writes debug XML artifact, returns XML string in `AxmlResult`. |
+| Buffer-based converter | `include/adm_to_lusid.hpp` + `src/adm_to_lusid.cpp` | `convertAdmToLusidFromBuffer(xmlBuffer)`: parses ADM XML from in-memory string. Delegates to shared `static parseAdmDocument()` helper — zero logic duplication with `convertAdmToLusid()`. |
+| adm_wav dispatch | `src/transcoder.cpp` | `kKnownInFormats = {"adm_xml", "adm_wav"}`. When `adm_wav`: calls `extractAxmlFromWav` then `convertAdmToLusidFromBuffer`. |
+| Atomic LUSID write | `src/transcoder.cpp` | Writes to `<out>.tmp` then `std::filesystem::rename()` to final path. Temp cleaned on failure. |
+| Phase 3 tests | `tests/test_cli_args.cpp` | 3 new tests: adm_wav format recognized, adm_xml regression, non-BW64 file fails at axml (not at format). Total: 10 tests. |
 
-Phase 3 output:
+### Pinned behavior (D2 — unchanged)
 
-- Only XML and LUSID (no containsAudio in Phase 3 either).
-- Report next to LUSID.
+- Debug XML artifact always written to `processedData/currentMetaData.xml` (relative to CWD).
+- Failure to write the artifact is a **warning**, not an error. Transcode continues.
+- `containsAudio` is NOT used or written in Phase 3 (same as Phase 2 — all channels assumed active, §4).
+- Report is written alongside LUSID at `<out>.report.json`.
+
+### spatialroot_adm_extract — DEPRECATED
+
+The `src/adm_extract/` CMake project and `spatialroot_adm_extract` binary in the
+spatialroot repo are superseded by Phase 3. As of this session:
+
+- `runRealtime.py` no longer calls `extractMetaData()`.  
+  It calls `cult_transcoder/build/cult-transcoder transcode --in-format adm_wav` instead.
+- `configCPP_posix.py` and `configCPP_windows.py` have the `initializeEbuSubmodules()` and  
+  `buildAdmExtractor()` calls commented out with Phase 3 explanation.
+- `src/adm_extract/` remains in place (not deleted) pending formal cleanup.
+- `runPipeline.py` is deprecated (do-not-touch); its `extractMetaData()` call is left as-is.
+
+### Pipeline call site (runRealtime.py)
+
+```python
+# cult_transcoder/build/cult-transcoder
+CULT_BINARY = project_root / "cult_transcoder" / "build" / "cult-transcoder"
+scene_json_path = "processedData/stageForRender/scene.lusid.json"
+
+result = subprocess.run([
+    str(CULT_BINARY), "transcode",
+    "--in",         source_adm_file,
+    "--in-format",  "adm_wav",
+    "--out",        scene_json_path,
+    "--out-format", "lusid_json",
+], check=False)
+
+if result.returncode != 0:
+    return False
+```
 
 ---
 

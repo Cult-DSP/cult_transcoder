@@ -86,6 +86,12 @@ struct ConversionResult {
 /// This mirrors parse_adm_xml_to_lusid_scene(xml_path, contains_audio=None).
 ConversionResult convertAdmToLusid(const std::string& xmlPath);
 
+/// Parse an ADM XML string (in-memory buffer) and produce a LUSID scene.
+/// Phase 3: used when the XML was extracted from a BW64 WAV in-memory by
+/// extractAxmlFromWav() — avoids writing then re-reading from disk.
+/// Semantically identical to convertAdmToLusid(); all parity rules apply.
+ConversionResult convertAdmToLusidFromBuffer(const std::string& xmlBuffer);
+
 /// Serialize a LusidScene to a JSON string.
 /// Output matches Python's json.dump(scene.to_dict(), indent=2) format.
 std::string lusidSceneToJson(const LusidScene& scene);

@@ -96,6 +96,23 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(pugixml)
 
+# --- libbw64 (EBU BW64/RF64 container reader, Apache-2.0, header-only) ---
+# Phase 3+: used by transcoding/adm/adm_reader.cpp to extract the axml chunk
+# from ADM BW64/WAV files (--in-format adm_wav).
+# Added as a git submodule at thirdparty/libbw64 (not FetchContent) so that
+# cult_transcoder owns the dependency without requiring spatialroot's
+# thirdparty/libbw64 submodule.  (AGENTS-CULT §8, DEV-PLAN Phase 3)
+set(LIBBW64_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/libbw64")
+if(NOT EXISTS "${LIBBW64_DIR}/include/bw64/bw64.hpp")
+    message(FATAL_ERROR
+        "libbw64 headers not found at ${LIBBW64_DIR}/include/bw64/bw64.hpp\n"
+        "Run:  git submodule update --init thirdparty/libbw64\n"
+        "from inside the cult_transcoder directory."
+    )
+endif()
+add_library(libbw64 INTERFACE)
+target_include_directories(libbw64 INTERFACE "${LIBBW64_DIR}/include")
+
 # ---------------------------------------------------------------------------
 # Main executable — cult-transcoder
 # ---------------------------------------------------------------------------
@@ -104,11 +121,13 @@ add_executable(cult-transcoder
     src/report.cpp
     src/transcoder.cpp
     src/adm_to_lusid.cpp
+    transcoding/adm/adm_reader.cpp   # Phase 3: BW64 axml extraction (libbw64)
 )
 
 target_include_directories(cult-transcoder
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/transcoding/adm  # adm_reader.hpp (Phase 3)
 )
 
 target_compile_definitions(cult-transcoder
@@ -123,7 +142,7 @@ else()
     target_compile_options(cult-transcoder PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 
-target_link_libraries(cult-transcoder PRIVATE pugixml::pugixml)
+target_link_libraries(cult-transcoder PRIVATE pugixml::pugixml libbw64)
 
 # ---------------------------------------------------------------------------
 # Tests — Catch2
@@ -139,11 +158,13 @@ add_executable(cult_tests
     src/report.cpp
     src/transcoder.cpp
     src/adm_to_lusid.cpp
+    transcoding/adm/adm_reader.cpp   # Phase 3: needed by transcoder
 )
 
 target_include_directories(cult_tests
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/transcoding/adm  # adm_reader.hpp (Phase 3)
 )
 
 target_compile_definitions(cult_tests
@@ -156,6 +177,7 @@ target_link_libraries(cult_tests
     PRIVATE
         Catch2::Catch2WithMain
         pugixml::pugixml
+        libbw64
 )
 
 if(MSVC)
@@ -185,5 +207,6 @@ message(STATUS "  C++ standard: ${CMAKE_CXX_STANDARD}")
 message(STATUS "  Binary path : ${CMAKE_BINARY_DIR}/cult-transcoder")
 message(STATUS "  Tests       : enabled (Catch2 v3)")
 message(STATUS "  XML parser  : pugixml (encounter-order parity with Python oracle)")
+message(STATUS "  WAV reader  : libbw64 (git submodule, thirdparty/libbw64)")
 message(STATUS "===========================================")
 message(STATUS "")

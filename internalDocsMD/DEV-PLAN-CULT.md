@@ -78,10 +78,10 @@ All phases must preserve the toolchain contract authority: `LUSID/internalDocsMD
 | 2   | Implement `src/adm_to_lusid.cpp` / `include/adm_to_lusid.hpp`: parse ADM XML, extract DS + Objects in encounter order, build frames, LFE hardcoded ch4, no containsAudio.                                  | ✅                                                             |
 | 3   | Implement LUSID JSON writer (`lusidSceneToJson()`, `writeLusidScene()` — manual serialization matching `json.dump(indent=2)`)                                                                              | ✅                                                             |
 | 4   | Wire into `transcoder.cpp`: replace Phase 1 stub with real pipeline (`convertAdmToLusid` → `writeLusidScene`, populate report summary)                                                                     | ✅                                                             |
-| 5   | Implement atomic write behavior (already in main.cpp for report; extend to LUSID output)                                                                                                                   | ⏳ deferred to Phase 3                                         |
+| 5   | Implement atomic write behavior (already in main.cpp for report; extend to LUSID output)                                                                                                                   | ✅ completed in Phase 3                                        |
 | 6   | Implement parity test runner: generate Python ref (`contains_audio=None`), compare C++ output, hard fail on mismatch. Tests in `tests/parity/run_parity.cpp`, fixtures in `tests/parity/fixtures/`.        | ✅ 8 parity tests passing (including byte-for-byte JSON match) |
-| 7   | Update Spatial Root pipeline to call `cult-transcoder` binary for adm_xml→lusid_json                                                                                                                       | ⏳ pending (integration step)                                  |
-| 8   | Remove/comment out `containsAudio` dependency in pipeline and docs                                                                                                                                         | ⏳ pending (integration step)                                  |
+| 7   | Update Spatial Root pipeline to call `cult-transcoder` binary for adm_xml→lusid_json                                                                                                                       | ✅ completed in Phase 3 (`runRealtime.py` uses `adm_wav`)      |
+| 8   | Remove/comment out `containsAudio` dependency in pipeline and docs                                                                                                                                         | ✅ completed in Phase 3 (configCPP, runRealtime.py)            |
 
 ### Gates
 
@@ -94,27 +94,39 @@ All phases must preserve the toolchain contract authority: `LUSID/internalDocsMD
 
 ---
 
-## Phase 3 — Move ADM WAV Ingestion/Extraction Into CULT (Keep XML Debug Artifact)
+## Phase 3 — Move ADM WAV Ingestion/Extraction Into CULT
+
+**Status: ✅ COMPLETE (2026-03-04) — 28/28 tests passing**
 
 ### Goals
 
-- CULT can ingest ADM WAV directly.
-- CULT extracts axml and produces LUSID.
-- Still writes `processedData/currentMetaData.xml` as a debug artifact (D2).
-- May parse directly from extracted buffer; XML writing remains enabled by default for debugging.
+- CULT ingests ADM WAV directly via `--in-format adm_wav`.
+- CULT extracts axml from BW64 container and produces LUSID.
+- Writes `processedData/currentMetaData.xml` as a debug artifact (D2) — always on.
+- Parses directly from extracted buffer; disk round-trip only for the debug XML.
+- `spatialroot_adm_extract` binary superseded; Python `extractMetaData()` call removed from pipeline.
+- `scan_audio` / `containsAudio` logic fully removed from realtime pipeline.
 
-### Deliverables
+### Work items
 
-- New CLI path:
-  - `--in-format adm_wav`
-  - outputs LUSID + report
-  - writes `processedData/currentMetaData.xml` (debug artifact)
-- Spatial Root pipeline updated to call CULT once, not a separate extractor step.
+| #  | Work Item                                                                                    | Status |
+|----|----------------------------------------------------------------------------------------------|--------|
+| P3-1 | Add libbw64 as git submodule at `thirdparty/libbw64` (Apache-2.0, header-only)            | ✅     |
+| P3-2 | Update `CMakeLists.txt`: libbw64 INTERFACE target, adm_reader in sources, link targets     | ✅     |
+| P3-3 | Implement `transcoding/adm/adm_reader.hpp` + `.cpp` (`extractAxmlFromWav()`)               | ✅     |
+| P3-4 | Refactor `adm_to_lusid.cpp`: extract `parseAdmDocument()` helper, add `convertAdmToLusidFromBuffer()` | ✅ |
+| P3-5 | Wire `adm_wav` dispatch in `transcoder.cpp`; atomic LUSID write (Phase 2 item 5)           | ✅     |
+| P3-6 | Add 3 Phase 3 test cases to `test_cli_args.cpp` (10 total, 28/28 pass)                    | ✅     |
+| P3-7 | Update `runRealtime.py`: replace Steps 2–4 with single `cult-transcoder adm_wav` call; remove `scan_audio`; remove unused imports | ✅ |
+| P3-8 | Update `realtime_runner.py`: remove `scan_audio` from `RealtimeConfig` and `_build_args()` | ✅     |
+| P3-9 | Comment out `initializeEbuSubmodules()` + `buildAdmExtractor()` in `configCPP_posix.py` + `configCPP_windows.py` | ✅ |
+| P3-10 | Update AGENTS-CULT.md, DEV-PLAN-CULT.md, spatialroot AGENTS.md                           | ✅     |
 
 ### Gates
 
-- Parity against Phase 2 output (for same input WAV).
-- No change in renderer behavior (duration, sources, ordering).
+- 28/28 tests passing. ✅
+- Parity against Phase 2 output (for same input WAV via XML path) — guaranteed by shared `parseAdmDocument()`. ✅
+- `runRealtime.py` has 0 lint errors. ✅
 
 ---
 

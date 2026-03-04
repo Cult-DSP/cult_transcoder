@@ -1,0 +1,3 @@
+[submodule "thirdparty/libbw64"]
+	path = thirdparty/libbw64
+	url = https://github.com/ebu/libbw64.git
