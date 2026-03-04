@@ -219,7 +219,8 @@ class RealtimeWindow(QMainWindow):
             speaker_layout = self._input_panel.get_layout_path(),
             remap_csv      = self._input_panel.get_remap_csv(),
             buffer_size    = self._input_panel.get_buffer_size(),
-            scan_audio     = self._input_panel.get_scan_audio(),
+            # scan_audio removed — Phase 3 (2026-03-04): cult-transcoder handles
+            # BW64 extraction internally; all channels assumed active.
         )
 
         # Reset controls to defaults before each launch

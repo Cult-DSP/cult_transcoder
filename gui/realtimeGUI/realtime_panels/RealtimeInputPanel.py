@@ -6,7 +6,7 @@ Collects:
   - Speaker layout JSON path
   - Remap CSV path (optional)
   - Buffer size (64 / 128 / 256 / 512 / 1024 dropdown)
-  - Scan Audio checkbox (only relevant for ADM; greyed when LUSID detected)
+  (Scan Audio checkbox removed in Phase 3 — cult-transcoder handles internally.)
 
 Phase 10 — GUI Agent.
 """
@@ -20,7 +20,6 @@ from typing import Optional
 from PySide6.QtCore import Signal, Qt, QTimer
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
-    QCheckBox,
     QComboBox,
     QFileDialog,
     QFrame,
@@ -74,15 +73,16 @@ class RealtimeInputPanel(QWidget):
     def get_buffer_size(self) -> int:
         return int(self._buffer_combo.currentText())
 
-    def get_scan_audio(self) -> bool:
-        return self._scan_check.isChecked()
+    # REMOVED (Phase 3 — 2026-03-04): get_scan_audio() removed.
+    # cult-transcoder handles BW64 axml extraction internally;
+    # scan_audio is no longer a configurable option.
 
     def set_enabled_for_state(self, running: bool) -> None:
         """Disable all inputs while the engine is running."""
         for w in (self._source_edit, self._source_btn,
                   self._layout_combo, self._layout_edit, self._layout_btn,
                   self._remap_combo, self._remap_edit, self._remap_btn,
-                  self._buffer_combo, self._scan_check):
+                  self._buffer_combo):
             w.setEnabled(not running)
 
     # ── UI construction ──────────────────────────────────────────────────
@@ -177,9 +177,9 @@ class RealtimeInputPanel(QWidget):
         self._buffer_combo.setFixedWidth(100)
         opts_row.addWidget(self._buffer_combo)
         opts_row.addSpacing(20)
-        self._scan_check = QCheckBox("Scan Audio  (ADM only, +~14s startup)")
-        self._scan_check.setFont(QFont("Space Mono", 7))
-        opts_row.addWidget(self._scan_check)
+        # REMOVED (Phase 3 — 2026-03-04): Scan Audio checkbox removed.
+        # cult-transcoder handles BW64 axml extraction internally.
+        # All channels are assumed active; --scan_audio no longer exists.
         opts_row.addStretch()
         layout.addLayout(opts_row)
 
@@ -210,7 +210,7 @@ class RealtimeInputPanel(QWidget):
         self._layout_edit.textChanged.connect(lambda _: self.config_changed.emit())
         self._remap_edit.textChanged.connect(lambda _: self.config_changed.emit())
         self._buffer_combo.currentIndexChanged.connect(lambda _: self.config_changed.emit())
-        self._scan_check.stateChanged.connect(lambda _: self.config_changed.emit())
+        # REMOVED (Phase 3 — 2026-03-04): self._scan_check.stateChanged signal removed.
 
     # ── Browse handlers ──────────────────────────────────────────────────
 
@@ -264,7 +264,7 @@ class RealtimeInputPanel(QWidget):
             self._source_hint.setStyleSheet(f"color: {self._theme['green']};")
         else:
             self._source_hint.setStyleSheet(f"color: {self._theme['red']};")
-        self._scan_check.setEnabled(is_adm or text == "")
+        # REMOVED (Phase 3 — 2026-03-04): self._scan_check.setEnabled() removed.
         self.config_changed.emit()
 
     def _detect_source(self, path: str) -> tuple[str, bool, bool]:
