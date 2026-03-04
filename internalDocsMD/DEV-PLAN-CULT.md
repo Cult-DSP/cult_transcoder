@@ -8,6 +8,17 @@ All phases must preserve the toolchain contract authority: `LUSID/internalDocsMD
 
 ## Phase 1 — Repo Skeleton + CLI + Report Schema (No Pipeline Changes)
 
+### Pinned decisions for this phase
+
+| Decision             | Value                                                                                                          |
+| -------------------- | -------------------------------------------------------------------------------------------------------------- |
+| C++ standard         | C++17                                                                                                          |
+| Test framework       | Catch2 via CMake FetchContent (no install required)                                                            |
+| License              | Apache-2.0, Cult-DSP copyright header in every source file                                                     |
+| Third-party deps     | FetchContent stubs for libadm + libbw64 declared but `EXCLUDE_FROM_ALL`; activated in Phase 2                  |
+| Windows binary       | `build/cult-transcoder.exe`; a committed `build/cult-transcoder.bat` wrapper is the call-site for the pipeline |
+| Fail-report behavior | Bad input → write `status: "fail"` report best-effort to default path, exit non-zero                           |
+
 ### Goals
 
 - Establish repo structure, CMake build, and CLI framework.
@@ -15,15 +26,19 @@ All phases must preserve the toolchain contract authority: `LUSID/internalDocsMD
 
 ### Deliverables
 
-- `include/`, `src/`, `utils/`, `transcoding/adm/`
-- CMake builds `build/cult-transcoder`
-- `cult-transcoder transcode` parses args and writes stub report (no output yet)
-- Unit test harness + CI for macOS + Windows
+- `include/`, `src/`, `transcoding/adm/` directory skeleton matching AGENTS §1
+- `CMakeLists.txt`: C++17, builds `build/cult-transcoder`; Catch2 FetchContent; libadm/libbw64 FetchContent stubs (disabled)
+- `build/cult-transcoder.bat` Windows wrapper (committed as a source file template / scaffold; documented with inline comments)
+- `cult-transcoder transcode` parses all defined args; writes stub report (no LUSID output yet)
+- On error (missing `--in` file, unsupported format): writes `status: "fail"` report + exits non-zero
+- Unit test harness (`tests/`) with at least one smoke test for CLI arg parsing and one for report schema shape
+- CI scaffold for macOS + Windows (GitHub Actions workflow stub)
 
 ### Gates
 
 - No changes to Spatial Root pipeline.
 - No changes to LUSID schema or toolchain docs.
+- Binary produced at `build/cult-transcoder` (macOS) / `build/cult-transcoder.exe` (Windows).
 
 ---
 

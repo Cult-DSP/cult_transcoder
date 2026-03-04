@@ -6,17 +6,22 @@ Next-generation audio formats enable immersive spatial audio experiences by movi
 
 ## Implementation Contract (Pinned Project Decisions)
 
+
 These decisions are part of the execution contract for CULT Transcoder in the Spatial Root toolchain. They exist to reduce ambiguity and prevent destructive regressions.
 
-- Canonical format: LUSID Scene v0.5 JSON is the canonical intermediate representation.
-- Repo topology: `cult-transcoder` is its own repository, cloned as a submodule at `spatialroot/cult-transcoder/`.
-- Integration mode: CLI-first. Spatial Root calls the binary at `spatialroot/cult-transcoder/build/cult-transcoder`.
-- Phase 2 oracle parity: C++ ADM→LUSID must mirror the existing working Python implementation (`LUSID/src/xml_etree_parser.py`) under parsed-JSON object equality (not byte-identical string equality).
-- Stable ordering: output ordering must match the Python encounter order in Phase 2 (no sorting for “determinism” in Phase 2).
-- timeUnit: Phase 2 outputs `timeUnit="seconds"` to mirror existing engine behavior; future support for other units is allowed only after explicit flagging and docs updates.
-- Reporting: a report is required from day 1 (v0.1), includes a loss ledger, tool version + git commit, resolved args, and has default path `<out>.report.json`.
-- LFE behavior: Phase 2 matches the current hardcoded behavior; improvements are added later behind flags without changing defaults.
-- `containsAudio.json`: Phase 2 removes/comment-outs the pipeline’s dependence on it; reintroduction is a later, explicitly planned phase.
+- **Canonical format**: LUSID Scene v0.5 JSON is the canonical intermediate representation.
+- **Repo topology**: `cult-transcoder` is its own repository, cloned as a submodule at `spatialroot/cult-transcoder/` (already wired).
+- **Integration mode**: CLI-first. Spatial Root calls the binary at `spatialroot/cult-transcoder/build/cult-transcoder` (macOS/Linux). On Windows the pipeline calls `build/cult-transcoder.bat` — a thin wrapper around `cult-transcoder.exe`. The wrapper is committed to source. Every call-site in the Spatial Root pipeline must carry an inline comment explaining this indirection.
+- **C++ standard**: C++17 throughout. This is the baseline for all source files and the CMake `target_compile_features` setting.
+- **Test framework**: Catch2, pulled via CMake `FetchContent` (no system install required).
+- **License**: Apache-2.0. Every source file carries an Apache-2.0 header with Cult-DSP copyright.
+- **Third-party deps (CMake)**: Phase 1 declares `FetchContent` blocks for `libadm` and `libbw64` but marks them `EXCLUDE_FROM_ALL` (disabled). Phase 2 activates them.
+- **Phase 2 oracle parity**: C++ ADM→LUSID must mirror the existing working Python implementation (`LUSID/src/xml_etree_parser.py`) under parsed-JSON object equality (not byte-identical string equality).
+- **Stable ordering**: output ordering must match the Python encounter order in Phase 2 (no sorting for “determinism” in Phase 2).
+- **timeUnit**: Phase 2 outputs `timeUnit="seconds"` to mirror existing engine behavior; future support for other units is allowed only after explicit flagging and docs updates.
+- **Reporting**: a report is required from day 1 (v0.1), includes a loss ledger, tool version + git commit, resolved args, and default path `<out>.report.json`. On any failure (missing input, unsupported format, runtime error) the CLI writes a best-effort `status: "fail"` report and exits non-zero.
+- **LFE behavior**: Phase 2 matches the current hardcoded behavior; improvements are added later behind flags without changing defaults.
+- **`containsAudio.json`**: Phase 2 removes/comments-out the pipeline’s dependence on it; reintroduction is a later, explicitly planned phase.
 
 ## Background: Immersive Audio Standards and Models
 

@@ -1,11 +1,29 @@
 # AGENTS.md — CULT Transcoder (Execution-Safe, Contract-First)
 
-Repo placement: `spatialroot/cult-transcoder/` (git submodule).  
-Invocation: CLI-first. Spatial Root calls `spatialroot/cult-transcoder/build/cult-transcoder`.  
-Build: CMake. Cross-platform (macOS + Windows required; Linux later).  
+Repo placement: `spatialroot/cult-transcoder/` (git submodule, already wired).  
+Invocation: CLI-first. Spatial Root calls `spatialroot/cult-transcoder/build/cult-transcoder` (macOS/Linux) or the `.bat` wrapper on Windows (see §9).  
+Build: CMake. C++17. Cross-platform (macOS + Windows required; Linux later).  
+Test framework: Catch2 (via CMake FetchContent; no install required).  
+License: Apache-2.0. All source files carry an Apache-2.0 header with Cult-DSP copyright.  
 Canonical: LUSID Scene v0.5 JSON.
 
 This file is designed to be executable and non-destructive. Do not guess.
+
+---
+
+## 0.5. Pinned Implementation Decisions
+
+These decisions are final and must not be changed without a doc-update PR.
+
+| Decision             | Value                                                                                                                                             |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C++ standard         | C++17                                                                                                                                             |
+| Test framework       | Catch2 (CMake FetchContent, no install)                                                                                                           |
+| License              | Apache-2.0, Cult-DSP copyright in every source file                                                                                               |
+| Phase 1 CMake deps   | FetchContent placeholders for libadm + libbw64 declared but disabled; un-comment in Phase 2                                                       |
+| Windows binary       | `build/cult-transcoder.exe` called via `build/cult-transcoder.bat` wrapper                                                                        |
+| `.bat` wrapper rule  | Must be committed; every call-site in Spatial Root pipeline must have an inline comment explaining the indirection                                |
+| Fail-report behavior | On any error (missing file, unsupported format, etc.) the CLI writes a best-effort `status: "fail"` report to the default path and exits non-zero |
 
 ---
 
@@ -240,12 +258,21 @@ Phase 3 output:
 
 Binary path expected by pipeline:
 
-- `spatialroot/cult-transcoder/build/cult-transcoder`
+- macOS / Linux: `spatialroot/cult-transcoder/build/cult-transcoder`
+- Windows: `spatialroot/cult-transcoder/build/cult-transcoder.exe`
+
+On Windows, Spatial Root's pipeline scripts must call the binary via a thin
+`.bat` wrapper (`spatialroot/cult-transcoder/build/cult-transcoder.bat`) so
+that the call-site code does not need OS branching. The wrapper and its purpose
+**must be documented with inline comments wherever it is invoked in the Spatial
+Root pipeline** so the indirection is obvious to maintainers.
 
 Agents must ensure:
 
-- documented build steps produce this exact path deterministically.
+- Documented build steps produce the binary at this exact path deterministically.
 - Spatial Root pipeline calls this exact path (no PATH lookup).
+- The `.bat` wrapper is committed alongside the CMake build output instructions
+  and kept in sync if the binary name changes.
 
 ---
 
