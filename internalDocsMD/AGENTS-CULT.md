@@ -9,6 +9,21 @@ Canonical: LUSID Scene v0.5 JSON.
 
 This file is designed to be executable and non-destructive. Do not guess.
 
+### Development environment
+
+The `spatialroot` repo uses a Python virtual environment (`source activate.sh`).
+The LUSID package and all Python dependencies are already installed in the venv —
+**do not install packages or create new environments**. Just activate and import:
+
+```bash
+cd /Users/lucian/projects/spatialroot
+source activate.sh
+python3 -c "from LUSID.src.xml_etree_parser import parse_adm_xml_to_lusid_scene"
+```
+
+Use this venv whenever you need to run the Python oracle for parity testing or
+any other Python tooling in the workspace.
+
 ---
 
 ## 0.5. Pinned Implementation Decisions
