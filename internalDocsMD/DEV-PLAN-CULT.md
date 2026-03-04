@@ -109,18 +109,18 @@ All phases must preserve the toolchain contract authority: `LUSID/internalDocsMD
 
 ### Work items
 
-| #  | Work Item                                                                                    | Status |
-|----|----------------------------------------------------------------------------------------------|--------|
-| P3-1 | Add libbw64 as git submodule at `thirdparty/libbw64` (Apache-2.0, header-only)            | ✅     |
-| P3-2 | Update `CMakeLists.txt`: libbw64 INTERFACE target, adm_reader in sources, link targets     | ✅     |
-| P3-3 | Implement `transcoding/adm/adm_reader.hpp` + `.cpp` (`extractAxmlFromWav()`)               | ✅     |
-| P3-4 | Refactor `adm_to_lusid.cpp`: extract `parseAdmDocument()` helper, add `convertAdmToLusidFromBuffer()` | ✅ |
-| P3-5 | Wire `adm_wav` dispatch in `transcoder.cpp`; atomic LUSID write (Phase 2 item 5)           | ✅     |
-| P3-6 | Add 3 Phase 3 test cases to `test_cli_args.cpp` (10 total, 28/28 pass)                    | ✅     |
-| P3-7 | Update `runRealtime.py`: replace Steps 2–4 with single `cult-transcoder adm_wav` call; remove `scan_audio`; remove unused imports | ✅ |
-| P3-8 | Update `realtime_runner.py`: remove `scan_audio` from `RealtimeConfig` and `_build_args()` | ✅     |
-| P3-9 | Comment out `initializeEbuSubmodules()` + `buildAdmExtractor()` in `configCPP_posix.py` + `configCPP_windows.py` | ✅ |
-| P3-10 | Update AGENTS-CULT.md, DEV-PLAN-CULT.md, spatialroot AGENTS.md                           | ✅     |
+| #     | Work Item                                                                                                                         | Status |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| P3-1  | Add libbw64 as git submodule at `thirdparty/libbw64` (Apache-2.0, header-only)                                                    | ✅     |
+| P3-2  | Update `CMakeLists.txt`: libbw64 INTERFACE target, adm_reader in sources, link targets                                            | ✅     |
+| P3-3  | Implement `transcoding/adm/adm_reader.hpp` + `.cpp` (`extractAxmlFromWav()`)                                                      | ✅     |
+| P3-4  | Refactor `adm_to_lusid.cpp`: extract `parseAdmDocument()` helper, add `convertAdmToLusidFromBuffer()`                             | ✅     |
+| P3-5  | Wire `adm_wav` dispatch in `transcoder.cpp`; atomic LUSID write (Phase 2 item 5)                                                  | ✅     |
+| P3-6  | Add 3 Phase 3 test cases to `test_cli_args.cpp` (10 total, 28/28 pass)                                                            | ✅     |
+| P3-7  | Update `runRealtime.py`: replace Steps 2–4 with single `cult-transcoder adm_wav` call; remove `scan_audio`; remove unused imports | ✅     |
+| P3-8  | Update `realtime_runner.py`: remove `scan_audio` from `RealtimeConfig` and `_build_args()`                                        | ✅     |
+| P3-9  | Comment out `initializeEbuSubmodules()` + `buildAdmExtractor()` in `configCPP_posix.py` + `configCPP_windows.py`                  | ✅     |
+| P3-10 | Update AGENTS-CULT.md, DEV-PLAN-CULT.md, spatialroot AGENTS.md                                                                    | ✅     |
 
 ### Gates
 
@@ -132,18 +132,58 @@ All phases must preserve the toolchain contract authority: `LUSID/internalDocsMD
 
 ## Phase 4 — ADM Profile Resolver + Improved LFE Detection (Flagged)
 
+**Status: ⏳ NOT STARTED — awaiting Phase 3 pipeline testing sign-off from owner**
+
+> Full implementation notes for the next agent are in **AGENTS-CULT.md §11**.
+> Read that entire section before touching any file.
+
 ### Goals
 
-- Support Dolby Atmos variants and Sony 360RA export patterns.
-- Introduce LFE detection flag:
-  - default remains hardcoded-index (Phase 2 behavior)
-  - add future mode for bed-aware or speakerLabel-based detection (C2 plan)
-- Introduce flags via Spatial Root’s toolchain flags file (single source of truth).
+- Detect ADM profile variant (Dolby Atmos, Sony 360RA, Generic/Unknown) from
+  the parsed XML document using a dedicated `resolveAdmProfile()` function.
+- Introduce `--lfe-mode` CLI flag with two values: `hardcoded` (default, Phase 2
+  behavior) and `speaker-label` (opt-in: uses `speakerLabel` XML attribute).
+- Default behavior must be **identical** to Phase 2/3 in all existing tests.
+- Profile detection result is logged to the report `warnings[]` block for
+  transparency but does not change conversion behavior in Phase 4 beyond LFE.
+
+### Pinned decisions
+
+| Decision                  | Value                                                        |
+| ------------------------- | ------------------------------------------------------------ |
+| New CLI flag              | `--lfe-mode hardcoded\|speaker-label` (default: `hardcoded`) |
+| LFE speakerLabel values   | `"LFE"` and `"LFE1"` (case-insensitive)                      |
+| Profile detection library | pugixml only (no libadm) — attribute-string inspection       |
+| Report field              | `args.lfeMode` added to report JSON (camelCase)              |
+| `reportVersion`           | stays `"0.1"` — no schema bump in Phase 4                    |
+| Parity regression         | 28/28 existing tests must still pass with default flag       |
+
+### Work items
+
+| #     | Work Item                                                                                                                        | Status      |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| P4-0  | Owner confirms Phase 3 pipeline testing complete, no regressions                                                                 | ⏳ blocking |
+| P4-0b | Inspect `sourceData/sony360RA_example.xml` for `speakerLabel`/LFE patterns; answer open question §11.9.1                         | ⏳ blocking |
+| P4-0c | Run Python oracle on Sony 360RA fixture; commit `tests/parity/fixtures/sony_360ra_reference.lusid.json` as baseline              | ⏳ blocking |
+| P4-1  | Create `transcoding/adm/adm_profile_resolver.hpp` (AdmProfile enum, ProfileResult, resolveAdmProfile() — see §11.3)              | ⏳          |
+| P4-2  | Implement `transcoding/adm/adm_profile_resolver.cpp` (detection heuristics per §11.3, priority order)                            | ⏳          |
+| P4-3  | Add `LfeMode` enum to `include/adm_to_lusid.hpp`; add `lfeMode` param to `convertAdmToLusid()` + `convertAdmToLusidFromBuffer()` | ⏳          |
+| P4-4  | Add `lfeMode` param to `parseAdmDocument()` in `src/adm_to_lusid.cpp`; implement `SpeakerLabel` branch (see §11.4)               | ⏳          |
+| P4-5  | Add `lfeMode` field to `TranscodeRequest` in `include/cult_transcoder.hpp`                                                       | ⏳          |
+| P4-6  | Parse `--lfe-mode` arg in `src/transcoder.cpp`; call `resolveAdmProfile()`; pass lfeMode to converter                            | ⏳          |
+| P4-7  | Serialise `lfeMode` in report `args` block in `src/main.cpp`                                                                     | ⏳          |
+| P4-8  | Add `adm_profile_resolver.cpp` to both targets in `CMakeLists.txt`                                                               | ⏳          |
+| P4-9  | Commit Sony 360RA fixture to `tests/parity/fixtures/`; add Phase 4 tests (see §11.6)                                             | ⏳          |
+| P4-10 | Update AGENTS-CULT.md §1, §2, §11 status; update DEV-PLAN-CULT.md Phase 4 statuses                                               | ⏳          |
+| P4-11 | Update `spatialroot/internalDocsMD/AGENTS.md` if `--lfe-mode` is exposed in pipeline                                             | ⏳          |
 
 ### Gates
 
-- Flag default produces identical output to Phase 2/3.
-- Non-default modes produce report entries in loss ledger + warnings.
+- All P4-0 / P4-0b / P4-0c blocking items resolved before any code is written.
+- 28/28 existing tests pass with `--lfe-mode hardcoded` (or flag absent). _(regression gate)_
+- New Phase 4 tests pass including Sony 360RA profile detection.
+- `--lfe-mode garbage` → non-zero exit + `status: "fail"` report.
+- Report `args.lfeMode` field present in all runs.
 
 ---
 

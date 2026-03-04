@@ -36,11 +36,11 @@ These decisions are final and must not be changed without a doc-update PR.
 | Test framework       | Catch2 (CMake FetchContent, no install)                                                                                                           |
 | License              | Apache-2.0, Cult-DSP copyright in every source file                                                                                               |
 | XML parser           | pugixml (FetchContent, MIT license) — mirrors Python oracle's raw XML traversal for ordering parity. **Not** libadm (different traversal order).  |
-| BW64 reader          | libbw64 (git submodule at `thirdparty/libbw64`, Apache-2.0, header-only) — Phase 3. Used only for axml chunk extraction. **Not** FetchContent.   |
+| BW64 reader          | libbw64 (git submodule at `thirdparty/libbw64`, Apache-2.0, header-only) — Phase 3. Used only for axml chunk extraction. **Not** FetchContent.    |
 | Windows binary       | `build/cult-transcoder.exe` called via `scripts/cult-transcoder.bat` wrapper                                                                      |
 | `.bat` wrapper rule  | Must be committed; every call-site in Spatial Root pipeline must have an inline comment explaining the indirection                                |
 | Fail-report behavior | On any error (missing file, unsupported format, etc.) the CLI writes a best-effort `status: "fail"` report to the default path and exits non-zero |
-| Atomic output        | All output files written to `<path>.tmp` first, then `std::filesystem::rename()` to final path. Temp cleaned on failure. Enforced Phase 2+.      |
+| Atomic output        | All output files written to `<path>.tmp` first, then `std::filesystem::rename()` to final path. Temp cleaned on failure. Enforced Phase 2+.       |
 
 ---
 
@@ -123,7 +123,7 @@ cult_transcoder/
 `Catch2::Catch2WithMain`; a separate `test_main.cpp` is not needed.
 
 **Note on transcoding/ stubs**: `adm_reader.hpp` and `adm_reader.cpp` are Phase 3
-*implemented* files, fully compiled and linked. `adm_profile_resolver.cpp`,
+_implemented_ files, fully compiled and linked. `adm_profile_resolver.cpp`,
 `lusid_writer.cpp`, and `lusid_validate.cpp` remain Phase 4+ stubs (not compiled).
 
 ---
@@ -141,6 +141,7 @@ cult-transcoder transcode
 ```
 
 Known `--in-format` values:
+
 - `adm_xml` (Phase 2): input is a bare ADM XML file (e.g. `currentMetaData.xml`)
 - `adm_wav` (Phase 3): input is a BW64 WAV with embedded axml chunk
 
@@ -291,14 +292,14 @@ Phase 3 goal: Move ADM WAV ingestion/extraction into CULT entirely, replacing
 
 ### What was built
 
-| Component | File | Description |
-|-----------|------|-------------|
-| libbw64 submodule | `thirdparty/libbw64/` | EBU libbw64, Apache-2.0, header-only. Added as git submodule. |
-| BW64 reader | `transcoding/adm/adm_reader.hpp` + `.cpp` | `extractAxmlFromWav()`: opens BW64 WAV, reads axml chunk, writes debug XML artifact, returns XML string in `AxmlResult`. |
+| Component              | File                                                | Description                                                                                                                                                                                 |
+| ---------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| libbw64 submodule      | `thirdparty/libbw64/`                               | EBU libbw64, Apache-2.0, header-only. Added as git submodule.                                                                                                                               |
+| BW64 reader            | `transcoding/adm/adm_reader.hpp` + `.cpp`           | `extractAxmlFromWav()`: opens BW64 WAV, reads axml chunk, writes debug XML artifact, returns XML string in `AxmlResult`.                                                                    |
 | Buffer-based converter | `include/adm_to_lusid.hpp` + `src/adm_to_lusid.cpp` | `convertAdmToLusidFromBuffer(xmlBuffer)`: parses ADM XML from in-memory string. Delegates to shared `static parseAdmDocument()` helper — zero logic duplication with `convertAdmToLusid()`. |
-| adm_wav dispatch | `src/transcoder.cpp` | `kKnownInFormats = {"adm_xml", "adm_wav"}`. When `adm_wav`: calls `extractAxmlFromWav` then `convertAdmToLusidFromBuffer`. |
-| Atomic LUSID write | `src/transcoder.cpp` | Writes to `<out>.tmp` then `std::filesystem::rename()` to final path. Temp cleaned on failure. |
-| Phase 3 tests | `tests/test_cli_args.cpp` | 3 new tests: adm_wav format recognized, adm_xml regression, non-BW64 file fails at axml (not at format). Total: 10 tests. |
+| adm_wav dispatch       | `src/transcoder.cpp`                                | `kKnownInFormats = {"adm_xml", "adm_wav"}`. When `adm_wav`: calls `extractAxmlFromWav` then `convertAdmToLusidFromBuffer`.                                                                  |
+| Atomic LUSID write     | `src/transcoder.cpp`                                | Writes to `<out>.tmp` then `std::filesystem::rename()` to final path. Temp cleaned on failure.                                                                                              |
+| Phase 3 tests          | `tests/test_cli_args.cpp`                           | 3 new tests: adm_wav format recognized, adm_xml regression, non-BW64 file fails at axml (not at format). Total: 10 tests.                                                                   |
 
 ### Pinned behavior (D2 — unchanged)
 
@@ -375,22 +376,281 @@ Sony 360RA priority:
 
 ---
 
-## 11. Agent PR Checklist (Required)
+## 11. Phase 4 — Pre-Flight Notes for Next Agent
+
+**DO NOT BEGIN IMPLEMENTATION until the owner confirms testing of the Phase 3
+pipeline is complete and any regressions are resolved.**
+
+These notes exist so the next agent has enough context to implement Phase 4
+without a clarifying Q&A round. Read all of §11 before touching any file.
+
+---
+
+### 11.1 What Phase 4 actually is (precise scope)
+
+Phase 4 has two separable sub-tasks that should be implemented together because
+they share the same XML inspection pass:
+
+**Sub-task A — ADM profile detection**
+Inspect the parsed `pugi::xml_document` (already in memory after axml extraction
+or file load) and return a `AdmProfile` enum value. The converter uses this to
+adjust extraction behavior. In Phase 4, the only behavioral change driven by
+profile is LFE detection (sub-task B). Future phases may use profile for bed
+channel remapping, Sony 360RA ID normalisation, etc.
+
+**Sub-task B — Improved LFE detection, behind a flag**
+The Phase 2 hardcoded rule (4th DirectSpeaker encountered, 1-based) must remain
+the **default** forever. Phase 4 adds a new opt-in mode that uses `speakerLabel`
+attribute inspection. The flag is a new CLI argument; it must not change any
+existing behaviour when absent.
+
+These two sub-tasks live entirely inside `transcoding/adm/adm_profile_resolver.cpp`
+(and a new `.hpp`) plus a small addition to `src/transcoder.cpp` to pass the
+flag through. Nothing in `adm_to_lusid.cpp` should change in Phase 4 — the LFE
+override is applied at the `LusidNode` construction layer inside
+`parseAdmDocument()` only if the flag is explicitly set.
+
+---
+
+### 11.2 Pinned CLI contract for the new flag
+
+The flag name and semantics are pinned here to prevent an agent from inventing
+something incompatible:
+
+```
+--lfe-mode <value>
+```
+
+| Value           | Behaviour                                                            | Default? |
+| --------------- | -------------------------------------------------------------------- | -------- |
+| `hardcoded`     | LFE = 4th DirectSpeaker encountered (1-based). Phase 2 behaviour.    | **YES**  |
+| `speaker-label` | LFE = any DirectSpeaker whose `speakerLabel` is `"LFE"` or `"LFE1"`. | no       |
+
+Rules:
+
+- If `--lfe-mode` is omitted the behaviour is identical to `--lfe-mode hardcoded`.
+- The flag is only meaningful for `--in-format adm_xml` and `--in-format adm_wav`.
+  If supplied with any other future in-format, emit a warning to the report and ignore.
+- The resolved value of `--lfe-mode` **must appear in the report `args` block**
+  (so the report is always self-describing).
+- Non-default LFE mode **must produce a `warnings[]` entry** in the report:
+  `"lfe-mode=speaker-label: LFE assignment differs from Phase 2 hardcoded default"`
+- Parity tests using `--lfe-mode hardcoded` (or omitted) must still pass 28/28.
+
+Do **not** add `--lfe-mode` to `kKnownInFormats` — it is a separate top-level
+argument. Add it to `TranscodeRequest` in `cult_transcoder.hpp`.
+
+---
+
+### 11.3 Pinned API shape for adm_profile_resolver
+
+The resolver must expose this public API (in a new `adm_profile_resolver.hpp`):
+
+```cpp
+namespace cult {
+
+enum class AdmProfile {
+    Generic,       // Standard EBU BS.2076, no tool-specific extensions detected
+    DolbyAtmos,    // audioProgrammeName contains "Atmos" (case-insensitive), or
+                   // audioPackFormatName contains "Atmos" or "51" + objects pattern
+    Sony360RA,     // audioPackFormatName contains "360RA" or "360" (case-insensitive),
+                   // OR audioProgrammeName contains "360RA"
+    Unknown,       // XML present but no profile signals found — treat as Generic
+};
+
+struct ProfileResult {
+    AdmProfile profile = AdmProfile::Unknown;
+    std::string detectedFrom;   // human-readable: which attribute triggered detection
+    std::vector<std::string> warnings;
+};
+
+/// Inspect an already-parsed pugi::xml_document and return the detected profile.
+/// This is a read-only pass — does not modify the document.
+/// Called by transcoder.cpp after extractAxmlFromWav() or before convertAdmToLusid().
+ProfileResult resolveAdmProfile(const pugi::xml_document& doc);
+
+} // namespace cult
+```
+
+Detection heuristics (implement exactly these, in priority order):
+
+1. Search all `audioProgramme` nodes for `audioProgrammeName` attribute.
+   - If value contains `"Atmos"` (case-insensitive) → `DolbyAtmos`
+   - If value contains `"360RA"` or `"360"` (case-insensitive) → `Sony360RA`
+2. Search all `audioPackFormat` nodes for `audioPackFormatName` attribute.
+   - If value contains `"Atmos"` (case-insensitive) → `DolbyAtmos`
+   - If value contains `"360RA"` (case-insensitive) → `Sony360RA`
+3. If no signals found → `Unknown` (caller treats as `Generic`)
+
+**Do not** use libadm for this pass. pugixml is already available and the
+detection is purely attribute-string inspection — no ADM semantic model needed.
+
+---
+
+### 11.4 How the profile and LFE flag wire into existing code
+
+The call chain in `transcoder.cpp` becomes:
+
+```
+adm_wav path:
+  extractAxmlFromWav()
+    → resolveAdmProfile(doc)          ← NEW Phase 4 call
+    → convertAdmToLusidFromBuffer(xmlBuffer, lfeMode)   ← lfeMode added
+
+adm_xml path:
+  doc.load_file()
+    → resolveAdmProfile(doc)          ← NEW Phase 4 call
+    → convertAdmToLusid(xmlPath, lfeMode)               ← lfeMode added
+```
+
+`parseAdmDocument()` in `adm_to_lusid.cpp` gains one new parameter:
+
+```cpp
+static ConversionResult parseAdmDocument(
+    pugi::xml_document& doc,
+    LfeMode lfeMode = LfeMode::Hardcoded   // new, default = Hardcoded
+);
+```
+
+Where `LfeMode` is a simple enum in `adm_to_lusid.hpp`:
+
+```cpp
+enum class LfeMode { Hardcoded, SpeakerLabel };
+```
+
+The `speaker-label` branch inside `parseAdmDocument()`:
+
+- When `lfeMode == SpeakerLabel`: a DirectSpeaker node is typed `LFE` if its
+  `speakerLabel` child element text equals `"LFE"` or `"LFE1"` (case-insensitive).
+  The hardcoded channel-4 rule is **not applied** in this branch.
+- When `lfeMode == Hardcoded` (default): existing Phase 2 logic unchanged.
+
+The profile result is stored in `ConversionResult::warnings` if Sony360RA or
+DolbyAtmos is detected (for report transparency), but does **not** change
+conversion behaviour in Phase 4 beyond the LFE mode. Full profile-driven
+conversion is Phase 5+.
+
+---
+
+### 11.5 CMake changes required
+
+`adm_profile_resolver.cpp` is currently a stub and **not compiled**. In Phase 4:
+
+- Add `transcoding/adm/adm_profile_resolver.cpp` to both `cult-transcoder` and
+  `cult_tests` source lists in `CMakeLists.txt` (same pattern as `adm_reader.cpp`
+  was added in Phase 3).
+- Add `transcoding/adm` is already in include dirs — no new path needed.
+- No new third-party library. pugixml is already linked.
+
+---
+
+### 11.6 Test requirements
+
+Minimum new tests required in `test_cli_args.cpp` (or a new `test_lfe_mode.cpp`):
+
+| Test                                                                      | Input                                 | Expected                                                                                                  |
+| ------------------------------------------------------------------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `--lfe-mode hardcoded` explicit = same as default                         | parity fixture                        | passes parity                                                                                             |
+| `--lfe-mode speaker-label` on fixture with `speakerLabel="LFE"`           | new fixture or existing 360RA fixture | node typed `LFE`                                                                                          |
+| `--lfe-mode speaker-label` on Atmos fixture (LFE at ch4, no speakerLabel) | existing Atmos fixture                | ch4 node typed differently if no speakerLabel, or same if speakerLabel present — document expected result |
+| `--lfe-mode garbage`                                                      | any                                   | non-zero exit, `status: "fail"` report                                                                    |
+| Profile detection: Atmos XML → `detectedFrom` correct                     | Atmos fixture                         | `DolbyAtmos` detected                                                                                     |
+| Profile detection: generic XML → `Generic` or `Unknown`                   | existing parity fixture               | `Unknown` or `Generic`                                                                                    |
+| Parity regression with default lfe-mode                                   | parity fixtures                       | 28/28 still pass                                                                                          |
+
+**Fixtures needed** (must be committed to `tests/parity/fixtures/`):
+
+- `sony_360ra_example.xml` — Sony 360RA ADM XML export. Source: use
+  `sourceData/sony360RA_example.xml` already present in the spatialroot repo
+  (confirmed at `spatialroot/processedData/sony360RA_example.xml` and
+  `spatialroot/sourceData/`). Copy or symlink it. Do not modify the source file.
+- A reference output `sony_360ra_reference.lusid.json` generated by the Python
+  oracle (`parse_adm_xml_to_lusid_scene`) before implementing Phase 4, so parity
+  is verifiable.
+
+---
+
+### 11.7 Report contract additions
+
+The report `args` block must include the resolved `--lfe-mode` value even when
+defaulted. This means `TranscodeRequest` needs a `lfeMode` field, and
+`report.cpp` / `main.cpp` must serialise it. The field name in the JSON report
+args block is `"lfeMode"` (camelCase, matching existing report field naming).
+
+No other report schema changes in Phase 4. `reportVersion` stays `"0.1"`.
+
+---
+
+### 11.8 Files to touch in Phase 4 (complete list)
+
+| File                                                       | Change                                                                                               |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `transcoding/adm/adm_profile_resolver.hpp`                 | **NEW** — ProfileResult, AdmProfile enum, resolveAdmProfile()                                        |
+| `transcoding/adm/adm_profile_resolver.cpp`                 | **IMPLEMENT** stub → full detection logic                                                            |
+| `include/adm_to_lusid.hpp`                                 | Add `LfeMode` enum; add `lfeMode` param to `convertAdmToLusid()` and `convertAdmToLusidFromBuffer()` |
+| `src/adm_to_lusid.cpp`                                     | Add `lfeMode` param to `parseAdmDocument()`; add `SpeakerLabel` branch                               |
+| `include/cult_transcoder.hpp`                              | Add `lfeMode` field to `TranscodeRequest`                                                            |
+| `src/transcoder.cpp`                                       | Parse `--lfe-mode` arg; pass to `resolveAdmProfile()` + converter calls                              |
+| `src/main.cpp`                                             | Serialise `lfeMode` in report args block                                                             |
+| `CMakeLists.txt`                                           | Add `adm_profile_resolver.cpp` to both targets                                                       |
+| `tests/test_cli_args.cpp` or new `tests/test_lfe_mode.cpp` | New Phase 4 tests (see §11.6)                                                                        |
+| `tests/parity/fixtures/`                                   | Add Sony 360RA fixture + reference LUSID                                                             |
+| `internalDocsMD/AGENTS-CULT.md`                            | Update §1 repo layout, §2 CLI contract, §11 status                                                   |
+| `internalDocsMD/DEV-PLAN-CULT.md`                          | Mark Phase 4 work items complete                                                                     |
+| `spatialroot/internalDocsMD/AGENTS.md`                     | Note `--lfe-mode` flag exists, update binary contract if needed                                      |
+
+**Do not touch**: `transcoding/lusid/lusid_writer.cpp`, `lusid_validate.cpp`
+(Phase 5+ stubs), `runPipeline.py` (deprecated), any LUSID Python files.
+
+---
+
+### 11.9 Open questions that need owner answers before Phase 4 starts
+
+These are **not** things the agent should guess or decide unilaterally:
+
+1. **Sony 360RA speakerLabel pattern**: Does the `sony360RA_example.xml` in
+   `sourceData/` have `speakerLabel="LFE"` or `"LFE1"` attributes, or does it
+   use a different convention? The agent must inspect the file before implementing
+   the `SpeakerLabel` branch. Run:
+
+   ```bash
+   grep -i "speakerLabel\|LFE" sourceData/sony360RA_example.xml | head -20
+   ```
+
+2. **360RA fixture parity baseline**: Should the Python oracle be run on the
+   360RA fixture _before_ Phase 4 begins (to create a reference LUSID), or is
+   the Phase 4 goal to improve on what the oracle produces? Clarify whether
+   Phase 4 must maintain oracle parity for 360RA or is allowed to differ.
+
+3. **Profile-driven bed remapping**: In Phase 4, the profile is detected but
+   only the LFE flag uses it. Is any other profile-driven behaviour (e.g.,
+   different channel-order assumptions for Sony vs Atmos) required in Phase 4,
+   or is that deferred to Phase 5?
+
+4. **`--lfe-mode` exposure in `runRealtime.py`**: Should the Python pipeline
+   ever pass `--lfe-mode speaker-label` to cult-transcoder, or is this flag
+   only for CLI / testing use? If the pipeline should expose it, the
+   `RealtimeConfig` dataclass in `realtime_runner.py` needs a new field.
+
+---
+
+## 12. Agent PR Checklist (Required)
 
 Every PR must include:
 
 - Phase targeted (P1–P6)
-- Parity status (P2): pass/fail and what fixtures were used
+- Parity status (P2/P4): pass/fail and what fixtures were used
+- `--lfe-mode hardcoded` regression confirmed (Phase 4+): yes/no
 - Ordering preservation confirmed (yes/no)
 - timeUnit is "seconds" (yes/no)
-- LFE behavior unchanged (yes/no)
+- LFE behavior unchanged under default flag (yes/no)
 - Pipeline dependency on containsAudio removed/commented (yes/no)
 - Docs updated (list exact files)
 - Report schema version and fields confirmed (yes/no)
 
 No merge if:
 
-- parity fails (Phase 2)
+- parity fails (Phase 2/4)
 - ordering rules drift (Phase 2)
 - output is non-atomic
 - docs not updated for behavior changes
