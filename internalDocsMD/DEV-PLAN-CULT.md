@@ -8,6 +8,8 @@ All phases must preserve the toolchain contract authority: `LUSID/internalDocsMD
 
 ## Phase 1 — Repo Skeleton + CLI + Report Schema (No Pipeline Changes)
 
+**Status: ✅ COMPLETE**
+
 ### Pinned decisions for this phase
 
 | Decision             | Value                                                                                                          |
@@ -16,7 +18,7 @@ All phases must preserve the toolchain contract authority: `LUSID/internalDocsMD
 | Test framework       | Catch2 via CMake FetchContent (no install required)                                                            |
 | License              | Apache-2.0, Cult-DSP copyright header in every source file                                                     |
 | Third-party deps     | FetchContent stubs for libadm + libbw64 declared but `EXCLUDE_FROM_ALL`; activated in Phase 2                  |
-| Windows binary       | `build/cult-transcoder.exe`; a committed `build/cult-transcoder.bat` wrapper is the call-site for the pipeline |
+| Windows binary       | `build/cult-transcoder.exe`; committed `scripts/cult-transcoder.bat` wrapper is the call-site for the pipeline |
 | Fail-report behavior | Bad input → write `status: "fail"` report best-effort to default path, exit non-zero                           |
 
 ### Goals
@@ -26,13 +28,16 @@ All phases must preserve the toolchain contract authority: `LUSID/internalDocsMD
 
 ### Deliverables
 
-- `include/`, `src/`, `transcoding/adm/` directory skeleton matching AGENTS §1
-- `CMakeLists.txt`: C++17, builds `build/cult-transcoder`; Catch2 FetchContent; libadm/libbw64 FetchContent stubs (disabled)
-- `build/cult-transcoder.bat` Windows wrapper (committed as a source file template / scaffold; documented with inline comments)
-- `cult-transcoder transcode` parses all defined args; writes stub report (no LUSID output yet)
-- On error (missing `--in` file, unsupported format): writes `status: "fail"` report + exits non-zero
-- Unit test harness (`tests/`) with at least one smoke test for CLI arg parsing and one for report schema shape
-- CI scaffold for macOS + Windows (GitHub Actions workflow stub)
+| Deliverable                                             | Status |
+| ------------------------------------------------------- | ------ |
+| `include/` + `src/` + `transcoding/` skeleton           | ✅     |
+| `CMakeLists.txt` (C++17, Catch2, libadm/libbw64 stubs)  | ✅     |
+| `scripts/cult-transcoder.bat` Windows wrapper           | ✅     |
+| `cult-transcoder transcode` parses all defined args     | ✅     |
+| `status: "fail"` report on bad input + non-zero exit    | ✅     |
+| Unit tests: CLI arg validation (`test_cli_args.cpp`)    | ✅     |
+| Unit tests: report schema shape (`test_report.cpp`)     | ✅     |
+| Parity test placeholder (`tests/parity/run_parity.cpp`) | ✅     |
 
 ### Gates
 

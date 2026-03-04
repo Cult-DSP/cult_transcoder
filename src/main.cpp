@@ -1,0 +1,221 @@
+// Copyright 2026 Cult-DSP
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// ---------------------------------------------------------------------------
+// main.cpp — CLI entry point for cult-transcoder
+//
+// CLI contract (AGENTS §2):
+//
+//   cult-transcoder transcode
+//       --in <path>         input file path
+//       --in-format <fmt>   input format  (currently: adm_xml)
+//       --out <path>        output file path
+//       --out-format <fmt>  output format (currently: lusid_json)
+//       [--report <path>]   report file path (default: <out>.report.json)
+//       [--stdout-report]   also print report JSON to stdout
+//
+// Exit codes:
+//   0   success — output exists, report exists
+//   1   failure — output must NOT exist, report written best-effort
+//   2   usage / argument error — report written best-effort
+//
+// Atomic output rule (§2):
+//   Outputs are written to temp paths then renamed.  On failure the temp
+//   files are removed so no partial artifacts are left.
+// ---------------------------------------------------------------------------
+
+#include "cult_transcoder.hpp"
+#include "cult_report.hpp"
+#include "cult_version.hpp"
+
+#include <filesystem>
+#include <iostream>
+#include <string>
+#include <vector>
+
+namespace fs = std::filesystem;
+
+// ---------------------------------------------------------------------------
+// Forward declarations
+// ---------------------------------------------------------------------------
+static int cmdTranscode(const std::vector<std::string>& argv);
+static void printUsage(const std::string& progName);
+static std::string defaultReportPath(const std::string& outPath);
+
+// ---------------------------------------------------------------------------
+// main()
+// ---------------------------------------------------------------------------
+int main(int argc, char* argv[]) {
+    std::vector<std::string> args(argv, argv + argc);
+    const std::string prog = args.empty() ? "cult-transcoder" : args[0];
+
+    if (args.size() < 2) {
+        printUsage(prog);
+        return 2;
+    }
+
+    const std::string subcommand = args[1];
+
+    if (subcommand == "transcode") {
+        return cmdTranscode(args);
+    }
+
+    if (subcommand == "--version" || subcommand == "-v") {
+        std::cout << cult::kToolName << " " << cult::kVersionString
+                  << " (report schema " << cult::kReportSchemaVersion << ")\n";
+        return 0;
+    }
+
+    if (subcommand == "--help" || subcommand == "-h") {
+        printUsage(prog);
+        return 0;
+    }
+
+    std::cerr << "[cult-transcoder] Unknown subcommand: " << subcommand << "\n";
+    printUsage(prog);
+    return 2;
+}
+
+// ---------------------------------------------------------------------------
+// cmdTranscode() — parse args and invoke the transcoder
+// ---------------------------------------------------------------------------
+static int cmdTranscode(const std::vector<std::string>& argv) {
+    cult::TranscodeRequest req;
+
+    // --- Parse ---
+    for (size_t i = 2; i < argv.size(); ++i) {
+        const std::string& flag = argv[i];
+
+        auto nextArg = [&](const std::string& name) -> std::string {
+            if (i + 1 >= argv.size()) {
+                std::cerr << "[cult-transcoder] ERROR: " << name
+                          << " requires an argument\n";
+                std::exit(2);
+            }
+            return argv[++i];
+        };
+
+        if      (flag == "--in")           req.inPath      = nextArg("--in");
+        else if (flag == "--in-format")    req.inFormat    = nextArg("--in-format");
+        else if (flag == "--out")          req.outPath     = nextArg("--out");
+        else if (flag == "--out-format")   req.outFormat   = nextArg("--out-format");
+        else if (flag == "--report")       req.reportPath  = nextArg("--report");
+        else if (flag == "--stdout-report") req.stdoutReport = true;
+        else {
+            std::cerr << "[cult-transcoder] ERROR: unknown flag: " << flag << "\n";
+            printUsage(argv[0]);
+            std::exit(2);
+        }
+    }
+
+    // --- Validate required flags ---
+    bool argError = false;
+    auto requireFlag = [&](const std::string& val, const std::string& name) {
+        if (val.empty()) {
+            std::cerr << "[cult-transcoder] ERROR: missing required flag: " << name << "\n";
+            argError = true;
+        }
+    };
+    requireFlag(req.inPath,    "--in");
+    requireFlag(req.inFormat,  "--in-format");
+    requireFlag(req.outPath,   "--out");
+    requireFlag(req.outFormat, "--out-format");
+
+    if (argError) {
+        printUsage(argv[0]);
+        // Write a best-effort fail report even for arg errors (§0.5)
+        // We have no out path yet if --out was missing, so only write if we can.
+        if (!req.outPath.empty() || !req.reportPath.empty()) {
+            std::string rpath = req.reportPath.empty()
+                                ? defaultReportPath(req.outPath)
+                                : req.reportPath;
+            cult::Report failReport;
+            failReport.status = "fail";
+            failReport.args.inPath      = req.inPath;
+            failReport.args.inFormat    = req.inFormat;
+            failReport.args.outPath     = req.outPath;
+            failReport.args.outFormat   = req.outFormat;
+            failReport.args.reportPath  = rpath;
+            failReport.args.stdoutReport = req.stdoutReport;
+            failReport.errors.push_back("Argument error — see stderr for details");
+            failReport.writeTo(rpath);
+            if (req.stdoutReport) failReport.printToStdout();
+        }
+        return 2;
+    }
+
+    // --- Resolve default report path ---
+    if (req.reportPath.empty()) {
+        req.reportPath = defaultReportPath(req.outPath);
+    }
+
+    // --- Invoke transcoder ---
+    cult::TranscodeResult result = cult::transcode(req);
+
+    // --- Atomic output (§2) ---
+    // Phase 1: there is no LUSID output yet, so only the report file is
+    // written atomically.  Phase 2 will add the temp→rename for the LUSID
+    // output file.
+    const std::string reportTmp = req.reportPath + ".tmp";
+
+    bool reportWritten = result.report.writeTo(reportTmp);
+    if (reportWritten) {
+        // Atomic rename: if rename fails, leave the .tmp for diagnosis
+        std::error_code ec;
+        fs::rename(reportTmp, req.reportPath, ec);
+        if (ec) {
+            std::cerr << "[cult-transcoder] WARNING: could not rename report: "
+                      << ec.message() << "\n";
+        }
+    }
+
+    if (req.stdoutReport) {
+        result.report.printToStdout();
+    }
+
+    if (!result.success) {
+        // Print errors to stderr as required by §2
+        for (const auto& e : result.report.errors) {
+            std::cerr << "[cult-transcoder] ERROR: " << e << "\n";
+        }
+        // Remove any partial temp files (none in Phase 1, but be explicit)
+        if (fs::exists(reportTmp)) fs::remove(reportTmp);
+        return 1;
+    }
+
+    return 0;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+static std::string defaultReportPath(const std::string& outPath) {
+    // Contract §2: default report path is "<out>.report.json"
+    return outPath.empty() ? "cult-transcoder.report.json"
+                           : outPath + ".report.json";
+}
+
+static void printUsage(const std::string& progName) {
+    std::cerr <<
+        "Usage: " << progName << " transcode\n"
+        "           --in <path>         input file\n"
+        "           --in-format <fmt>   input format  (adm_xml)\n"
+        "           --out <path>        output file\n"
+        "           --out-format <fmt>  output format (lusid_json)\n"
+        "           [--report <path>]   report path (default: <out>.report.json)\n"
+        "           [--stdout-report]   also print report to stdout\n"
+        "\n"
+        "       " << progName << " --version\n"
+        "       " << progName << " --help\n";
+}

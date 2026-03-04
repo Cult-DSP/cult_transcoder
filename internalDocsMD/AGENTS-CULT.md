@@ -55,36 +55,50 @@ No behavior change without doc change.
 
 ---
 
-## 1. Repo Layout (must exist)
+## 1. Repo Layout (Phase 1 — current state)
 
-spatialroot/cult-transcoder/
-AGENTS.md
-DEV_PLAN.md
-CMakeLists.txt
+```
+cult_transcoder/
+├── .github/
+│   └── workflows/
+│       └── ci.yml                     # macOS + Windows CI matrix
+├── CMakeLists.txt                     # C++17, Catch2 FetchContent, git SHA injection
+├── internalDocsMD/
+│   ├── AGENTS-CULT.md                 # this file
+│   ├── DEV-PLAN-CULT.md
+│   └── DESIGN-DOC-V1-CULT.MD
+├── include/
+│   ├── cult_transcoder.hpp            # TranscodeRequest / TranscodeResult / transcode()
+│   ├── cult_report.hpp                # Report model (LossLedgerEntry, ReportSummary, …)
+│   └── cult_version.hpp               # kVersionString, kReportSchemaVersion, gitCommit()
+├── scripts/
+│   └── cult-transcoder.bat            # Windows wrapper — call via this, not .exe directly
+├── src/
+│   ├── main.cpp                       # CLI entry point, atomic report write, exit codes
+│   ├── transcoder.cpp                 # Phase 1 stub: validates args, returns fail/success
+│   └── report.cpp                     # JSON serializer (zero external deps in Phase 1)
+├── transcoding/
+│   ├── adm/
+│   │   ├── adm_reader.cpp             # Phase 2 stub
+│   │   ├── adm_to_lusid.cpp           # Phase 2 stub
+│   │   └── adm_profile_resolver.cpp   # Phase 4+ stub
+│   └── lusid/
+│       ├── lusid_writer.cpp           # Phase 2 stub
+│       └── lusid_validate.cpp         # Phase 2 stub
+└── tests/
+    ├── test_main.cpp                  # Catch2 entry point (intentionally minimal)
+    ├── test_report.cpp                # 9 tests — §7 report schema contract
+    ├── test_cli_args.cpp              # 7 tests — transcode() arg validation
+    └── parity/
+        ├── run_parity.cpp             # Phase 2 placeholder (skipped in Phase 1)
+        └── fixtures/
+            └── .gitkeep               # placeholder — ADM fixtures added in Phase 2
+```
 
-include/
-cult_transcoder.hpp
-cult_report.hpp
-cult_version.hpp
+**Build output** (after `cmake -B build && cmake --build build`):
 
-src/
-main.cpp
-transcoder.cpp
-report.cpp
-
-transcoding/
-adm/
-adm_reader.cpp
-adm_to_lusid.cpp
-adm_profile_resolver.cpp # Phase 4+
-lusid/
-lusid_writer.cpp
-lusid_validate.cpp
-
-tests/
-parity/
-run_parity.cpp
-fixtures/
+- macOS/Linux: `build/cult-transcoder`
+- Windows: `build/cult-transcoder.exe` — call via `scripts/cult-transcoder.bat`
 
 ---
 
