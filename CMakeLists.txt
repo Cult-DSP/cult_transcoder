@@ -85,29 +85,16 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Catch2)
 
-# --- libadm (EBU, Apache-2.0) — DISABLED in Phase 1 ----------------------
-# Phase 2: remove the EXCLUDE_FROM_ALL option from both Declare and
-#          MakeAvailable calls, then add libadm to the target_link_libraries
-#          of cult-transcoder.
+# --- pugixml (lightweight XML parser, MIT license) ------------------------
+# Used instead of libadm so that C++ mirrors the Python oracle's raw XML
+# traversal order exactly (AGENTS §3, §5 — ordering parity is non-negotiable).
 FetchContent_Declare(
-    libadm
-    GIT_REPOSITORY https://github.com/ebu/libadm.git
-    GIT_TAG        v0.14.0
+    pugixml
+    GIT_REPOSITORY https://github.com/zeux/pugixml.git
+    GIT_TAG        v1.14
     GIT_SHALLOW    TRUE
-    EXCLUDE_FROM_ALL  # <-- Phase 2: remove this line
 )
-# FetchContent_MakeAvailable(libadm)   # <-- Phase 2: un-comment
-
-# --- libbw64 (EBU, Apache-2.0) — DISABLED in Phase 1 ---------------------
-# Phase 2: same as libadm above.
-FetchContent_Declare(
-    libbw64
-    GIT_REPOSITORY https://github.com/ebu/libbw64.git
-    GIT_TAG        v0.7.0
-    GIT_SHALLOW    TRUE
-    EXCLUDE_FROM_ALL  # <-- Phase 2: remove this line
-)
-# FetchContent_MakeAvailable(libbw64)  # <-- Phase 2: un-comment
+FetchContent_MakeAvailable(pugixml)
 
 # ---------------------------------------------------------------------------
 # Main executable — cult-transcoder
@@ -116,7 +103,7 @@ add_executable(cult-transcoder
     src/main.cpp
     src/report.cpp
     src/transcoder.cpp
-    # Phase 2: add transcoding/ sources when implemented
+    src/adm_to_lusid.cpp
 )
 
 target_include_directories(cult-transcoder

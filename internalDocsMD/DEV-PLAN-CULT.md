@@ -70,18 +70,26 @@ All phases must preserve the toolchain contract authority: `LUSID/internalDocsMD
 
 ### Work items
 
-1. Implement ADM ingestion via libadm -> internal structured traversal
-2. Map to LUSID nodes/frames exactly like Python:
-   - speakers in t=0 frame
-   - objects across frames by rtime
-3. Implement atomic write behavior
-4. Implement parity test runner:
-   - generate Python LUSID
-   - generate CULT LUSID
+1. Replace libadm/libbw64 FetchContent stubs with **pugixml** (MIT, header-friendly).
+   - Rationale: Python oracle uses `xml.etree.ElementTree` with raw encounter-order
+     iteration over `audioChannelFormat` elements. libadm's internal data model and
+     traversal order differ, making ordering parity fragile. pugixml mirrors the
+     Python approach exactly: iterate children in document order.
+2. Implement `src/adm_to_lusid.cpp` / `include/adm_to_lusid.hpp`:
+   - Parse ADM XML via pugixml, extract DirectSpeakers + Objects in encounter order
+   - Build LUSID frames: DS at t=0, Objects grouped by rtime
+   - LFE detection: hardcoded channel 4 (1-based), matching `_DEV_LFE_HARDCODED`
+   - `containsAudio` is **not used** — all channels assumed active (AGENTS §4)
+3. Implement LUSID JSON writer (manual serialization, same as report.cpp pattern)
+4. Wire into `transcoder.cpp`: replace Phase 1 stub with real pipeline
+5. Implement atomic write behavior (already in main.cpp for report; extend to LUSID output)
+6. Implement parity test runner:
+   - generate Python LUSID via oracle (`contains_audio=None`)
+   - generate CULT LUSID from same XML
    - parse both and compare deep equality
    - hard fail mismatch
-5. Update Spatial Root pipeline to call `spatialroot/cult-transcoder/build/cult-transcoder` for adm_xml→lusid_json
-6. Remove/comment out `containsAudio` dependency in pipeline and docs
+7. Update Spatial Root pipeline to call `spatialroot/cult-transcoder/build/cult-transcoder` for adm_xml→lusid_json
+8. Remove/comment out `containsAudio` dependency in pipeline and docs
 
 ### Gates
 

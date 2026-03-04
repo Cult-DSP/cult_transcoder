@@ -35,8 +35,8 @@ These decisions are final and must not be changed without a doc-update PR.
 | C++ standard         | C++17                                                                                                                                             |
 | Test framework       | Catch2 (CMake FetchContent, no install)                                                                                                           |
 | License              | Apache-2.0, Cult-DSP copyright in every source file                                                                                               |
-| Phase 1 CMake deps   | FetchContent placeholders for libadm + libbw64 declared but disabled; un-comment in Phase 2                                                       |
-| Windows binary       | `build/cult-transcoder.exe` called via `build/cult-transcoder.bat` wrapper                                                                        |
+| XML parser           | pugixml (FetchContent, MIT license) — mirrors Python oracle's raw XML traversal for ordering parity. **Not** libadm (different traversal order).  |
+| Windows binary       | `build/cult-transcoder.exe` called via `scripts/cult-transcoder.bat` wrapper                                                                      |
 | `.bat` wrapper rule  | Must be committed; every call-site in Spatial Root pipeline must have an inline comment explaining the indirection                                |
 | Fail-report behavior | On any error (missing file, unsupported format, etc.) the CLI writes a best-effort `status: "fail"` report to the default path and exits non-zero |
 

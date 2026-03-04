@@ -15,7 +15,7 @@ These decisions are part of the execution contract for CULT Transcoder in the Sp
 - **C++ standard**: C++17 throughout. This is the baseline for all source files and the CMake `target_compile_features` setting.
 - **Test framework**: Catch2, pulled via CMake `FetchContent` (no system install required).
 - **License**: Apache-2.0. Every source file carries an Apache-2.0 header with Cult-DSP copyright.
-- **Third-party deps (CMake)**: Phase 1 declares `FetchContent` blocks for `libadm` and `libbw64` but marks them `EXCLUDE_FROM_ALL` (disabled). Phase 2 activates them.
+- **Third-party deps (CMake)**: Phase 2 uses **pugixml** (MIT, FetchContent) for XML parsing instead of libadm. This ensures C++ mirrors the Python oracle's raw `xml.etree` encounter-order traversal exactly, which is required for ordering parity (AGENTS §5). libadm/libbw64 are **not used** — they have a different internal traversal order that would break parity.
 - **Phase 2 oracle parity**: C++ ADM→LUSID must mirror the existing working Python implementation (`LUSID/src/xml_etree_parser.py`) under parsed-JSON object equality (not byte-identical string equality).
 - **Stable ordering**: output ordering must match the Python encounter order in Phase 2 (no sorting for “determinism” in Phase 2).
 - **timeUnit**: Phase 2 outputs `timeUnit="seconds"` to mirror existing engine behavior; future support for other units is allowed only after explicit flagging and docs updates.
