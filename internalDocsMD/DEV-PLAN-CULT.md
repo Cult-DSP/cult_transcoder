@@ -132,10 +132,11 @@ All phases must preserve the toolchain contract authority: `LUSID/internalDocsMD
 
 ## Phase 4 — ADM Profile Resolver + Improved LFE Detection (Flagged)
 
-**Status: ⏳ NOT STARTED — awaiting Phase 3 pipeline testing sign-off from owner**
+**Status: 🟡 READY TO IMPLEMENT — Phase 3 pipeline testing confirmed by owner (2026-03-07)**
 
 > Full implementation notes for the next agent are in **AGENTS-CULT.md §11**.
 > Read that entire section before touching any file.
+> If you encounter questions requiring external format research, stop and ask the owner (see §11 agent research delegation rule).
 
 ### Goals
 
@@ -160,28 +161,28 @@ All phases must preserve the toolchain contract authority: `LUSID/internalDocsMD
 
 ### Work items
 
-| #     | Work Item                                                                                                                        | Status      |
-| ----- | -------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| P4-0  | Owner confirms Phase 3 pipeline testing complete, no regressions                                                                 | ⏳ blocking |
-| P4-0b | Inspect `sourceData/sony360RA_example.xml` for `speakerLabel`/LFE patterns; answer open question §11.9.1                         | ⏳ blocking |
-| P4-0c | Run Python oracle on Sony 360RA fixture; commit `tests/parity/fixtures/sony_360ra_reference.lusid.json` as baseline              | ⏳ blocking |
-| P4-1  | Create `transcoding/adm/adm_profile_resolver.hpp` (AdmProfile enum, ProfileResult, resolveAdmProfile() — see §11.3)              | ⏳          |
-| P4-2  | Implement `transcoding/adm/adm_profile_resolver.cpp` (detection heuristics per §11.3, priority order)                            | ⏳          |
-| P4-3  | Add `LfeMode` enum to `include/adm_to_lusid.hpp`; add `lfeMode` param to `convertAdmToLusid()` + `convertAdmToLusidFromBuffer()` | ⏳          |
-| P4-4  | Add `lfeMode` param to `parseAdmDocument()` in `src/adm_to_lusid.cpp`; implement `SpeakerLabel` branch (see §11.4)               | ⏳          |
-| P4-5  | Add `lfeMode` field to `TranscodeRequest` in `include/cult_transcoder.hpp`                                                       | ⏳          |
-| P4-6  | Parse `--lfe-mode` arg in `src/transcoder.cpp`; call `resolveAdmProfile()`; pass lfeMode to converter                            | ⏳          |
-| P4-7  | Serialise `lfeMode` in report `args` block in `src/main.cpp`                                                                     | ⏳          |
-| P4-8  | Add `adm_profile_resolver.cpp` to both targets in `CMakeLists.txt`                                                               | ⏳          |
-| P4-9  | Commit Sony 360RA fixture to `tests/parity/fixtures/`; add Phase 4 tests (see §11.6)                                             | ⏳          |
-| P4-10 | Update AGENTS-CULT.md §1, §2, §11 status; update DEV-PLAN-CULT.md Phase 4 statuses                                               | ⏳          |
-| P4-11 | Update `spatialroot/internalDocsMD/AGENTS.md` if `--lfe-mode` is exposed in pipeline                                             | ⏳          |
+| #     | Work Item                                                                                                                                                                    | Status          |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| P4-0  | Owner confirms Phase 3 pipeline testing complete, no regressions                                                                                                             | ✅ 2026-03-07   |
+| P4-0b | Inspect `sourceData/sony360RA_example.xml` for `speakerLabel`/LFE patterns (resolved: no LFE/speakerLabel present; object-only 360RA file)                                   | ✅ 2026-03-07   |
+| P4-0c | ~~Run Python oracle on Sony 360RA fixture~~ — **N/A**: oracle cannot parse 360RA `<audioFormatExtended>` root; returns empty scene. No reference LUSID committed. See §11.6. | ✅ resolved-N/A |
+| P4-1  | Create `transcoding/adm/adm_profile_resolver.hpp` (AdmProfile enum, ProfileResult, resolveAdmProfile() — see §11.3)                                                          | ⏳              |
+| P4-2  | Implement `transcoding/adm/adm_profile_resolver.cpp` (detection heuristics per §11.3, priority order)                                                                        | ⏳              |
+| P4-3  | Add `LfeMode` enum to `include/adm_to_lusid.hpp`; add `lfeMode` param to `convertAdmToLusid()` + `convertAdmToLusidFromBuffer()`                                             | ⏳              |
+| P4-4  | Add `lfeMode` param to `parseAdmDocument()` in `src/adm_to_lusid.cpp`; implement `SpeakerLabel` branch (see §11.4)                                                           | ⏳              |
+| P4-5  | Add `lfeMode` field to `TranscodeRequest` in `include/cult_transcoder.hpp`                                                                                                   | ⏳              |
+| P4-6  | Parse `--lfe-mode` arg in `src/transcoder.cpp`; call `resolveAdmProfile()`; pass lfeMode to converter                                                                        | ⏳              |
+| P4-7  | Serialise `lfeMode` in report `args` block in `src/main.cpp`                                                                                                                 | ⏳              |
+| P4-8  | Add `adm_profile_resolver.cpp` to both targets in `CMakeLists.txt`                                                                                                           | ⏳              |
+| P4-9  | Commit Sony 360RA fixture to `tests/parity/fixtures/` (detection only, no LUSID reference); add synthetic `speakerLabel` LFE fixture; add Phase 4 tests (see §11.6)          | ⏳              |
+| P4-10 | Update AGENTS-CULT.md §1, §2, §11 status; update DEV-PLAN-CULT.md Phase 4 statuses                                                                                           | ⏳              |
+| P4-11 | Update `spatialroot/internalDocsMD/AGENTS.md` if `--lfe-mode` is exposed in pipeline                                                                                         | ⏳              |
 
 ### Gates
 
-- All P4-0 / P4-0b / P4-0c blocking items resolved before any code is written.
+- P4-0 and P4-0b confirmed. ✅ P4-0c resolved as N/A. ✅
 - 28/28 existing tests pass with `--lfe-mode hardcoded` (or flag absent). _(regression gate)_
-- New Phase 4 tests pass including Sony 360RA profile detection.
+- New Phase 4 tests pass including Sony 360RA profile detection and `speakerLabel` LFE fixture.
 - `--lfe-mode garbage` → non-zero exit + `status: "fail"` report.
 - Report `args.lfeMode` field present in all runs.
 
@@ -217,6 +218,20 @@ All phases must preserve the toolchain contract authority: `LUSID/internalDocsMD
 ### Sony 360RA
 
 - Support ingest via exports (ADM or MPEG-H) with resolver.
+- **No LFE / bass management in v1.** Sony 360RA carries no LFE channel; bass
+  management is delegated to the playback engine by design. Spatial Root v1
+  does not implement bass management and CULT must not add any.
+
+### Future dev note — bass management (Spatial Root v2)
+
+> **Deferred to Spatial Root v2.** Sony 360RA (and other object-only formats)
+> require playback-engine-side bass management rather than a discrete LFE
+> channel in the content. In a future v2 exploration, consider whether Spatial
+> Root's render engine should offer an optional bass management stage (e.g.,
+> redirecting low-frequency content from full-range objects to a subwoofer
+> output). This is a render-engine concern, not a CULT transcoder concern.
+> No design or implementation work should begin here without an explicit owner
+> decision and a dedicated design doc.
 
 ### Gates
 

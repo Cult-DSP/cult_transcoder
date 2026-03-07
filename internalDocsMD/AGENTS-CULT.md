@@ -378,8 +378,19 @@ Sony 360RA priority:
 
 ## 11. Phase 4 — Pre-Flight Notes for Next Agent
 
-**DO NOT BEGIN IMPLEMENTATION until the owner confirms testing of the Phase 3
-pipeline is complete and any regressions are resolved.**
+**Phase 3 pipeline testing is confirmed complete by the owner (2026-03-07).
+Phase 4 implementation may begin. Read all of §11 before touching any file.**
+
+### Agent research delegation rule (applies to all phases)
+
+Agents must **not** attempt brute-force or token-intensive research into
+external format specifications, third-party schema conventions, or toolchain
+internals they cannot fully resolve from files already in the workspace.
+If you hit a question that requires knowledge of an external standard (e.g.,
+Sony 360RA ADM schema conventions, MPEG-H MAE metadata semantics, IAMF OBU
+structure), **stop and ask the owner**. The owner handles external research and
+will return with the answer. Document the open question in §11.9 so it is
+visible and trackable.
 
 These notes exist so the next agent has enough context to implement Phase 4
 without a clarifying Q&A round. Read all of §11 before touching any file.
@@ -548,25 +559,38 @@ conversion is Phase 5+.
 
 Minimum new tests required in `test_cli_args.cpp` (or a new `test_lfe_mode.cpp`):
 
-| Test                                                                      | Input                                 | Expected                                                                                                  |
-| ------------------------------------------------------------------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `--lfe-mode hardcoded` explicit = same as default                         | parity fixture                        | passes parity                                                                                             |
-| `--lfe-mode speaker-label` on fixture with `speakerLabel="LFE"`           | new fixture or existing 360RA fixture | node typed `LFE`                                                                                          |
-| `--lfe-mode speaker-label` on Atmos fixture (LFE at ch4, no speakerLabel) | existing Atmos fixture                | ch4 node typed differently if no speakerLabel, or same if speakerLabel present — document expected result |
-| `--lfe-mode garbage`                                                      | any                                   | non-zero exit, `status: "fail"` report                                                                    |
-| Profile detection: Atmos XML → `detectedFrom` correct                     | Atmos fixture                         | `DolbyAtmos` detected                                                                                     |
-| Profile detection: generic XML → `Generic` or `Unknown`                   | existing parity fixture               | `Unknown` or `Generic`                                                                                    |
-| Parity regression with default lfe-mode                                   | parity fixtures                       | 28/28 still pass                                                                                          |
+| Test                                                                      | Input                            | Expected                                                                                                  |
+| ------------------------------------------------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `--lfe-mode hardcoded` explicit = same as default                         | parity fixture                   | passes parity                                                                                             |
+| `--lfe-mode speaker-label` on fixture with `speakerLabel="LFE"`           | new fixture (see below)          | node typed `LFE`                                                                                          |
+| `--lfe-mode speaker-label` on Atmos fixture (LFE at ch4, no speakerLabel) | existing Atmos fixture           | ch4 node typed differently if no speakerLabel, or same if speakerLabel present — document expected result |
+| `--lfe-mode garbage`                                                      | any                              | non-zero exit, `status: "fail"` report                                                                    |
+| Profile detection: Atmos XML → `detectedFrom` correct                     | Atmos fixture                    | `DolbyAtmos` detected                                                                                     |
+| Profile detection: generic XML → `Generic` or `Unknown`                   | existing parity fixture          | `Unknown` or `Generic`                                                                                    |
+| Profile detection: 360RA XML → `Sony360RA` detected                       | `sony_360ra_example.xml` fixture | `Sony360RA` detected via `audioProgrammeName="Gem_OM_360RA_3"` (contains `"360RA"`)                       |
+| Parity regression with default lfe-mode                                   | parity fixtures                  | 28/28 still pass                                                                                          |
 
 **Fixtures needed** (must be committed to `tests/parity/fixtures/`):
 
-- `sony_360ra_example.xml` — Sony 360RA ADM XML export. Source: use
-  `sourceData/sony360RA_example.xml` already present in the spatialroot repo
-  (confirmed at `spatialroot/processedData/sony360RA_example.xml` and
-  `spatialroot/sourceData/`). Copy or symlink it. Do not modify the source file.
-- A reference output `sony_360ra_reference.lusid.json` generated by the Python
-  oracle (`parse_adm_xml_to_lusid_scene`) before implementing Phase 4, so parity
-  is verifiable.
+- `sony_360ra_example.xml` — copy of `processedData/sony360RA_example.xml`
+  (already confirmed present in the workspace). Do not modify the source file.
+  **No Python oracle reference LUSID is committed for this fixture.** The Python
+  oracle (`parse_adm_xml_to_lusid_scene`) cannot parse Sony 360RA ADM because
+  the XML root is `<format><audioFormatExtended>` rather than `<ebuCoreMain>`.
+  The oracle returns an empty scene and is not a valid baseline. Sony 360RA
+  support was never part of the Python oracle's scope.
+
+- `sony_360ra_example.xml` is used **only** for Phase 4 profile detection tests
+  (assert `Sony360RA` is returned by `resolveAdmProfile()`). It is **not** used
+  for LUSID conversion parity in Phase 4. Full 360RA conversion support is a
+  later phase (see §11.9 open questions).
+
+- The existing `speakerLabel`-based LFE test needs a minimal synthetic fixture
+  (a small hand-authored ADM XML with a DirectSpeaker element that has a
+  `<speakerLabel>LFE</speakerLabel>` child). Craft this fixture in-repo at
+  `tests/parity/fixtures/lfe_speaker_label_fixture.xml`. Do not derive it from
+  the Sony 360RA file (that file has no LFE/speakerLabel elements — confirmed
+  by inspection).
 
 ---
 
@@ -604,33 +628,51 @@ No other report schema changes in Phase 4. `reportVersion` stays `"0.1"`.
 
 ---
 
-### 11.9 Open questions that need owner answers before Phase 4 starts
+### 11.9 Open questions — ask the owner, do not guess
 
-These are **not** things the agent should guess or decide unilaterally:
+These questions require external research or owner judgment. The agent must
+**stop and ask** rather than guess or implement speculatively. Document answers
+here once resolved.
 
-1. **Sony 360RA speakerLabel pattern**: Does the `sony360RA_example.xml` in
-   `sourceData/` have `speakerLabel="LFE"` or `"LFE1"` attributes, or does it
-   use a different convention? The agent must inspect the file before implementing
-   the `SpeakerLabel` branch. Run:
+1. **Sony 360RA conversion scope (RESOLVED — Phase 4 scope is detection only)**
+   Confirmed: Phase 4 only detects the 360RA profile and reports it. Full
+   360RA ADM-to-LUSID conversion (the `<audioFormatExtended>` root structure)
+   is out of scope for Phase 4. The Sony fixture is used only for profile
+   detection tests. The Python oracle does not support 360RA and is not used
+   as a reference for this format.
 
-   ```bash
-   grep -i "speakerLabel\|LFE" sourceData/sony360RA_example.xml | head -20
-   ```
+2. **Sony 360RA speakerLabel / LFE convention (RESOLVED — not applicable in Phase 4)**
+   Confirmed by file inspection: `processedData/sony360RA_example.xml` contains
+   no `speakerLabel` elements and no LFE channels. It is a 13-channel object-only
+   360RA file (no DirectSpeakers bed). The `--lfe-mode speaker-label` branch
+   therefore cannot be tested against this file; a synthetic fixture is used
+   instead (see §11.6).
 
-2. **360RA fixture parity baseline**: Should the Python oracle be run on the
-   360RA fixture _before_ Phase 4 begins (to create a reference LUSID), or is
-   the Phase 4 goal to improve on what the oracle produces? Clarify whether
-   Phase 4 must maintain oracle parity for 360RA or is allowed to differ.
+   **Bass management note (owner-confirmed, 2026-03-07):** Sony 360RA has no
+   LFE channel by design. Bass management is the responsibility of the playback
+   engine, not the authoring tool. Spatial Root v1 does **not** implement bass
+   management. This is intentional and must not be worked around in CULT.
+   A future exploration item exists for Spatial Root v2 (see DEV-PLAN Phase 6
+   note). Do not add any bass management logic without an explicit owner decision.
 
-3. **Profile-driven bed remapping**: In Phase 4, the profile is detected but
-   only the LFE flag uses it. Is any other profile-driven behaviour (e.g.,
-   different channel-order assumptions for Sony vs Atmos) required in Phase 4,
-   or is that deferred to Phase 5?
+3. **Full 360RA ADM parsing strategy (OPEN — owner research required)**
+   The Sony 360RA ADM XML root is `<format><audioFormatExtended>` (ITU-R BS.2076-2),
+   not the bwfmetaedit `<conformance_point_document><aXML><ebuCoreMain>` wrapper
+   that the current parser expects. Full conversion support will require a new
+   ingestion path. The agent must **not** attempt to design this path without
+   the owner providing research on the Sony 360RA schema and any relevant
+   reference tools. Ask the owner before touching this in any future phase.
 
-4. **`--lfe-mode` exposure in `runRealtime.py`**: Should the Python pipeline
-   ever pass `--lfe-mode speaker-label` to cult-transcoder, or is this flag
-   only for CLI / testing use? If the pipeline should expose it, the
-   `RealtimeConfig` dataclass in `realtime_runner.py` needs a new field.
+4. **`--lfe-mode` exposure in `runRealtime.py` (OPEN)**
+   Should the Python pipeline ever pass `--lfe-mode speaker-label` to
+   cult-transcoder, or is this flag only for CLI / testing use? If the pipeline
+   should expose it, `RealtimeConfig` in `realtime_runner.py` needs a new field.
+   Ask the owner before wiring this into the pipeline.
+
+5. **Profile-driven bed remapping in Phase 5+ (OPEN)**
+   In Phase 4, the profile is detected but only LFE uses it. Is any other
+   profile-driven behaviour (e.g., different channel-order assumptions for Sony
+   vs Atmos) required in Phase 5? Ask the owner; do not speculate.
 
 ---
 
