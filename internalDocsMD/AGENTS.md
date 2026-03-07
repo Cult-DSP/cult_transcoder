@@ -8,7 +8,6 @@
 > `runRealtime.py` now calls `cult_transcoder/build/cult-transcoder transcode --in-format adm_wav`
 > instead of `extractMetaData()` + Python oracle + `writeSceneOnly()`.
 > `runPipeline.py` is DEPRECATED — do not modify.
-> `spatialroot_adm_extract` (src/adm_extract/) is superseded — not built by setupCppTools() anymore.
 > See `cult_transcoder/internalDocsMD/AGENTS-CULT.md §8` and `DEV-PLAN-CULT.md Phase 3`.
 
 ---
@@ -149,7 +148,7 @@ CMake link targets: `al` + `Gamma`.
 
 #### Keep list (required today)
 
-`sound/` · `math/` · `spatial/` · `io/al_AudioIOData` · `system/` · `external/Gamma/` · `external/json/`
+`sound/` · `math/` · `spatial/` · `io/al_AudioIO` · `system/` · `external/Gamma/` · `external/json/`
 
 #### Likely-future list (real-time audio engine)
 
@@ -263,7 +262,6 @@ spatialroot is a Python+C++ prototype for decoding and rendering Audio Definitio
 - **Python 3.8+**: Pipeline orchestration, ADM parsing, data processing
 - **C++17**: High-performance spatial audio renderer (AlloLib-based)
 - **AlloLib**: Audio spatialization framework (DBAP, VBAP, LBAP)
-- **spatialroot_adm_extract**: Embedded EBU/libbw64-based tool for extracting ADM XML from WAV files (built by `init.sh`)
 - **CMake 3.12+**: Build system for C++ components
 
 ---
@@ -1308,12 +1306,12 @@ speaker.azimuth = s.azimuth * 180.0f / M_PI;
 
 **Issue:** ✅ `master_gain` exposed in Python pipeline — accepted by `createRender.py`, passed as `--master_gain` to C++.
 
-**Issue:** ⚠️ Double audio-channel scan wastes ~28 seconds  
+**Issue:** ⚠️ Double audio-channel scan wastes ~28 seconds
 **Cause:** `runPipeline.py` calls `exportAudioActivity()` (writes `containsAudio.json`) then immediately calls `channelHasAudio()` again — both scan the entire WAV.  
-**Solution:** Pending — use result of first scan directly; remove redundant second call.
+**Solution:** Pending — use result of first scan directly; remove redundant second call (~28s savings).
 
-**Issue:** ⚠️ `sys.argv[1]` accessed before bounds check  
-**Cause:** `runPipeline.py` line 158 reads `sys.argv[1]` before the `if len(sys.argv) < 2:` guard on line 162. Crashes with `IndexError` when run with no arguments.  
+**Issue:** ⚠️ `sys.argv[1]` accessed before bounds check
+**Cause:** `runPipeline.py` line 158 reads `sys.argv[1]` before the `if len(sys.argv) < 2:` check on line 162. Crashes with `IndexError` when run with no arguments.  
 **Solution:** Pending — move bounds check before first access.
 
 ### Building C++ Renderer
@@ -1506,7 +1504,7 @@ python LUSID/tests/benchmark_xml_parsers.py
   - Used in `runPipeline.py` and `runGUI.py`
 
 - [ ] **Label-based LFE detection**
-  - Disable `_DEV_LFE_HARDCODED` flag in `xml_etree_parser.py`
+  - Disable `_DEV_LFE_HARDCODED` flag in `xmlParser.py`
   - Detect LFE by checking `speakerLabel` for "LFE" substring
   - Test with diverse ADM files (not just channel 4)
 

@@ -10,12 +10,14 @@ import subprocess
 import sys
 import os
 
+# Define outputRenderPath at the top level for global accessibility
+outputRenderPath = "processedData/outputRender.wav"
 
 
 # Current pipeline:
 # 0. Check initialization - if not initialized, prompt to run ./init.sh
 # 1. Setup C++ tools - initialize git submodules (allolib, libbw64, libadm), build spatial renderer and ADM extractor (only if needed)
-# 2. Extract ADM metadata from source WAV using spatialroot_adm_extract (embedded EBU tool)
+# 2. Extract ADM metadata from source WAV using cult-transcoder
 # 3. Parse ADM metadata into internal data structure (optionally export JSON for analysis)
 # 4. Analyze audio channels for content (generate containsAudio.json)
 # 5. Run packageForRender - split stems (X.1.wav naming) and build LUSID scene (scene.lusid.json)
@@ -174,6 +176,7 @@ if __name__ == "__main__":
             run_pipeline_from_ADM(sourceADMFile, sourceSpeakerLayout, renderMode, resolution, createRenderAnalysis, master_gain)
         elif sourceType == "LUSID":
             print("Running pipeline from LUSID source...")
+            # Pass outputRenderPath explicitly to run_pipeline_from_LUSID
             run_pipeline_from_LUSID(sourceADMFile, sourceSpeakerLayout, renderMode, createRenderAnalysis, outputRenderPath)
 
     else:
