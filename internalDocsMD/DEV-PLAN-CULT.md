@@ -161,22 +161,22 @@ All phases must preserve the toolchain contract authority: `LUSID/internalDocsMD
 
 ### Work items
 
-| #     | Work Item                                                                                                                                                                    | Status          |
-| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
-| P4-0  | Owner confirms Phase 3 pipeline testing complete, no regressions                                                                                                             | ✅ 2026-03-07   |
-| P4-0b | Inspect `sourceData/sony360RA_example.xml` for `speakerLabel`/LFE patterns (resolved: no LFE/speakerLabel present; object-only 360RA file)                                   | ✅ 2026-03-07   |
-| P4-0c | ~~Run Python oracle on Sony 360RA fixture~~ — **N/A**: oracle cannot parse 360RA `<audioFormatExtended>` root; returns empty scene. No reference LUSID committed. See §11.6. | ✅ resolved-N/A |
-| P4-1  | Create `transcoding/adm/adm_profile_resolver.hpp` (AdmProfile enum, ProfileResult, resolveAdmProfile() — see §11.3)                                                          | ✅ 2026-03-07   |
-| P4-2  | Implement `transcoding/adm/adm_profile_resolver.cpp` (detection heuristics per §11.3, priority order)                                                                        | ✅ 2026-03-07   |
-| P4-3  | Add `LfeMode` enum to `include/adm_to_lusid.hpp`; add `lfeMode` param to `convertAdmToLusid()` + `convertAdmToLusidFromBuffer()`                                             | ✅ 2026-03-07   |
-| P4-4  | Add `lfeMode` param to `parseAdmDocument()` in `src/adm_to_lusid.cpp`; implement `SpeakerLabel` branch (see §11.4)                                                           | ✅ 2026-03-07   |
-| P4-5  | Add `lfeMode` field to `TranscodeRequest` in `include/cult_transcoder.hpp`                                                                                                   | ✅ 2026-03-07   |
-| P4-6  | Parse `--lfe-mode` arg in `src/transcoder.cpp`; call `resolveAdmProfile()`; pass lfeMode to converter                                                                        | ✅ 2026-03-07   |
-| P4-7  | Serialise `lfeMode` in report `args` block in `src/main.cpp`                                                                                                                 | ✅ 2026-03-07   |
-| P4-8  | Add `adm_profile_resolver.cpp` to both targets in `CMakeLists.txt`                                                                                                           | ✅ 2026-03-07   |
-| P4-9  | Commit Sony 360RA fixture to `tests/parity/fixtures/` (detection only, no LUSID reference); add synthetic `speakerLabel` LFE fixture; add Phase 4 tests (see §11.6)          | ✅ 2026-03-07   |
-| P4-10 | Update AGENTS-CULT.md §1, §2, §11 status; update DEV-PLAN-CULT.md Phase 4 statuses                                                                                           | ✅ 2026-03-07   |
-| P4-11 | Update `spatialroot/internalDocsMD/AGENTS.md` if `--lfe-mode` is exposed in pipeline                                                                                         | ⏳              |
+| #     | Work Item                                                                                                                                                                    | Status                                                                                                                                      |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| P4-0  | Owner confirms Phase 3 pipeline testing complete, no regressions                                                                                                             | ✅ 2026-03-07                                                                                                                               |
+| P4-0b | Inspect `sourceData/sony360RA_example.xml` for `speakerLabel`/LFE patterns (resolved: no LFE/speakerLabel present; object-only 360RA file)                                   | ✅ 2026-03-07                                                                                                                               |
+| P4-0c | ~~Run Python oracle on Sony 360RA fixture~~ — **N/A**: oracle cannot parse 360RA `<audioFormatExtended>` root; returns empty scene. No reference LUSID committed. See §11.6. | ✅ resolved-N/A                                                                                                                             |
+| P4-1  | Create `transcoding/adm/adm_profile_resolver.hpp` (AdmProfile enum, ProfileResult, resolveAdmProfile() — see §11.3)                                                          | ✅ 2026-03-07                                                                                                                               |
+| P4-2  | Implement `transcoding/adm/adm_profile_resolver.cpp` (detection heuristics per §11.3, priority order)                                                                        | ✅ 2026-03-07                                                                                                                               |
+| P4-3  | Add `LfeMode` enum to `include/adm_to_lusid.hpp`; add `lfeMode` param to `convertAdmToLusid()` + `convertAdmToLusidFromBuffer()`                                             | ✅ 2026-03-07                                                                                                                               |
+| P4-4  | Add `lfeMode` param to `parseAdmDocument()` in `src/adm_to_lusid.cpp`; implement `SpeakerLabel` branch (see §11.4)                                                           | ✅ 2026-03-07                                                                                                                               |
+| P4-5  | Add `lfeMode` field to `TranscodeRequest` in `include/cult_transcoder.hpp`                                                                                                   | ✅ 2026-03-07                                                                                                                               |
+| P4-6  | Parse `--lfe-mode` arg in `src/transcoder.cpp`; call `resolveAdmProfile()`; pass lfeMode to converter                                                                        | ✅ 2026-03-07                                                                                                                               |
+| P4-7  | Serialise `lfeMode` in report `args` block in `src/main.cpp`                                                                                                                 | ✅ 2026-03-07                                                                                                                               |
+| P4-8  | Add `adm_profile_resolver.cpp` to both targets in `CMakeLists.txt`                                                                                                           | ✅ 2026-03-07                                                                                                                               |
+| P4-9  | Commit Sony 360RA fixture to `tests/parity/fixtures/` (detection only, no LUSID reference); add synthetic `speakerLabel` LFE fixture; add Phase 4 tests (see §11.6)          | ✅ 2026-03-07                                                                                                                               |
+| P4-10 | Update AGENTS-CULT.md §1, §2, §11 status; update DEV-PLAN-CULT.md Phase 4 statuses                                                                                           | ✅ 2026-03-07                                                                                                                               |
+| P4-11 | Update `spatialroot/internalDocsMD/AGENTS.md` if `--lfe-mode` is exposed in pipeline                                                                                         | ✅ N/A — `runRealtime.py` does not pass `--lfe-mode`; flag is CLI/test only. `spatialroot/AGENTS.md` has no CULT section. No update needed. |
 
 ### Gates
 
@@ -188,21 +188,43 @@ All phases must preserve the toolchain contract authority: `LUSID/internalDocsMD
 
 ---
 
-## Phase 5 — GUI: Transcoding Tab (Report “Open” UX)
+## Phase 5 — GUI: Transcoding Tab (Report "Open" UX)
+
+**Status: ✅ COMPLETE (2026-03-07)**
 
 ### Goals
 
-- Add a “Transcode” tab in GUI.
-- GUI calls CULT CLI and then offers “open report” + status output.
+- Add a "Transcode" tab in GUI.
+- GUI calls CULT CLI and then offers "open report" + status output.
 
 ### Deliverables
 
-- GUI wiring similar to current pipeline QProcess patterns :contentReference[oaicite:28]{index=28}
-- No silent failures; report path always surfaced.
+- `QTabWidget` wrapping existing Render workflow + new Transcode tab.
+- `TranscodePanel` card: input file picker (ADM WAV / ADM XML / LUSID package dir),
+  in-format selector (auto / adm_wav / adm_xml), LFE mode selector, output path,
+  streaming log list, status label, "Open Report" button.
+- `TranscodeRunner` QProcess wrapper — resolves binary via
+  `project_root/cult_transcoder/build/cult-transcoder` (same convention as `runRealtime.py`).
+- `InputPanel._choose_file` updated to accept any file type + LUSID package dirs,
+  with macOS dir-first workaround (ported from `RealtimeInputPanel`).
+- `styles.qss` updated with `QTabWidget#MainTabs` and `QLabel#TranscodeStatus` rules.
+- No silent failures — status label always reflects result; fail-report surfaced via "Open Report".
+
+### Work items
+
+| #    | Work Item                                                                                   | Status        |
+| ---- | ------------------------------------------------------------------------------------------- | ------------- |
+| P5-1 | Create `gui/widgets/transcode_panel.py` (TranscodePanel card)                               | ✅ 2026-03-07 |
+| P5-2 | Create `gui/transcode_runner.py` (TranscodeRunner QProcess wrapper)                         | ✅ 2026-03-07 |
+| P5-3 | Wrap `main.py` in `QTabWidget`; add Render + Transcode tabs; wire runners                   | ✅ 2026-03-07 |
+| P5-4 | Update `gui/widgets/input_panel.py` — accept .wav/.xml/.json + LUSID dirs; macOS workaround | ✅ 2026-03-07 |
+| P5-5 | Update `gui/styles.qss` — tab bar + `TranscodeStatus` label styles                          | ✅ 2026-03-07 |
 
 ### Gates
 
-- GUI properly handles non-zero exit codes and shows errors.
+- GUI properly handles non-zero exit codes and shows errors. ✅
+- Report path always surfaced (Open Report enabled on success and on fail-report). ✅
+- Binary path resolved via `configCPP` convention — no hardcoded absolute paths. ✅
 
 ---
 

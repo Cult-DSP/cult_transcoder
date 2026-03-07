@@ -1,5 +1,8 @@
 # AGENTS.md — CULT Transcoder (Execution-Safe, Contract-First)
 
+**Last updated: 2026-03-07**  
+Phases 1–4 complete. Phase 5 GUI (PySide6 TRANSCODE tab in `gui/realtimeGUI/`) complete — see §13.
+
 Repo placement: `spatialroot/cult-transcoder/` (git submodule, already wired).  
 Invocation: CLI-first. Spatial Root calls `spatialroot/cult-transcoder/build/cult-transcoder` (macOS/Linux) or the `.bat` wrapper on Windows (see §9).  
 Build: CMake. C++17. Cross-platform (macOS + Windows required; Linux later).  
@@ -72,7 +75,7 @@ No behavior change without doc change.
 
 ---
 
-## 1. Repo Layout (Phase 3 — current state)
+## 1. Repo Layout (Phase 4 — current state)
 
 ```
 cult_transcoder/
@@ -85,17 +88,17 @@ cult_transcoder/
 │   ├── DESIGN-DOC-V1-CULT.MD
 │   └── design-reference-CULT.md       # research/literature design reference
 ├── include/
-│   ├── adm_to_lusid.hpp              # Phase 2+3: structs + convertAdmToLusid() + convertAdmToLusidFromBuffer()
-│   ├── cult_transcoder.hpp            # TranscodeRequest / TranscodeResult / transcode()
-│   ├── cult_report.hpp                # Report model (LossLedgerEntry, ReportSummary, …)
+│   ├── adm_to_lusid.hpp              # Phase 2+3+4: structs + convertAdmToLusid() + convertAdmToLusidFromBuffer() + LfeMode enum
+│   ├── cult_transcoder.hpp            # TranscodeRequest (incl. lfeMode) / TranscodeResult / transcode()
+│   ├── cult_report.hpp                # Report model (LossLedgerEntry, ReportSummary, ResolvedArgs incl. lfeMode)
 │   └── cult_version.hpp               # kVersionString, kReportSchemaVersion, gitCommit()
 ├── scripts/
 │   └── cult-transcoder.bat            # Windows wrapper — call via this, not .exe directly
 ├── src/
 │   ├── main.cpp                       # CLI entry point, atomic report write, exit codes
-│   ├── transcoder.cpp                 # Phase 3: validates args → adm_xml or adm_wav dispatch → atomic write
+│   ├── transcoder.cpp                 # Phase 3+4: validates args → adm_xml or adm_wav dispatch → atomic write; parses --lfe-mode
 │   ├── adm_to_lusid.cpp              # Phase 2+3+4: ADM XML → LUSID (pugixml, encounter order, LfeMode param)
-│   └── report.cpp                     # JSON serializer (zero external deps)
+│   └── report.cpp                     # JSON serializer (zero external deps, incl. lfeMode in args block)
 ├── thirdparty/
 │   └── libbw64/                       # Phase 3: git submodule (ebu/libbw64, Apache-2.0, header-only)
 │                                      #   CMake INTERFACE target 'libbw64'
@@ -122,6 +125,13 @@ cult_transcoder/
             ├── sony_360ra_example.xml             # Phase 4: Sony 360RA fixture (detection only, no LUSID ref)
             └── lfe_speaker_label_fixture.xml      # Phase 4: synthetic fixture with speakerLabel=LFE at ch3
 ```
+
+**GUI files** (Phase 5 — in `spatialroot/gui/realtimeGUI/`):
+
+| File                                                        | Purpose                                                                                                                                 |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `gui/realtimeGUI/realtime_panels/RealtimeTranscodePanel.py` | PySide6 panel for the TRANSCODE tab — file/dir browse, in-format combo, LFE mode combo, streaming log, status label, Open Report button |
+| `gui/realtimeGUI/realtime_transcoder_runner.py`             | `QProcess` wrapper that invokes `cult-transcoder transcode` and streams stdout/stderr back to the panel                                 |
 
 **Note on test_main.cpp**: Catch2 v3 provides its own entry point via
 `Catch2::Catch2WithMain`; a separate `test_main.cpp` is not needed.
@@ -701,7 +711,129 @@ here once resolved.
 
 ---
 
-## 12. Agent PR Checklist (Required)
+## 13. Phase 5 — GUI Transcoding Tab (COMPLETE, 2026-03-07)
+
+Phase 5 adds a **TRANSCODE tab** to the existing realtime GUI (`gui/realtimeGUI/`).
+It exposes the `cult-transcoder transcode` CLI to users without requiring a terminal.
+The C++ binary is unchanged; all new code is Python/PySide6 only.
+
+### 13.1 Scope
+
+- Offline ADM → LUSID transcoding from the GUI (not real-time engine)
+- Exposes `--in`, `--in-format`, `--out-format lusid_json`, `--report`, `--lfe-mode` flags
+- Streams `cult-transcoder` stdout/stderr live into the GUI log
+- "Open Report" button to view the JSON report after a successful run
+- Cross-platform file dialog pattern (see §13.4)
+
+### 13.2 New files
+
+**`gui/realtimeGUI/realtime_panels/RealtimeTranscodePanel.py`** — PySide6 panel for the TRANSCODE tab.
+
+Signals:
+
+- `run_requested(in_path: str, in_format: str, out_path: str, lfe_mode: str)` — emitted when TRANSCODE button clicked
+- `open_report_requested(report_path: str)` — emitted when Open Report button clicked
+
+Public API:
+
+- `set_running(running: bool)` — disables inputs + shows spinner state
+- `set_finished(success: bool, report_path: str)` — re-enables inputs, colours status, reveals Open Report
+- `append_line(text: str)` — appends one line to the streaming log widget
+
+Browse pattern (two separate buttons per §13.4):
+
+- `File…` button → `QFileDialog.getOpenFileName(filter="ADM Files (*.wav *.xml);;All Files (*)")`
+- `Dir…` button → `QFileDialog.getExistingDirectory()`
+
+Combos:
+
+- In-format: `auto`, `adm_wav`, `adm_xml`, `lusid_json`
+- LFE mode: `hardcoded` (default), `speaker-label`
+
+---
+
+**`gui/realtimeGUI/realtime_transcoder_runner.py`** — `QProcess` wrapper.
+
+Signals:
+
+- `output(str)` — one line of stdout/stderr
+- `started()` — process started
+- `finished(int, str)` — (exit_code, report_path)
+
+Binary resolution (`_resolve_binary()`):
+
+```python
+project_root / "cult_transcoder" / "build" / "cult-transcoder"      # macOS/Linux
+project_root / "cult_transcoder" / "build" / "cult-transcoder.exe"  # Windows
+```
+
+`project_root` is resolved as `Path(__file__).resolve().parents[3]` (3 levels up from `gui/realtimeGUI/`).
+
+Command constructed:
+
+```
+cult-transcoder transcode
+  --in         <in_path>
+  --in-format  <in_format>
+  --out        <out_path>
+  --out-format lusid_json
+  --report     <out_path>.report.json
+  --lfe-mode   <lfe_mode>
+```
+
+`out_path` defaults to `processedData/stageForRender/scene.lusid.json` (relative to project root) if not specified by the user.
+
+Drains stdout and stderr on `_on_finished()` before emitting `finished`.
+
+### 13.3 Modified files
+
+**`gui/realtimeGUI/realtimeGUI.py`**:
+
+- `RealtimeWindow` now wraps a `QTabWidget` (`self._tabs`) with two tabs: **ENGINE** (all original 4 panels) and **TRANSCODE** (`RealtimeTranscodePanel` in its own scroll area)
+- `self._tc_runner = RealtimeTranscoderRunner(project_root)` instantiated in `__init__`
+- Signal wiring in `_connect_runner()`: `tc_runner.output → panel.append_line`, `tc_runner.started → panel.set_running(True)`, `tc_runner.finished → _on_transcode_finished`
+- Handlers: `_on_run_transcode()` (starts QProcess), `_on_transcode_finished(exit_code, report_path)`
+
+**`gui/realtimeGUI/realtime_panels/theme.py`** (font system overhaul):
+
+- Added `_UI_FONT_FAMILY = "Courier New"` constant
+- Added `ui_font(size: int = 8) -> QFont` helper — `QFont("Courier New", size + 2)` with `StyleHint.TypeWriter`. **No bold/DemiBold.**
+- QSS base rule: `QWidget { font-family: 'Courier New', 'Courier', monospace; }`
+- All QSS font sizes bumped +2pt: `7pt→9pt`, `8pt→10pt`, `9pt→10pt`, `12pt→13pt`
+- Added `QTabWidget` / `QTabBar` styles for ENGINE/TRANSCODE tab appearance
+
+**`gui/realtimeGUI/realtime_panels/RealtimeInputPanel.py`**:
+
+- Replaced single `Browse` button with two: `File…` (getOpenFileName) + `Pkg…` (getExistingDirectory — for LUSID packages)
+- `set_enabled_for_state()` updated to include both new buttons
+- `QFont("Space Mono", N)` → `ui_font(N)` throughout
+
+All other panel files (`RealtimeLogPanel.py`, `RealtimeControlsPanel.py`, `RealtimeTransportPanel.py`):
+
+- `QFont("Space Mono", N)` → `ui_font(N)` throughout; broken sed-fused import lines fixed
+
+### 13.4 Cross-platform file dialog pattern (pinned)
+
+macOS `NSOpenPanel` cannot mix file and directory selection in a single dialog.
+The two-button pattern is the cross-platform solution used everywhere in this codebase:
+
+| Button label     | Dialog call                             | Used for                                    |
+| ---------------- | --------------------------------------- | ------------------------------------------- |
+| `File…`          | `QFileDialog.getOpenFileName(...)`      | ADM WAV / ADM XML input                     |
+| `Dir…` or `Pkg…` | `QFileDialog.getExistingDirectory(...)` | LUSID package directory or output directory |
+
+Do **not** use `QFileDialog.getOpenFileUrl` with `ShowDirsOnly` or try to combine file+dir selection in a single call — this is broken on macOS and inconsistent on Windows/Linux.
+
+### 13.5 Open questions
+
+| #   | Question                                                                                                           | Status                                                                       |
+| --- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| 1   | Should `runRealtime.py` ever pass `--lfe-mode speaker-label` to cult-transcoder, or is this flag CLI/testing only? | **OPEN** — ask owner (§11.9 Q4)                                              |
+| 2   | Output path for GUI transcode: always `stageForRender/scene.lusid.json`, or user-configurable?                     | Currently defaults to stageForRender; user can override in the TRANSCODE tab |
+
+---
+
+## 14. Agent PR Checklist (Required)
 
 Every PR must include:
 
