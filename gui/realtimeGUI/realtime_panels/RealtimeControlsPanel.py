@@ -24,6 +24,7 @@ from typing import Callable, Optional
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont
+from .theme import ui_font
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -102,7 +103,7 @@ class _ParamRow(QWidget):
         lbl = QLabel(label.upper())
         lbl.setFixedWidth(150)
         lbl.setObjectName("Muted")
-        lbl.setFont(QFont("Space Mono", 7))
+        lbl.setFont(ui_font(7))
         layout.addWidget(lbl)
 
         self._slider = QSlider(Qt.Orientation.Horizontal)
@@ -117,14 +118,14 @@ class _ParamRow(QWidget):
         self._spin.setDecimals(decimals)
         self._spin.setSingleStep(step)
         self._spin.setFixedWidth(80)
-        self._spin.setFont(QFont("Space Mono", 8))
+        self._spin.setFont(ui_font(8))
         layout.addWidget(self._spin)
 
         # OSC address micro-label
         if osc_label:
             self._osc_lbl = QLabel(osc_label)
             self._osc_lbl.setObjectName("Muted2")
-            self._osc_lbl.setFont(QFont("Space Mono", 6))
+            self._osc_lbl.setFont(ui_font(6))
             self._osc_lbl.setFixedWidth(52)
             self._osc_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             layout.addWidget(self._osc_lbl)
@@ -256,11 +257,11 @@ class RealtimeControlsPanel(QWidget):
 
         title = QLabel("RUNTIME CONTROLS")
         title.setObjectName("SectionTitle")
-        title.setFont(QFont("Space Mono", 7))
+        title.setFont(ui_font(7))
         # Add OSC address hint inline (maps to the HTML subtitle span):
         osc_hint = QLabel("live osc → 127.0.0.1:9009")
         osc_hint.setObjectName("Muted2")
-        osc_hint.setFont(QFont("Space Mono", 6))
+        osc_hint.setFont(ui_font(6))
         # Place in the same HBoxLayout row as the title, or add right-aligned.
         title_row = QHBoxLayout()
         title_row.addWidget(title)
@@ -279,7 +280,7 @@ class RealtimeControlsPanel(QWidget):
         # Auto-compensation checkbox
         self._auto_comp_check = QCheckBox("FOCUS AUTO-COMPENSATION")
         self._auto_comp_check.setChecked(DEFAULTS["auto_comp"])
-        self._auto_comp_check.setFont(QFont("Space Mono", 7))
+        self._auto_comp_check.setFont(ui_font(7))
         layout.addWidget(self._auto_comp_check)
 
         # Vertical rescaling mode selector
@@ -290,18 +291,18 @@ class RealtimeControlsPanel(QWidget):
         elev_lbl = QLabel("ELEVATION MODE")
         elev_lbl.setFixedWidth(150)
         elev_lbl.setObjectName("Muted")
-        elev_lbl.setFont(QFont("Space Mono", 7))
+        elev_lbl.setFont(ui_font(7))
         elev_layout.addWidget(elev_lbl)
         self._elev_mode_combo = QComboBox()
         for name in ELEVATION_MODE_NAMES:
             self._elev_mode_combo.addItem(name)
         self._elev_mode_combo.setCurrentIndex(DEFAULTS["elevation_mode"])
-        self._elev_mode_combo.setFont(QFont("Space Mono", 8))
+        self._elev_mode_combo.setFont(ui_font(8))
         elev_layout.addWidget(self._elev_mode_combo, stretch=1)
         # OSC address micro-label
         elev_osc_lbl = QLabel("/elevation_mode")
         elev_osc_lbl.setObjectName("Muted2")
-        elev_osc_lbl.setFont(QFont("Space Mono", 6))
+        elev_osc_lbl.setFont(ui_font(6))
         elev_osc_lbl.setFixedWidth(52)
         elev_osc_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         elev_layout.addWidget(elev_osc_lbl)

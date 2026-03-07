@@ -16,6 +16,7 @@ from typing import Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QTextCursor
+from .theme import ui_font
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -70,7 +71,7 @@ class RealtimeLogPanel(QWidget):
                        .replace("<", "&lt;")
                        .replace(">", "&gt;"))
         self._log.appendHtml(
-            f'<span style="color:{colour}; font-family:\'Space Mono\',monospace;">'
+            f'<span style="color:{colour}; font-family:\'Courier New\',\'Courier\',monospace;">'
             f'{escaped}</span>'
         )
 
@@ -106,18 +107,18 @@ class RealtimeLogPanel(QWidget):
         header = QHBoxLayout()
         title = QLabel("ENGINE LOG")
         title.setObjectName("SectionTitle")
-        title.setFont(QFont("Space Mono", 7))
+        title.setFont(ui_font(7))
         header.addWidget(title)
         # Phase tag
         phase_tag = QLabel("PHASE 10")
         phase_tag.setObjectName("PhaseTag")
-        phase_tag.setFont(QFont("Space Mono", 6))
+        phase_tag.setFont(ui_font(6))
         header.addWidget(phase_tag)
         header.addSpacing(8)
         header.addStretch()
         clear_btn = QPushButton("Clear")
         clear_btn.setObjectName("ClearButton")
-        clear_btn.setFont(QFont("Space Mono", 7))
+        clear_btn.setFont(ui_font(7))
         clear_btn.setFixedWidth(60)
         clear_btn.clicked.connect(self.clear)
         header.addWidget(clear_btn)
@@ -126,7 +127,7 @@ class RealtimeLogPanel(QWidget):
         self._log = QPlainTextEdit()
         self._log.setReadOnly(True)
         self._log.setMaximumBlockCount(MAX_LINES)
-        mono = QFont("Space Mono")
+        mono = ui_font(9)
         mono.setPointSize(9)
         mono.setStyleHint(QFont.StyleHint.Monospace)
         self._log.setFont(mono)

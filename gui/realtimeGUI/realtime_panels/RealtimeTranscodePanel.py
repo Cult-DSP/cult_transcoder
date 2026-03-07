@@ -31,6 +31,7 @@ from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont
+from .theme import ui_font
 from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
@@ -204,7 +205,7 @@ class RealtimeTranscodePanel(QWidget):
         # ── Section title ────────────────────────────────────────────
         title = QLabel("ADM → LUSID TRANSCODE")
         title.setObjectName("SectionTitle")
-        title.setFont(QFont("Space Mono", 7))
+        title.setFont(ui_font(7))
         layout.addWidget(title)
         layout.addWidget(_sep(t))
 
@@ -215,18 +216,24 @@ class RealtimeTranscodePanel(QWidget):
         in_row = QHBoxLayout()
         self._in_edit = QLineEdit()
         self._in_edit.setPlaceholderText("ADM WAV, ADM XML, or LUSID package directory…")
-        self._in_btn = QPushButton("Browse")
-        self._in_btn.setObjectName("FileButton")
-        self._in_btn.setFont(QFont("Space Mono", 7))
-        self._in_btn.setFixedWidth(80)
+        # Two browse buttons: one for files, one for directories (LUSID packages)
+        self._in_file_btn = QPushButton("File…")
+        self._in_file_btn.setObjectName("FileButton")
+        self._in_file_btn.setFont(ui_font(7))
+        self._in_file_btn.setFixedWidth(60)
+        self._in_dir_btn = QPushButton("Dir…")
+        self._in_dir_btn.setObjectName("FileButton")
+        self._in_dir_btn.setFont(ui_font(7))
+        self._in_dir_btn.setFixedWidth(50)
         in_row.addWidget(self._in_edit)
-        in_row.addWidget(self._in_btn)
+        in_row.addWidget(self._in_file_btn)
+        in_row.addWidget(self._in_dir_btn)
         layout.addLayout(in_row)
 
         # Hint label (auto-detection)
         self._in_hint = QLabel("")
         self._in_hint.setObjectName("Muted")
-        self._in_hint.setFont(QFont("Space Mono", 7))
+        self._in_hint.setFont(ui_font(7))
         layout.addWidget(self._in_hint)
 
         # ── In-format + LFE mode row ─────────────────────────────────
@@ -241,7 +248,7 @@ class RealtimeTranscodePanel(QWidget):
         self._in_format_combo.addItem("ADM XML",     "adm_xml")
         self._in_format_combo.addItem("LUSID JSON",  "lusid_json")
         self._in_format_combo.setCurrentIndex(0)
-        self._in_format_combo.setFont(QFont("Space Mono", 8))
+        self._in_format_combo.setFont(ui_font(8))
         self._in_format_combo.setFixedWidth(130)
         opts_row.addWidget(self._in_format_combo)
 
@@ -253,7 +260,7 @@ class RealtimeTranscodePanel(QWidget):
         self._lfe_combo.addItem("Hardcoded",     "hardcoded")
         self._lfe_combo.addItem("Speaker Label", "speaker-label")
         self._lfe_combo.setCurrentIndex(0)
-        self._lfe_combo.setFont(QFont("Space Mono", 8))
+        self._lfe_combo.setFont(ui_font(8))
         self._lfe_combo.setFixedWidth(130)
         opts_row.addWidget(self._lfe_combo)
 
@@ -268,7 +275,7 @@ class RealtimeTranscodePanel(QWidget):
         self._out_edit.setPlaceholderText("output.lusid.json (leave blank to auto-generate)…")
         self._out_btn = QPushButton("Browse")
         self._out_btn.setObjectName("FileButton")
-        self._out_btn.setFont(QFont("Space Mono", 7))
+        self._out_btn.setFont(ui_font(7))
         self._out_btn.setFixedWidth(80)
         out_row.addWidget(self._out_edit)
         out_row.addWidget(self._out_btn)
@@ -278,7 +285,7 @@ class RealtimeTranscodePanel(QWidget):
         action_row = QHBoxLayout()
         self._transcode_btn = QPushButton("TRANSCODE")
         self._transcode_btn.setObjectName("PrimaryButton")
-        self._transcode_btn.setFont(QFont("Space Mono", 8))
+        self._transcode_btn.setFont(ui_font(8))
         self._transcode_btn.setFixedWidth(140)
         action_row.addWidget(self._transcode_btn)
 
@@ -286,14 +293,14 @@ class RealtimeTranscodePanel(QWidget):
 
         self._status_lbl = QLabel("IDLE")
         self._status_lbl.setObjectName("Muted")
-        self._status_lbl.setFont(QFont("Space Mono", 7))
+        self._status_lbl.setFont(ui_font(7))
         action_row.addWidget(self._status_lbl)
 
         action_row.addStretch()
 
         self._open_report_btn = QPushButton("OPEN REPORT")
         self._open_report_btn.setObjectName("SecondaryButton")
-        self._open_report_btn.setFont(QFont("Space Mono", 7))
+        self._open_report_btn.setFont(ui_font(7))
         self._open_report_btn.setEnabled(False)
         action_row.addWidget(self._open_report_btn)
 
@@ -309,13 +316,14 @@ class RealtimeTranscodePanel(QWidget):
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Expanding,
         )
-        self._log.setFont(QFont("Space Mono", 8))
+        self._log.setFont(ui_font(8))
         layout.addWidget(self._log)
 
         root_layout.addWidget(card)
 
         # ── Signal connections ────────────────────────────────────────
-        self._in_btn.clicked.connect(self._browse_input)
+        self._in_file_btn.clicked.connect(self._browse_input_file)
+        self._in_dir_btn.clicked.connect(self._browse_input_dir)
         self._out_btn.clicked.connect(self._browse_output)
         self._in_edit.textChanged.connect(self._update_hint)
         self._transcode_btn.clicked.connect(self._on_transcode_clicked)
@@ -326,7 +334,7 @@ class RealtimeTranscodePanel(QWidget):
     def _row_label(self, text: str) -> QLabel:
         lbl = QLabel(text.upper())
         lbl.setObjectName("Muted")
-        lbl.setFont(QFont("Space Mono", 7))
+        lbl.setFont(ui_font(7))
         return lbl
 
     def _set_status(self, state: str, message: str) -> None:
@@ -346,29 +354,25 @@ class RealtimeTranscodePanel(QWidget):
 
     # ── File browse ───────────────────────────────────────────────────────
 
-    def _browse_input(self) -> None:
-        """
-        macOS workaround: offer directory picker first (for LUSID packages),
-        fallback to file picker. Same pattern as RealtimeInputPanel._browse_source().
-        """
-        if sys.platform == "darwin":
-            # On macOS, QFileDialog cannot show both files and folders at once.
-            # First attempt a directory selection.
-            d = QFileDialog.getExistingDirectory(
-                self,
-                "Select Input File or LUSID Package Directory",
-                self._in_edit.text() or str(Path.home()),
-            )
-            if d:
-                self._in_edit.setText(d)
-                return
-            # If cancelled, fall through to the file picker.
-
+    def _browse_input_file(self) -> None:
+        """Pick an ADM WAV, ADM XML, or any single file as input."""
+        start = self._in_edit.text().strip() or str(Path.home())
         path, _ = QFileDialog.getOpenFileName(
             self,
             "Select ADM WAV / XML Input File",
-            self._in_edit.text() or str(Path.home()),
-            "Audio / XML Files (*.wav *.xml *.json);;All Files (*)",
+            start,
+            "Audio / ADM Files (*.wav *.xml *.json);;All Files (*)",
+        )
+        if path:
+            self._in_edit.setText(path)
+
+    def _browse_input_dir(self) -> None:
+        """Pick a directory — used for LUSID package folders."""
+        start = self._in_edit.text().strip() or str(Path.home())
+        path = QFileDialog.getExistingDirectory(
+            self,
+            "Select LUSID Package Directory",
+            start,
         )
         if path:
             self._in_edit.setText(path)

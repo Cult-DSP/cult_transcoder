@@ -11,6 +11,7 @@ from typing import Optional
 
 from PySide6.QtCore import Signal, Qt, QTimer
 from PySide6.QtGui import QClipboard, QGuiApplication, QFont
+from .theme import ui_font
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -111,7 +112,7 @@ class RealtimeTransportPanel(QWidget):
 
         title = QLabel("TRANSPORT")
         title.setObjectName("SectionTitle")
-        title.setFont(QFont("Space Mono", 7))
+        title.setFont(ui_font(7))
         layout.addWidget(title)
 
         from .brand_widgets import EyeOrnamentWidget
@@ -166,7 +167,7 @@ class RealtimeTransportPanel(QWidget):
         row2.addStretch()
 
         self._osc_label = QLabel("OSC port: 9009")
-        self._osc_label.setFont(QFont("Space Mono", 7))
+        self._osc_label.setFont(ui_font(7))
         self._osc_label.setObjectName("Muted2")
         row2.addWidget(self._osc_label)
 
@@ -192,7 +193,7 @@ class RealtimeTransportPanel(QWidget):
     def _btn(label: str, obj_name: str) -> QPushButton:
         b = QPushButton(label)
         b.setObjectName(obj_name)
-        b.setFont(QFont("Space Mono", 7))
+        b.setFont(ui_font(7))
         return b
 
     # ── State-driven enable / disable ───────────────────────────────────
@@ -222,7 +223,7 @@ class RealtimeTransportPanel(QWidget):
         # Pill text + colour
         label = s.value.upper()
         self._pill_label.setText(f"●  {label}")
-        self._pill_label.setFont(QFont("Space Mono", 7))
+        self._pill_label.setFont(ui_font(7))
 
         # Map state → colours
         from .theme import PILL_STYLE

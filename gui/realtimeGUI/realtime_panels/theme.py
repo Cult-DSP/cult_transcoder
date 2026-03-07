@@ -8,6 +8,27 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict
 
+from PySide6.QtGui import QFont
+
+
+# ── Cross-platform monospace font helper ──────────────────────────────────────
+# "Courier New" ships on macOS, Windows, and most Linux distros.
+# The TypeWriter StyleHint ensures Qt resolves a monospace face even if the
+# exact family name is unavailable (avoids the "Populating font family aliases"
+# cost caused by requesting a font that does not exist on the system).
+
+_UI_FONT_FAMILY = "Courier New"
+
+
+def ui_font(size: int = 8) -> QFont:
+    """Return a cross-platform monospace QFont at the given point size.
+
+    All sizes are bumped by +2pt for legibility at typical monitor DPI values.
+    """
+    f = QFont(_UI_FONT_FAMILY, size + 2)
+    f.setStyleHint(QFont.StyleHint.TypeWriter)
+    return f
+
 # ── Colour token dicts ────────────────────────────────────────────────────────
 
 DARK: Dict[str, str] = {
@@ -89,8 +110,13 @@ def make_qss(t: Dict[str, str]) -> str:
       .pill           → QFrame#Pill   (colours set dynamically)
       scrollbar       → QScrollBar
     """
+    # Cross-platform monospace stack: Courier New → system monospace fallback
+    mono = "'Courier New', 'Courier', monospace"
     return f"""
     /* ── Root / window ── */
+    QWidget {{
+        font-family: {mono};
+    }}
     QWidget#Root {{
         background: {t["bg"]};
     }}
@@ -118,24 +144,24 @@ def make_qss(t: Dict[str, str]) -> str:
     }}
     QLabel#SectionTitle {{
         color: {t["muted"]};
-        font-size: 8pt;
+        font-size: 9pt;
         letter-spacing: 3px;
     }}
     QLabel#Muted {{
         color: {t["muted"]};
-        font-size: 8pt;
+        font-size: 9pt;
     }}
     QLabel#Muted2 {{
         color: {t["muted2"]};
-        font-size: 8pt;
+        font-size: 9pt;
     }}
     QLabel#Title {{
         color: {t["text"]};
-        font-size: 12pt;
+        font-size: 13pt;
     }}
     QLabel#Subtitle {{
         color: {t["muted"]};
-        font-size: 8pt;
+        font-size: 9pt;
         letter-spacing: 2px;
     }}
 
@@ -146,7 +172,7 @@ def make_qss(t: Dict[str, str]) -> str:
         border-radius: 3px;
         color: {t["muted"]};
         padding: 5px 8px;
-        font-size: 9pt;
+        font-size: 10pt;
     }}
     QLineEdit:enabled {{
         color: {t["text"]};
@@ -167,7 +193,7 @@ def make_qss(t: Dict[str, str]) -> str:
         border-radius: 3px;
         color: {t["text"]};
         padding: 5px 8px;
-        font-size: 9pt;
+        font-size: 10pt;
     }}
     QComboBox:disabled {{
         color: {t["muted2"]};
@@ -192,9 +218,8 @@ def make_qss(t: Dict[str, str]) -> str:
         border: 1px solid {t["text"]};
         border-radius: 3px;
         padding: 7px 20px;
-        font-size: 8pt;
+        font-size: 10pt;
         letter-spacing: 2px;
-        font-weight: bold;
     }}
     QPushButton#PrimaryButton:hover {{
         background: {t["muted"]};
@@ -212,7 +237,7 @@ def make_qss(t: Dict[str, str]) -> str:
         border: 1px solid {t["border_light"]};
         border-radius: 3px;
         padding: 7px 14px;
-        font-size: 8pt;
+        font-size: 10pt;
         letter-spacing: 2px;
     }}
     QPushButton#SecondaryButton:hover {{
@@ -233,7 +258,7 @@ def make_qss(t: Dict[str, str]) -> str:
         border: 1px solid {t["border_light"]};
         border-radius: 3px;
         padding: 5px 10px;
-        font-size: 8pt;
+        font-size: 10pt;
         letter-spacing: 1px;
     }}
     QPushButton#FileButton:hover {{
@@ -252,7 +277,7 @@ def make_qss(t: Dict[str, str]) -> str:
         border: 1px solid {t["red_bd"]};
         border-radius: 3px;
         padding: 7px 14px;
-        font-size: 8pt;
+        font-size: 10pt;
         letter-spacing: 2px;
     }}
     QPushButton#KillButton:hover {{
@@ -270,7 +295,7 @@ def make_qss(t: Dict[str, str]) -> str:
         border: 1px solid {t["border"]};
         border-radius: 3px;
         padding: 3px 10px;
-        font-size: 7pt;
+        font-size: 9pt;
         letter-spacing: 1px;
     }}
     QPushButton#ClearButton:hover, QPushButton#SmallButton:hover {{
@@ -281,7 +306,7 @@ def make_qss(t: Dict[str, str]) -> str:
     /* ── Checkboxes ── */
     QCheckBox {{
         color: {t["muted"]};
-        font-size: 8pt;
+        font-size: 10pt;
         letter-spacing: 1px;
         spacing: 8px;
     }}
@@ -337,7 +362,7 @@ def make_qss(t: Dict[str, str]) -> str:
         border-radius: 3px;
         color: {t["muted"]};
         padding: 3px 6px;
-        font-size: 9pt;
+        font-size: 10pt;
     }}
     QDoubleSpinBox:enabled {{
         color: {t["text"]};
@@ -357,7 +382,7 @@ def make_qss(t: Dict[str, str]) -> str:
         border-radius: 3px;
         color: {t["muted"]};
         padding: 8px;
-        font-size: 9pt;
+        font-size: 10pt;
     }}
 
     /* ── Pill frame (colours set dynamically in code) ── */
@@ -372,7 +397,7 @@ def make_qss(t: Dict[str, str]) -> str:
         border: 1px solid {t["border"]};
         border-radius: 2px;
         padding: 1px 6px;
-        font-size: 7pt;
+        font-size: 9pt;
         letter-spacing: 2px;
     }}
 
@@ -413,7 +438,7 @@ def make_qss(t: Dict[str, str]) -> str:
         border: none;
         border-bottom: 2px solid transparent;
         padding: 8px 20px;
-        font-size: 7pt;
+        font-size: 9pt;
         letter-spacing: 2px;
     }}
     QTabBar::tab:selected {{

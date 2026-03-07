@@ -33,7 +33,7 @@ from PySide6.QtWidgets import (
 
 from .realtime_runner import RealtimeConfig, RealtimeRunner, RealtimeRunnerState
 from .realtime_transcoder_runner import RealtimeTranscoderRunner
-from .realtime_panels.theme import DARK, LIGHT, make_qss
+from .realtime_panels.theme import DARK, LIGHT, make_qss, ui_font
 from .realtime_panels.brand_widgets import SacredGeometryBackground
 from .realtime_panels.RealtimeInputPanel import RealtimeInputPanel
 from .realtime_panels.RealtimeTransportPanel import RealtimeTransportPanel
@@ -128,7 +128,7 @@ class RealtimeWindow(QMainWindow):
         # Pipeline label (centred absolutely — use a fixed-width spacer trick)
         pipeline_lbl = QLabel("ADM  →  LUSID  ⇒  Spatial Render")
         pipeline_lbl.setObjectName("Muted2")
-        pipeline_lbl.setFont(QFont("Space Mono", 7))
+        pipeline_lbl.setFont(ui_font(7))
         pipeline_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         header_layout.addWidget(pipeline_lbl)
 
@@ -137,12 +137,12 @@ class RealtimeWindow(QMainWindow):
         # Running status dot + label
         self._header_dot = QLabel("●")
         self._header_dot.setObjectName("Muted")
-        self._header_dot.setFont(QFont("Space Mono", 8))
+        self._header_dot.setFont(ui_font(8))
         header_layout.addWidget(self._header_dot)
         header_layout.addSpacing(5)
         self._header_state_lbl = QLabel("IDLE")
         self._header_state_lbl.setObjectName("Muted")
-        self._header_state_lbl.setFont(QFont("Space Mono", 7))
+        self._header_state_lbl.setFont(ui_font(7))
         header_layout.addWidget(self._header_state_lbl)
 
         root_layout.addWidget(header)
@@ -191,7 +191,7 @@ class RealtimeWindow(QMainWindow):
 
         # ── QTabWidget wrapping both tabs ─────────────────────────────
         self._tabs = QTabWidget()
-        self._tabs.setFont(QFont("Space Mono", 7))
+        self._tabs.setFont(ui_font(7))
         self._tabs.addTab(scroll, "ENGINE")
         self._tabs.addTab(transcode_scroll, "TRANSCODE")
 
