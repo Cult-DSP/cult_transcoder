@@ -90,7 +90,8 @@ std::string Report::toJson() const {
     o << ind(2) << "\"out\": "           << jsonStr(args.outPath)   << ",\n";
     o << ind(2) << "\"outFormat\": "     << jsonStr(args.outFormat) << ",\n";
     o << ind(2) << "\"report\": "        << jsonStr(args.reportPath) << ",\n";
-    o << ind(2) << "\"stdoutReport\": "  << (args.stdoutReport ? "true" : "false") << "\n";
+    o << ind(2) << "\"stdoutReport\": "  << (args.stdoutReport ? "true" : "false") << ",\n";
+    o << ind(2) << "\"lfeMode\": "       << jsonStr(args.lfeMode)   << "\n";
     o << ind(1) << "},\n";
 
     // status

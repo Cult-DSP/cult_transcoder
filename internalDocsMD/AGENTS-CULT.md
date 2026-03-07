@@ -94,7 +94,7 @@ cult_transcoder/
 ├── src/
 │   ├── main.cpp                       # CLI entry point, atomic report write, exit codes
 │   ├── transcoder.cpp                 # Phase 3: validates args → adm_xml or adm_wav dispatch → atomic write
-│   ├── adm_to_lusid.cpp              # Phase 2+3: ADM XML → LUSID (pugixml, encounter order, parseAdmDocument helper)
+│   ├── adm_to_lusid.cpp              # Phase 2+3+4: ADM XML → LUSID (pugixml, encounter order, LfeMode param)
 │   └── report.cpp                     # JSON serializer (zero external deps)
 ├── thirdparty/
 │   └── libbw64/                       # Phase 3: git submodule (ebu/libbw64, Apache-2.0, header-only)
@@ -104,27 +104,32 @@ cult_transcoder/
 │   ├── adm/
 │   │   ├── adm_reader.hpp             # Phase 3: AxmlResult struct, extractAxmlFromWav() declaration
 │   │   ├── adm_reader.cpp             # Phase 3: BW64 → axml extraction, debug XML artifact write
-│   │   └── adm_profile_resolver.cpp   # Phase 4: Dolby Atmos / Sony 360RA profile detection (stub)
+│   │   ├── adm_profile_resolver.hpp   # Phase 4: AdmProfile enum, ProfileResult, resolveAdmProfile()
+│   │   └── adm_profile_resolver.cpp   # Phase 4: Dolby Atmos / Sony 360RA profile detection (IMPLEMENTED)
 │   └── lusid/
-│       ├── lusid_writer.cpp           # Phase 3+: enhanced writer (stub)
-│       └── lusid_validate.cpp         # Phase 3+: LUSID schema validation (stub)
+│       ├── lusid_writer.cpp           # Phase 5+: enhanced writer (stub)
+│       └── lusid_validate.cpp         # Phase 5+: LUSID schema validation (stub)
 └── tests/
     ├── test_report.cpp                # 10 tests — §7 report schema contract
     ├── test_cli_args.cpp              # 10 tests — transcode() arg validation (3 Phase 3 tests added)
+    ├── test_lfe_mode.cpp              # 12 tests — Phase 4: LFE mode flag + profile detection
     └── parity/
         ├── run_parity.cpp             # Phase 2: real parity tests against Python oracle
         └── fixtures/
             ├── .gitkeep
-            ├── test_input.xml         # ADM XML test fixture (Dolby Atmos master)
-            └── reference_scene.lusid.json  # Python oracle output (contains_audio=None)
+            ├── test_input.xml                    # ADM XML test fixture (Dolby Atmos master)
+            ├── reference_scene.lusid.json         # Python oracle output (contains_audio=None)
+            ├── sony_360ra_example.xml             # Phase 4: Sony 360RA fixture (detection only, no LUSID ref)
+            └── lfe_speaker_label_fixture.xml      # Phase 4: synthetic fixture with speakerLabel=LFE at ch3
 ```
 
 **Note on test_main.cpp**: Catch2 v3 provides its own entry point via
 `Catch2::Catch2WithMain`; a separate `test_main.cpp` is not needed.
 
-**Note on transcoding/ stubs**: `adm_reader.hpp` and `adm_reader.cpp` are Phase 3
-_implemented_ files, fully compiled and linked. `adm_profile_resolver.cpp`,
-`lusid_writer.cpp`, and `lusid_validate.cpp` remain Phase 4+ stubs (not compiled).
+**Note on transcoding/ stubs**: `adm_reader.hpp`, `adm_reader.cpp`,
+`adm_profile_resolver.hpp`, and `adm_profile_resolver.cpp` are all Phase 3/4
+_implemented_ files, fully compiled and linked. `lusid_writer.cpp` and
+`lusid_validate.cpp` remain Phase 5+ stubs (not compiled).
 
 ---
 
@@ -138,12 +143,19 @@ cult-transcoder transcode
   --out <path> --out-format lusid_json
   [--report <path>]
   [--stdout-report]
+  [--lfe-mode <hardcoded|speaker-label>]
 ```
 
 Known `--in-format` values:
 
 - `adm_xml` (Phase 2): input is a bare ADM XML file (e.g. `currentMetaData.xml`)
 - `adm_wav` (Phase 3): input is a BW64 WAV with embedded axml chunk
+
+`--lfe-mode` values (Phase 4):
+
+- `hardcoded` (default): LFE is the 4th DirectSpeaker encountered (1-based). Phase 2/3 behavior; forever default.
+- `speaker-label`: LFE is any DirectSpeaker whose `<speakerLabel>` text is `"LFE"` or `"LFE1"` (case-insensitive).
+- Any other value → non-zero exit + `status: "fail"` report.
 
 Defaults:
 
@@ -376,10 +388,10 @@ Sony 360RA priority:
 
 ---
 
-## 11. Phase 4 — Pre-Flight Notes for Next Agent
+## 11. Phase 4 — Implementation Notes (COMPLETE)
 
-**Phase 3 pipeline testing is confirmed complete by the owner (2026-03-07).
-Phase 4 implementation may begin. Read all of §11 before touching any file.**
+**Phase 4 is fully implemented as of 2026-03-07. 40/40 tests pass.
+These notes are preserved for archaeology and future agent context.**
 
 ### Agent research delegation rule (applies to all phases)
 
@@ -416,8 +428,9 @@ attribute inspection. The flag is a new CLI argument; it must not change any
 existing behaviour when absent.
 
 These two sub-tasks live entirely inside `transcoding/adm/adm_profile_resolver.cpp`
-(and a new `.hpp`) plus a small addition to `src/transcoder.cpp` to pass the
-flag through. Nothing in `adm_to_lusid.cpp` should change in Phase 4 — the LFE
+(and `adm_profile_resolver.hpp`) plus a small addition to `src/transcoder.cpp` to pass the
+flag through. `adm_to_lusid.cpp` also received a `lfeMode` param to implement the
+`SpeakerLabel` branch — see §11.4.
 override is applied at the `LusidNode` construction layer inside
 `parseAdmDocument()` only if the flag is explicitly set.
 
@@ -548,21 +561,18 @@ conversion is Phase 5+.
 
 ---
 
-### 11.5 CMake changes required
+### 11.5 CMake changes (done)
 
-`adm_profile_resolver.cpp` is currently a stub and **not compiled**. In Phase 4:
-
-- Add `transcoding/adm/adm_profile_resolver.cpp` to both `cult-transcoder` and
-  `cult_tests` source lists in `CMakeLists.txt` (same pattern as `adm_reader.cpp`
-  was added in Phase 3).
-- Add `transcoding/adm` is already in include dirs — no new path needed.
-- No new third-party library. pugixml is already linked.
+`adm_profile_resolver.cpp` is **implemented and compiled**. Both targets
+(`cult-transcoder` and `cult_tests`) include it. `adm_profile_resolver.hpp`
+is in `transcoding/adm/` which is already on the include path.
 
 ---
 
-### 11.6 Test requirements
+### 11.6 Test requirements (done — see `tests/test_lfe_mode.cpp`)
 
-Minimum new tests required in `test_cli_args.cpp` (or a new `test_lfe_mode.cpp`):
+All 12 Phase 4 tests are implemented in `tests/test_lfe_mode.cpp`.
+The full suite runs as 40 test cases / 150 assertions (was 28/105).
 
 | Test                                                                      | Input                            | Expected                                                                                                  |
 | ------------------------------------------------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------- |

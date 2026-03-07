@@ -29,7 +29,9 @@
 #include "cult_transcoder.hpp"
 #include "cult_version.hpp"
 #include "adm_to_lusid.hpp"
-#include "adm_reader.hpp"   // Phase 3: BW64 axml extraction
+#include "adm_reader.hpp"            // Phase 3: BW64 axml extraction
+#include "adm_profile_resolver.hpp"  // Phase 4: ADM profile detection
+#include <pugixml.hpp>
 
 #include <filesystem>
 #include <set>
@@ -60,6 +62,8 @@ TranscodeResult transcode(const TranscodeRequest& req) {
     report.args.outFormat    = req.outFormat;
     report.args.reportPath   = req.reportPath;
     report.args.stdoutReport = req.stdoutReport;
+    report.args.lfeMode      = (req.lfeMode == LfeMode::SpeakerLabel)
+                                   ? "speaker-label" : "hardcoded";
 
     // --- Validation ---
 
@@ -101,13 +105,25 @@ TranscodeResult transcode(const TranscodeRequest& req) {
 
     if (req.inFormat == "adm_xml") {
         // Phase 2 path: input is a pre-extracted ADM XML file.
-        conversion = convertAdmToLusid(req.inPath);
+        // Phase 4: load doc first so we can run profile detection before converting.
+        pugi::xml_document doc;
+        auto parseRes = doc.load_file(req.inPath.c_str());
+        if (!parseRes) {
+            report.errors.push_back(
+                "Failed to parse XML: " + std::string(parseRes.description()));
+            report.status = "fail";
+            return result;
+        }
+
+        // Profile detection (Phase 4) — always runs, always logs to warnings.
+        ProfileResult profile = resolveAdmProfile(doc);
+        for (auto& w : profile.warnings)
+            report.warnings.push_back(w);
+
+        conversion = convertAdmToLusid(req.inPath, req.lfeMode);
 
     } else {
         // Phase 3 path: input is a BW64/WAV file containing an axml chunk.
-        // extractAxmlFromWav() opens the WAV, extracts the axml chunk,
-        // writes the debug XML artifact to processedData/currentMetaData.xml
-        // (hardcoded per D2), and returns the XML in-memory for parsing.
         auto axmlResult = extractAxmlFromWav(req.inPath);
 
         // Forward warnings from extraction (e.g. debug XML artifact write failure)
@@ -121,8 +137,15 @@ TranscodeResult transcode(const TranscodeRequest& req) {
             return result;
         }
 
+        // Phase 4: profile detection on the extracted XML buffer.
+        pugi::xml_document doc;
+        doc.load_string(axmlResult.xmlData.c_str());
+        ProfileResult profile = resolveAdmProfile(doc);
+        for (auto& w : profile.warnings)
+            report.warnings.push_back(w);
+
         // Parse directly from the in-memory XML buffer — no disk re-read.
-        conversion = convertAdmToLusidFromBuffer(axmlResult.xmlData);
+        conversion = convertAdmToLusidFromBuffer(axmlResult.xmlData, req.lfeMode);
     }
 
     // Forward warnings from conversion

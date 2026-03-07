@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  lfe_speaker_label_fixture.xml — Minimal synthetic ADM XML fixture for
+  Phase 4 speakerLabel LFE detection tests.
+
+  Purpose:
+    Verifies that --lfe-mode speaker-label correctly identifies a DirectSpeaker
+    node as LFE when its speakerLabel child element text is "LFE".
+
+  Structure:
+    - 3 DirectSpeaker channels: L, R, LFE (in that encounter order).
+    - LFE is channel 3 (1-based) — NOT channel 4.
+      This is intentional: if --lfe-mode hardcoded were used, channel 3 would
+      NOT be typed LFE (hardcoded looks for ch4). Only speaker-label mode
+      should produce a node typed "LFE" from this fixture.
+    - 1 audio Object with a single frame at t=0.
+
+  Expected output per lfe-mode:
+    --lfe-mode hardcoded:
+      node 1.1 = direct_speaker (L)
+      node 2.1 = direct_speaker (R)
+      node 3.1 = direct_speaker (LFE channel — but typed direct_speaker, not LFE,
+                 because hardcoded mode only promotes channel 4)
+      node 4.1 = audio_object
+    --lfe-mode speaker-label:
+      node 1.1 = direct_speaker (L)
+      node 2.1 = direct_speaker (R)
+      node 3.1 = LFE  (promoted because speakerLabel text == "LFE")
+      node 4.1 = audio_object
+
+  Do NOT modify this file to change the LFE channel to position 4 — the
+  fixture is deliberately designed to distinguish the two modes.
+-->
+<conformance_point_document>
+  <File name="lfe_speaker_label_fixture.wav">
+    <Technical>
+      <SampleRate>48000</SampleRate>
+      <Duration>00:00:10.000</Duration>
+      <Format>Wave</Format>
+    </Technical>
+    <aXML>
+      <ebuCoreMain>
+        <coreMetadata>
+          <format>
+            <audioFormatExtended>
+
+              <!-- DirectSpeaker: Left -->
+              <audioChannelFormat audioChannelFormatID="AC_00010001"
+                                  audioChannelFormatName="Left"
+                                  typeDefinition="DirectSpeakers"
+                                  typeLabel="0001">
+                <audioBlockFormat audioBlockFormatID="AB_00010001_00000001">
+                  <position coordinate="X">-1.0</position>
+                  <position coordinate="Y">1.0</position>
+                  <position coordinate="Z">0.0</position>
+                </audioBlockFormat>
+              </audioChannelFormat>
+
+              <!-- DirectSpeaker: Right -->
+              <audioChannelFormat audioChannelFormatID="AC_00010002"
+                                  audioChannelFormatName="Right"
+                                  typeDefinition="DirectSpeakers"
+                                  typeLabel="0001">
+                <audioBlockFormat audioBlockFormatID="AB_00010002_00000001">
+                  <position coordinate="X">1.0</position>
+                  <position coordinate="Y">1.0</position>
+                  <position coordinate="Z">0.0</position>
+                </audioBlockFormat>
+              </audioChannelFormat>
+
+              <!-- DirectSpeaker: LFE (channel 3, NOT channel 4 — intentional) -->
+              <audioChannelFormat audioChannelFormatID="AC_00010003"
+                                  audioChannelFormatName="LFEChannel"
+                                  typeDefinition="DirectSpeakers"
+                                  typeLabel="0001">
+                <audioBlockFormat audioBlockFormatID="AB_00010003_00000001">
+                  <position coordinate="X">0.0</position>
+                  <position coordinate="Y">1.0</position>
+                  <position coordinate="Z">0.0</position>
+                  <speakerLabel>LFE</speakerLabel>
+                </audioBlockFormat>
+              </audioChannelFormat>
+
+              <!-- Object -->
+              <audioChannelFormat audioChannelFormatID="AC_00030001"
+                                  audioChannelFormatName="TestObject"
+                                  typeDefinition="Objects"
+                                  typeLabel="0003">
+                <audioBlockFormat audioBlockFormatID="AB_00030001_00000001"
+                                  rtime="00:00:00.00000">
+                  <position coordinate="X">0.0</position>
+                  <position coordinate="Y">1.0</position>
+                  <position coordinate="Z">0.0</position>
+                </audioBlockFormat>
+              </audioChannelFormat>
+
+            </audioFormatExtended>
+          </format>
+        </coreMetadata>
+      </ebuCoreMain>
+    </aXML>
+  </File>
+</conformance_point_document>

@@ -197,7 +197,8 @@ std::string indent(int level) {
 // parseAdmDocument() — internal helper shared by both public entry points.
 // Called after the pugi::xml_document has been loaded (from file or buffer).
 // ---------------------------------------------------------------------------
-static ConversionResult parseAdmDocument(pugi::xml_document& doc) {
+static ConversionResult parseAdmDocument(pugi::xml_document& doc,
+                                          LfeMode lfeMode = LfeMode::Hardcoded) {
     ConversionResult result;
 
     // -- Find EBU root --
@@ -346,8 +347,22 @@ static ConversionResult parseAdmDocument(pugi::xml_document& doc) {
         channel1based++;
         int groupId = channel1based;
 
-        // LFE detection — mirrors _is_lfe_channel()
-        if (kLfeHardcoded && channel1based == 4) {
+        // LFE detection — controlled by lfeMode (AGENTS §11.2, §11.4)
+        bool isLfe = false;
+        if (lfeMode == LfeMode::Hardcoded) {
+            // Phase 2 default: LFE = 4th DirectSpeaker encountered (1-based).
+            // Mirrors Python _is_lfe_channel() with _DEV_LFE_HARDCODED = True.
+            isLfe = kLfeHardcoded && (channel1based == 4);
+        } else {
+            // SpeakerLabel mode (Phase 4 opt-in): LFE = speakerLabel is
+            // "LFE" or "LFE1" (case-insensitive). Channel-4 rule not applied.
+            std::string lbl = si.speakerLabel;
+            std::transform(lbl.begin(), lbl.end(), lbl.begin(),
+                           [](unsigned char c){ return std::tolower(c); });
+            isLfe = (lbl == "lfe" || lbl == "lfe1");
+        }
+
+        if (isLfe) {
             LusidNode node;
             node.id = std::to_string(groupId) + ".1";
             node.type = "LFE";
@@ -422,7 +437,7 @@ static ConversionResult parseAdmDocument(pugi::xml_document& doc) {
 // ---------------------------------------------------------------------------
 // convertAdmToLusid() — public API, parses from file path
 // ---------------------------------------------------------------------------
-ConversionResult convertAdmToLusid(const std::string& xmlPath) {
+ConversionResult convertAdmToLusid(const std::string& xmlPath, LfeMode lfeMode) {
     ConversionResult result;
 
     pugi::xml_document doc;
@@ -439,7 +454,7 @@ ConversionResult convertAdmToLusid(const std::string& xmlPath) {
         return result;
     }
 
-    return parseAdmDocument(doc);
+    return parseAdmDocument(doc, lfeMode);
 }
 
 // ---------------------------------------------------------------------------
@@ -449,7 +464,8 @@ ConversionResult convertAdmToLusid(const std::string& xmlPath) {
 // extractAxmlFromWav(). Avoids a disk write+re-read cycle. All parity rules
 // from AGENTS-CULT §3/§5 apply identically — same parseAdmDocument() call.
 // ---------------------------------------------------------------------------
-ConversionResult convertAdmToLusidFromBuffer(const std::string& xmlBuffer) {
+ConversionResult convertAdmToLusidFromBuffer(const std::string& xmlBuffer,
+                                              LfeMode lfeMode) {
     ConversionResult result;
 
     pugi::xml_document doc;
@@ -461,7 +477,7 @@ ConversionResult convertAdmToLusidFromBuffer(const std::string& xmlBuffer) {
         return result;
     }
 
-    return parseAdmDocument(doc);
+    return parseAdmDocument(doc, lfeMode);
 }
 
 // ---------------------------------------------------------------------------

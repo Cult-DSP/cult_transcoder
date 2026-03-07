@@ -132,7 +132,7 @@ All phases must preserve the toolchain contract authority: `LUSID/internalDocsMD
 
 ## Phase 4 — ADM Profile Resolver + Improved LFE Detection (Flagged)
 
-**Status: 🟡 READY TO IMPLEMENT — Phase 3 pipeline testing confirmed by owner (2026-03-07)**
+**Status: ✅ COMPLETE — Implemented and 40/40 tests passing (2026-03-07)**
 
 > Full implementation notes for the next agent are in **AGENTS-CULT.md §11**.
 > Read that entire section before touching any file.
@@ -166,16 +166,16 @@ All phases must preserve the toolchain contract authority: `LUSID/internalDocsMD
 | P4-0  | Owner confirms Phase 3 pipeline testing complete, no regressions                                                                                                             | ✅ 2026-03-07   |
 | P4-0b | Inspect `sourceData/sony360RA_example.xml` for `speakerLabel`/LFE patterns (resolved: no LFE/speakerLabel present; object-only 360RA file)                                   | ✅ 2026-03-07   |
 | P4-0c | ~~Run Python oracle on Sony 360RA fixture~~ — **N/A**: oracle cannot parse 360RA `<audioFormatExtended>` root; returns empty scene. No reference LUSID committed. See §11.6. | ✅ resolved-N/A |
-| P4-1  | Create `transcoding/adm/adm_profile_resolver.hpp` (AdmProfile enum, ProfileResult, resolveAdmProfile() — see §11.3)                                                          | ⏳              |
-| P4-2  | Implement `transcoding/adm/adm_profile_resolver.cpp` (detection heuristics per §11.3, priority order)                                                                        | ⏳              |
-| P4-3  | Add `LfeMode` enum to `include/adm_to_lusid.hpp`; add `lfeMode` param to `convertAdmToLusid()` + `convertAdmToLusidFromBuffer()`                                             | ⏳              |
-| P4-4  | Add `lfeMode` param to `parseAdmDocument()` in `src/adm_to_lusid.cpp`; implement `SpeakerLabel` branch (see §11.4)                                                           | ⏳              |
-| P4-5  | Add `lfeMode` field to `TranscodeRequest` in `include/cult_transcoder.hpp`                                                                                                   | ⏳              |
-| P4-6  | Parse `--lfe-mode` arg in `src/transcoder.cpp`; call `resolveAdmProfile()`; pass lfeMode to converter                                                                        | ⏳              |
-| P4-7  | Serialise `lfeMode` in report `args` block in `src/main.cpp`                                                                                                                 | ⏳              |
-| P4-8  | Add `adm_profile_resolver.cpp` to both targets in `CMakeLists.txt`                                                                                                           | ⏳              |
-| P4-9  | Commit Sony 360RA fixture to `tests/parity/fixtures/` (detection only, no LUSID reference); add synthetic `speakerLabel` LFE fixture; add Phase 4 tests (see §11.6)          | ⏳              |
-| P4-10 | Update AGENTS-CULT.md §1, §2, §11 status; update DEV-PLAN-CULT.md Phase 4 statuses                                                                                           | ⏳              |
+| P4-1  | Create `transcoding/adm/adm_profile_resolver.hpp` (AdmProfile enum, ProfileResult, resolveAdmProfile() — see §11.3)                                                          | ✅ 2026-03-07   |
+| P4-2  | Implement `transcoding/adm/adm_profile_resolver.cpp` (detection heuristics per §11.3, priority order)                                                                        | ✅ 2026-03-07   |
+| P4-3  | Add `LfeMode` enum to `include/adm_to_lusid.hpp`; add `lfeMode` param to `convertAdmToLusid()` + `convertAdmToLusidFromBuffer()`                                             | ✅ 2026-03-07   |
+| P4-4  | Add `lfeMode` param to `parseAdmDocument()` in `src/adm_to_lusid.cpp`; implement `SpeakerLabel` branch (see §11.4)                                                           | ✅ 2026-03-07   |
+| P4-5  | Add `lfeMode` field to `TranscodeRequest` in `include/cult_transcoder.hpp`                                                                                                   | ✅ 2026-03-07   |
+| P4-6  | Parse `--lfe-mode` arg in `src/transcoder.cpp`; call `resolveAdmProfile()`; pass lfeMode to converter                                                                        | ✅ 2026-03-07   |
+| P4-7  | Serialise `lfeMode` in report `args` block in `src/main.cpp`                                                                                                                 | ✅ 2026-03-07   |
+| P4-8  | Add `adm_profile_resolver.cpp` to both targets in `CMakeLists.txt`                                                                                                           | ✅ 2026-03-07   |
+| P4-9  | Commit Sony 360RA fixture to `tests/parity/fixtures/` (detection only, no LUSID reference); add synthetic `speakerLabel` LFE fixture; add Phase 4 tests (see §11.6)          | ✅ 2026-03-07   |
+| P4-10 | Update AGENTS-CULT.md §1, §2, §11 status; update DEV-PLAN-CULT.md Phase 4 statuses                                                                                           | ✅ 2026-03-07   |
 | P4-11 | Update `spatialroot/internalDocsMD/AGENTS.md` if `--lfe-mode` is exposed in pipeline                                                                                         | ⏳              |
 
 ### Gates
