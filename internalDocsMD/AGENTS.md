@@ -1298,7 +1298,7 @@ speaker.azimuth = s.azimuth * 180.0f / M_PI;
 **Issue:** Render duration appears truncated when read back (e.g., 166s instead of 566s)  
 **Cause:** Standard WAV format header overflow. Audio data exceeds 4 GB (common with 54+ speaker layouts and compositions over ~7 minutes at 48kHz). The 32-bit data-chunk size wraps around modulo 2³², causing readers to see fewer samples than were actually written. The audio data on disk is correct — only the header is wrong.
 
-**Fix:** `WavUtils.cpp` now auto-selects RF64 format for files over 4 GB. `analyzeRender.py` now detects and warns about this condition.
+**Fix:** `WavUtils.cpp` now auto-selects RF64 format for files over 4 GB. `analyzeRender.py` cross-checks file size vs header.
 
 **Issue:** ✅ Master gain default is now consistently `0.5` across all code and docs.
 
