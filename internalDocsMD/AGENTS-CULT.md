@@ -487,11 +487,16 @@ Detection heuristics (implement exactly these, in priority order):
 
 1. Search all `audioProgramme` nodes for `audioProgrammeName` attribute.
    - If value contains `"Atmos"` (case-insensitive) → `DolbyAtmos`
-   - If value contains `"360RA"` or `"360"` (case-insensitive) → `Sony360RA`
+   - If value contains `"360RA"` (case-insensitive) → `Sony360RA`
 2. Search all `audioPackFormat` nodes for `audioPackFormatName` attribute.
    - If value contains `"Atmos"` (case-insensitive) → `DolbyAtmos`
    - If value contains `"360RA"` (case-insensitive) → `Sony360RA`
 3. If no signals found → `Unknown` (caller treats as `Generic`)
+
+**Note:** bare `"360"` is intentionally excluded as a detection signal — it is
+too broad and would produce false positives. Only `"360RA"` is used. The real
+Sony fixture (`audioProgrammeName="Gem_OM_360RA_3"`) matches on `"360RA"`.
+Do not re-add `"360"` without an explicit owner decision.
 
 **Do not** use libadm for this pass. pugixml is already available and the
 detection is purely attribute-string inspection — no ADM semantic model needed.
@@ -574,11 +579,11 @@ Minimum new tests required in `test_cli_args.cpp` (or a new `test_lfe_mode.cpp`)
 
 - `sony_360ra_example.xml` — copy of `processedData/sony360RA_example.xml`
   (already confirmed present in the workspace). Do not modify the source file.
-  **No Python oracle reference LUSID is committed for this fixture.** The Python
-  oracle (`parse_adm_xml_to_lusid_scene`) cannot parse Sony 360RA ADM because
-  the XML root is `<format><audioFormatExtended>` rather than `<ebuCoreMain>`.
-  The oracle returns an empty scene and is not a valid baseline. Sony 360RA
-  support was never part of the Python oracle's scope.
+  Use this file directly for profile detection tests; its `audioProgrammeName`
+  is `"Gem_OM_360RA_3"` which contains `"360RA"` — the unambiguous detection
+  signal. **No Python oracle reference LUSID is committed for this fixture.**
+  The Python oracle cannot parse Sony 360RA ADM (`<audioFormatExtended>` root)
+  and is not a valid baseline. Sony 360RA support was never in the oracle scope.
 
 - `sony_360ra_example.xml` is used **only** for Phase 4 profile detection tests
   (assert `Sony360RA` is returned by `resolveAdmProfile()`). It is **not** used
@@ -596,10 +601,18 @@ Minimum new tests required in `test_cli_args.cpp` (or a new `test_lfe_mode.cpp`)
 
 ### 11.7 Report contract additions
 
-The report `args` block must include the resolved `--lfe-mode` value even when
-defaulted. This means `TranscodeRequest` needs a `lfeMode` field, and
-`report.cpp` / `main.cpp` must serialise it. The field name in the JSON report
-args block is `"lfeMode"` (camelCase, matching existing report field naming).
+`lfeMode` must be added to `ResolvedArgs` in `cult_report.hpp` so it is copied
+from `TranscodeRequest` alongside all other args before transcoding begins.
+This mirrors the existing pattern: `inPath`, `inFormat`, etc. are already on
+`ResolvedArgs` and serialized verbatim. `lfeMode` follows the same path —
+`TranscodeRequest` → copy into `Report::args` → serialized to JSON. The field
+name in the JSON report args block is `"lfeMode"` (camelCase).
+
+Profile detection results must **always** produce a `warnings[]` entry,
+unconditionally — even when the detected profile does not change conversion
+behavior (e.g., `DolbyAtmos` detected but `--lfe-mode hardcoded` in use). The
+report is a transparency artifact for the pipeline and renderer; it must reflect
+everything that was observed, not just what changed.
 
 No other report schema changes in Phase 4. `reportVersion` stays `"0.1"`.
 
@@ -614,11 +627,13 @@ No other report schema changes in Phase 4. `reportVersion` stays `"0.1"`.
 | `include/adm_to_lusid.hpp`                                 | Add `LfeMode` enum; add `lfeMode` param to `convertAdmToLusid()` and `convertAdmToLusidFromBuffer()` |
 | `src/adm_to_lusid.cpp`                                     | Add `lfeMode` param to `parseAdmDocument()`; add `SpeakerLabel` branch                               |
 | `include/cult_transcoder.hpp`                              | Add `lfeMode` field to `TranscodeRequest`                                                            |
+| `include/cult_report.hpp`                                  | Add `lfeMode` field to `ResolvedArgs` (copied from `TranscodeRequest` before transcoding)            |
 | `src/transcoder.cpp`                                       | Parse `--lfe-mode` arg; pass to `resolveAdmProfile()` + converter calls                              |
-| `src/main.cpp`                                             | Serialise `lfeMode` in report args block                                                             |
+| `src/main.cpp`                                             | Copy `lfeMode` into `report.args`; profile detection warnings into `report.warnings`                 |
+| `src/report.cpp`                                           | Serialise `lfeMode` in the `args` JSON block                                                         |
 | `CMakeLists.txt`                                           | Add `adm_profile_resolver.cpp` to both targets                                                       |
 | `tests/test_cli_args.cpp` or new `tests/test_lfe_mode.cpp` | New Phase 4 tests (see §11.6)                                                                        |
-| `tests/parity/fixtures/`                                   | Add Sony 360RA fixture + reference LUSID                                                             |
+| `tests/parity/fixtures/`                                   | Add `sony_360ra_example.xml` + synthetic `lfe_speaker_label_fixture.xml`                             |
 | `internalDocsMD/AGENTS-CULT.md`                            | Update §1 repo layout, §2 CLI contract, §11 status                                                   |
 | `internalDocsMD/DEV-PLAN-CULT.md`                          | Mark Phase 4 work items complete                                                                     |
 | `spatialroot/internalDocsMD/AGENTS.md`                     | Note `--lfe-mode` flag exists, update binary contract if needed                                      |

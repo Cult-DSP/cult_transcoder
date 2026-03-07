@@ -42,7 +42,7 @@
 //   enum class AdmProfile {
 //       Generic,     // Standard BS.2076, no tool-specific signals found
 //       DolbyAtmos,  // "Atmos" signal detected
-//       Sony360RA,   // "360RA" or "360" signal detected
+//       Sony360RA,   // "360RA" signal detected (NOT bare "360" — too broad)
 //       Unknown,     // XML present but no profile signals — treat as Generic
 //   };
 //
