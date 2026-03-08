@@ -1630,10 +1630,8 @@ python LUSID/tests/benchmark_xml_parsers.py
 
 - [x] **Forward `dbap_focus` for all DBAP modes** ✅ FIXED — `runPipeline.py` sends `--dbap_focus` for both `"dbap"` and `"dbapfocus"` modes
 
-- [ ] **LFE gain control**
-  - Make `dbap_sub_compensation` a configurable parameter (CLI flag or config file)
-  - Currently hardcoded global var in `SpatialRenderer.cpp`
-  - Depends on DBAP focus and layout — needs more testing
+- [x] **LFE gain control** ✅ — realtime engine has `subMix` atomic in `RealtimeTypes.hpp`, exposed as `/realtime/sub_mix_db` (±10 dB) via OSC and the Sub Mix slider in `RealtimeControlsPanel`. Fully wired.
+  - Note: `dbap_sub_compensation = 0.95f` in `SpatialRenderer.cpp` is the **offline renderer only** — not relevant to realtime pipeline.
 
 - [ ] **Spatializer auto-detection**
   - Analyze layout to recommend best spatializer
@@ -1701,7 +1699,9 @@ python LUSID/tests/benchmark_xml_parsers.py
 
 #### Pipeline Improvements
 
-- [ ] **Fix `sys.argv` bounds check ordering** ⚠️ _[Issues list #8]_
+> **Scope note (2026-03-07):** All items below reference `runPipeline.py` (the deprecated **offline** pipeline). These are **not active work items**. Current development focus is the realtime pipeline (`runRealtime.py`, `gui/realtimeGUI/`). Do not fix offline pipeline bugs without an explicit owner decision to revive that path.
+
+- [ ] **Fix `sys.argv` bounds check ordering** ⚠️ _[Issues list #8] — offline pipeline only_
   - `runPipeline.py` line 158 reads `sys.argv[1]` before the `len(sys.argv) < 2` guard
   - Move bounds check before first access to prevent `IndexError`
 
@@ -1823,7 +1823,9 @@ python LUSID/tests/benchmark_xml_parsers.py
 - `SpatialRenderer.hpp`, `main.cpp` help text, and `RENDERING.md` all standardized to `0.5`.
 - **Fix:** Updated all three locations to match `float masterGain = 0.5`.
 
-#### ⚠️ OPEN — runPipeline.py Robustness
+#### ⚠️ OPEN — runPipeline.py Robustness (OFFLINE PIPELINE ONLY — do not fix)
+
+> **Scope note (2026-03-07):** `runPipeline.py` is the **deprecated offline pipeline** and is not a focus of active development. These bugs are documented for archaeology only. Do not spend time on them unless the owner explicitly scopes offline pipeline work. The active realtime pipeline (`runRealtime.py` + `gui/realtimeGUI/`) is the current focus.
 
 - `sys.argv[1]` accessed before bounds check (line 158 vs check on line 162)
 - Double audio-channel scan wastes ~28 s per run (calls both `exportAudioActivity()` and `channelHasAudio()`)
@@ -1906,6 +1908,13 @@ For questions or contributions, open an issue or PR on GitHub.
 
 **End of Agent Context Document**
 
+**Active development scope (2026-03-07):** The realtime pipeline (`runRealtime.py`, `gui/realtimeGUI/`, `spatial_engine/realtimeEngine/`) is the current focus. The offline pipeline (`runPipeline.py`, `runGUI.py`) is deprecated — do not fix bugs there without explicit owner direction.
+
 **OSC port policy:** use a **fixed localhost port (9009)** for the engine `ParameterServer`.
 This is simplest for the prototype, but may conflict if multiple instances run or the port is occupied.
 GUI must surface clear errors; future refactor can add configurable/auto-pick ports.
+
+**Realtime runner — `processedData/` guard (fixed 2026-03-07):**
+`RealtimeRunner.__init__` now calls `os.makedirs(os.path.join(repo_root, "processedData"), exist_ok=True)`
+before starting `QProcess`. This mirrors the offline pipeline's directory guarantee and prevents
+`cult-transcoder` from failing on a missing output directory in fresh checkouts.
