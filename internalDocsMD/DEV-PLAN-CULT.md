@@ -230,9 +230,9 @@ All phases must preserve the toolchain contract authority: `LUSID/internalDocsMD
 
 ## Phase 6 — Sony 360RA ADM Conversion (Phase 6A), then MPEG-H (Phase 6B)
 
-### Phase 6A — Sony 360RA ADM → LUSID (IN PROGRESS)
+### Phase 6A — Sony 360RA ADM → LUSID (COMPLETE)
 
-**Status: IN PROGRESS (2026-03-07)**
+**Status: ✅ COMPLETE (2026-03-07) — 65/65 tests passing (25 new P6 tests)**
 
 Sony 360RA ADM-variant ingestion is the first deliverable of Phase 6. It does not require
 any MPEG-H decoder library — the input is a standard BS.2076-2 ADM XML document.
@@ -253,12 +253,12 @@ any MPEG-H decoder library — the input is a standard BS.2076-2 ADM XML documen
 
 | #     | Deliverable                                                                | Status        |
 | ----- | -------------------------------------------------------------------------- | ------------- |
-| P6A-1 | `transcoding/adm/sony360ra_to_lusid.hpp` — public API                      | ⬜            |
-| P6A-2 | `transcoding/adm/sony360ra_to_lusid.cpp` — full implementation             | ⬜            |
-| P6A-3 | `src/transcoder.cpp` — Sony360RA auto-dispatch branch                      | ⬜            |
-| P6A-4 | `CMakeLists.txt` — add `sony360ra_to_lusid.cpp` to both targets            | ⬜            |
-| P6A-5 | `tests/test_360ra.cpp` — polar→cart unit tests + structural invariants     | ⬜            |
-| P6A-6 | `tests/parity/fixtures/sony_360ra_reference.lusid.json` — reference output | ⬜            |
+| P6A-1 | `transcoding/adm/sony360ra_to_lusid.hpp` — public API                      | ✅ 2026-03-07 |
+| P6A-2 | `transcoding/adm/sony360ra_to_lusid.cpp` — full implementation             | ✅ 2026-03-07 |
+| P6A-3 | `src/transcoder.cpp` — Sony360RA auto-dispatch branch                      | ✅ 2026-03-07 |
+| P6A-4 | `CMakeLists.txt` — add `sony360ra_to_lusid.cpp` to both targets            | ✅ 2026-03-07 |
+| P6A-5 | `tests/test_360ra.cpp` — polar→cart unit tests + structural invariants     | ✅ 2026-03-07 |
+| P6A-6 | `tests/parity/fixtures/sony_360ra_reference.lusid.json` — reference output | ✅ 2026-03-07 |
 | P6A-7 | `internalDocsMD/AGENTS-CULT.md` — §15 Phase 6 section                      | ✅ 2026-03-07 |
 | P6A-8 | `internalDocsMD/DESIGN-DOC-V1-CULT.MD` — two 360RA ingestion modes section | ✅ 2026-03-07 |
 | P6A-9 | `internalDocsMD/DEV-PLAN-CULT.md` — this update                            | ✅ 2026-03-07 |

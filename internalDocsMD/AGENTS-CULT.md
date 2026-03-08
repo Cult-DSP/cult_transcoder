@@ -1,7 +1,7 @@
 # AGENTS.md — CULT Transcoder (Execution-Safe, Contract-First)
 
 **Last updated: 2026-03-07**  
-Phases 1–5 complete. Phase 6 Sony 360RA ADM conversion — IN PROGRESS — see §15.
+Phases 1–6A complete. Phase 6A Sony 360RA ADM conversion — COMPLETE — 65/65 tests passing. Phase 6B (MPEG-H) deferred. See §15.
 
 Repo placement: `spatialroot/cult-transcoder/` (git submodule, already wired).  
 Invocation: CLI-first. Spatial Root calls `spatialroot/cult-transcoder/build/cult-transcoder` (macOS/Linux) or the `.bat` wrapper on Windows (see §9).  
