@@ -142,6 +142,7 @@ In Sony's Spatial Content Creation workflow, 360RA mix metadata is embedded in a
 ```
 
 Key structural characteristics:
+
 - The `<conformance_point_document>` wrapper is a bwfmetaedit artifact — not part of BS.2076. The ADM root (`<audioFormatExtended>`) is nested at `conformance_point_document/File/aXML/format/audioFormatExtended`.
 - All 13 channels are `typeDefinition="Objects"` (`audioPackFormat typeLabel="0003"`). There is no DirectSpeakers bed.
 - Timestamps use the `HH:MM:SS.fffffS<sampleRate>` format (e.g., `00:01:32.40449S48000`). The `S48000` suffix is a sample-frame denominator added by the Sony exporter. C `sscanf` with `%lf` parses this correctly (stops at `S`).
@@ -157,6 +158,7 @@ CULT Transcoder handling (Phase 6): `convertSony360RaToLusid()` in `transcoding/
 Sony's music production and distribution pipeline encodes 360RA mixes as MPEG-H 3D Audio bitstreams. These files use the MPEG-H Low Complexity Profile and are distributed in ISO Base Media File Format (`.mpf` extension) or standalone MPEG-H Audio Stream (`.mhas`) containers. The spatial metadata is encoded as MPEG-H Audio Scene Information (MAEI) — a format structurally different from ADM XML, carrying object positions, gains, and rendering presets in MPEG-H-specific binary OBUs.
 
 Key differences from Mode 1:
+
 - No ADM XML is present. Metadata is in MAEI binary format, not BS.2076 XML.
 - Container format is `.mpf` / `.mhas` / `.m4f`, not BW64 WAV.
 - Decoding requires the MPEG-H decoder library (Ittiam `libmpeghdec` or Fraunhofer `mpeghdec`) for both audio PCM and MAEI metadata extraction.
@@ -164,6 +166,7 @@ Key differences from Mode 1:
 - The MAEI → LUSID conversion path (MAEI object positions → CULT internal model → LUSID JSON) is architecturally different from the ADM path.
 
 Status: **DEFERRED.** No implementation work should begin on Mode 2 until:
+
 1. Owner confirms availability of `.mpf` or `.mhas` fixture files for testing.
 2. Owner decides on Ittiam vs Fraunhofer MPEG-H backend (see §MPEG-H libraries section).
 3. A dedicated design sub-section documents the MAEI → LUSID mapping.

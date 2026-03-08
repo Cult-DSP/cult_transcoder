@@ -856,18 +856,19 @@ CLI contract is **unchanged** — no new flags, no new `--in-format` values.
 
 ### 15.2 New files
 
-| File | Purpose |
-| ---- | ------- |
-| `transcoding/adm/sony360ra_to_lusid.hpp` | Public API: `convertSony360RaToLusid()` |
-| `transcoding/adm/sony360ra_to_lusid.cpp` | Full implementation |
-| `tests/test_360ra.cpp` | Phase 6 tests (polar→cart unit tests + structural invariants) |
-| `tests/parity/fixtures/sony_360ra_reference.lusid.json` | Reference LUSID output for regression |
+| File                                                    | Purpose                                                       |
+| ------------------------------------------------------- | ------------------------------------------------------------- |
+| `transcoding/adm/sony360ra_to_lusid.hpp`                | Public API: `convertSony360RaToLusid()`                       |
+| `transcoding/adm/sony360ra_to_lusid.cpp`                | Full implementation                                           |
+| `tests/test_360ra.cpp`                                  | Phase 6 tests (polar→cart unit tests + structural invariants) |
+| `tests/parity/fixtures/sony_360ra_reference.lusid.json` | Reference LUSID output for regression                         |
 
 ---
 
 ### 15.3 Sony 360RA XML structure (pinned — from fixture inspection)
 
 **Root path:**
+
 ```
 <conformance_point_document>
   <File>
@@ -875,15 +876,18 @@ CLI contract is **unchanged** — no new flags, no new `--in-format` values.
       <format>
         <audioFormatExtended version="ITU-R_BS.2076-2">
 ```
+
 This is a bwfmetaedit export wrapper. The `<audioFormatExtended>` node is the
 ADM root. Extract it by navigating: `conformance_point_document/File/aXML/format/audioFormatExtended`.
 
 **Object structure:**
+
 - 1 container `audioObject` (`AO_8001`) with `audioObjectIDRef` children — **skip this**.
 - 13 leaf `audioObject` elements (`AO_1001`–`AO_100d`) each with exactly one `audioTrackUIDRef` and one `audioPackFormatIDRef`.
 - Detection: a leaf audioObject has a `<audioTrackUIDRef>` child; a container has `<audioObjectIDRef>` children.
 
 **`audioChannelFormat` → `audioBlockFormat` structure:**
+
 ```xml
 <audioChannelFormat audioChannelFormatID="AC_00031001" audioChannelFormatName="L obj 1"
     typeDefinition="Objects" typeLabel="0003">
@@ -921,6 +925,7 @@ position and convert to Cartesian. Emit a single LUSID frame at `t=0`. All 13 no
 are in this one frame.
 
 Consequences:
+
 - The LUSID scene has exactly **1 frame** for any 360RA file following this pattern.
 - The gain-mute interleaving is silently discarded (not a lossy conversion for spatial data).
 - This is the correct semantic: the "scene" of this 360RA mix is a static immersive bed.
@@ -965,16 +970,19 @@ in §15.9 open questions for Phase 6+.
 ### 15.7 Polar → LUSID Cartesian conversion (PINNED)
 
 ADM polar convention (BS.2076-2):
+
 - `azimuth`: degrees, clockwise from front (0=front, +90=right, −90=left, ±180=back)
 - `elevation`: degrees, 0=horizontal plane, +90=up, −90=down
 - `distance`: meters (360RA always 1.0 = unit sphere)
 
 LUSID Cartesian convention (schema `cart[x, y, z]`):
+
 - `x`: right = +x
 - `y`: front = +y
 - `z`: up = +z
 
 Conversion formula:
+
 ```
 az_rad  = azimuth  * π/180
 el_rad  = elevation * π/180
@@ -1020,12 +1028,12 @@ or LFE), but if supplied it must not error. Emit a warning: `"lfe-mode flag has 
 
 ### 15.9 Open questions — Phase 6+
 
-| # | Question | Status |
-|---|----------|--------|
-| 1 | MPEG-H 360RA ingestion mode | **DEFERRED** — see §15.10 |
-| 2 | Container audioObject metadata (gain, importance) — apply to leaf nodes? | **OPEN** — do not implement without owner decision |
-| 3 | Multi-block animated objects in 360RA — future keyframe support? | **OPEN** — do not implement without owner decision |
-| 4 | Per-object gain pass-through from ADM `<gain>` to LUSID? | **OPEN** — see §15.5 bug risk note |
+| #   | Question                                                                 | Status                                             |
+| --- | ------------------------------------------------------------------------ | -------------------------------------------------- |
+| 1   | MPEG-H 360RA ingestion mode                                              | **DEFERRED** — see §15.10                          |
+| 2   | Container audioObject metadata (gain, importance) — apply to leaf nodes? | **OPEN** — do not implement without owner decision |
+| 3   | Multi-block animated objects in 360RA — future keyframe support?         | **OPEN** — do not implement without owner decision |
+| 4   | Per-object gain pass-through from ADM `<gain>` to LUSID?                 | **OPEN** — see §15.5 bug risk note                 |
 
 ---
 

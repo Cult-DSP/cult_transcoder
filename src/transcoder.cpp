@@ -31,6 +31,7 @@
 #include "adm_to_lusid.hpp"
 #include "adm_reader.hpp"            // Phase 3: BW64 axml extraction
 #include "adm_profile_resolver.hpp"  // Phase 4: ADM profile detection
+#include "sony360ra_to_lusid.hpp"    // Phase 6: Sony 360RA ADM → LUSID
 #include <pugixml.hpp>
 
 #include <filesystem>
@@ -120,7 +121,13 @@ TranscodeResult transcode(const TranscodeRequest& req) {
         for (auto& w : profile.warnings)
             report.warnings.push_back(w);
 
-        conversion = convertAdmToLusid(req.inPath, req.lfeMode);
+        // Phase 6: auto-dispatch to Sony 360RA converter when detected.
+        // The pugi::xml_document is already in memory — pass it directly.
+        if (profile.profile == AdmProfile::Sony360RA) {
+            conversion = convertSony360RaToLusid(doc, req.lfeMode);
+        } else {
+            conversion = convertAdmToLusid(req.inPath, req.lfeMode);
+        }
 
     } else {
         // Phase 3 path: input is a BW64/WAV file containing an axml chunk.
@@ -144,8 +151,13 @@ TranscodeResult transcode(const TranscodeRequest& req) {
         for (auto& w : profile.warnings)
             report.warnings.push_back(w);
 
-        // Parse directly from the in-memory XML buffer — no disk re-read.
-        conversion = convertAdmToLusidFromBuffer(axmlResult.xmlData, req.lfeMode);
+        // Phase 6: auto-dispatch to Sony 360RA converter when detected.
+        if (profile.profile == AdmProfile::Sony360RA) {
+            conversion = convertSony360RaToLusid(doc, req.lfeMode);
+        } else {
+            // Parse directly from the in-memory XML buffer — no disk re-read.
+            conversion = convertAdmToLusidFromBuffer(axmlResult.xmlData, req.lfeMode);
+        }
     }
 
     // Forward warnings from conversion

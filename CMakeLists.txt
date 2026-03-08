@@ -123,6 +123,7 @@ add_executable(cult-transcoder
     src/adm_to_lusid.cpp
     transcoding/adm/adm_reader.cpp           # Phase 3: BW64 axml extraction (libbw64)
     transcoding/adm/adm_profile_resolver.cpp # Phase 4: ADM profile detection
+    transcoding/adm/sony360ra_to_lusid.cpp   # Phase 6: Sony 360RA ADM → LUSID
 )
 
 target_include_directories(cult-transcoder
@@ -154,6 +155,7 @@ add_executable(cult_tests
     tests/test_report.cpp
     tests/test_cli_args.cpp
     tests/test_lfe_mode.cpp                  # Phase 4: LFE mode + profile detection tests
+    tests/test_360ra.cpp                     # Phase 6: Sony 360RA conversion tests
     tests/parity/run_parity.cpp
 
     # Same source files the main binary uses, so tests exercise real code
@@ -162,6 +164,7 @@ add_executable(cult_tests
     src/adm_to_lusid.cpp
     transcoding/adm/adm_reader.cpp           # Phase 3: needed by transcoder
     transcoding/adm/adm_profile_resolver.cpp # Phase 4: ADM profile detection
+    transcoding/adm/sony360ra_to_lusid.cpp   # Phase 6: Sony 360RA ADM → LUSID
 )
 
 target_include_directories(cult_tests

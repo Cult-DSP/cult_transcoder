@@ -239,29 +239,29 @@ any MPEG-H decoder library — the input is a standard BS.2076-2 ADM XML documen
 
 ### Pinned design decisions (all owner-confirmed 2026-03-07)
 
-| Decision | Value |
-|---|---|
-| Frame strategy | Option A — single static frame at t=0, first non-muted block per object |
-| Gain field | NOT written to LUSID nodes. Renderer assumes gain=1.0. See AGENTS-CULT §15.5 for future bug risk. |
-| Dispatch | Auto (profile-based). `resolveAdmProfile()` returns `Sony360RA` → new converter invoked. No new `--in-format` flag. |
-| Node ID scheme | `1.1` through `13.1` (encounter order of leaf audioObjects, starting at 1) |
-| Container audioObject | Skipped (any `audioObject` with `<audioObjectIDRef>` children). See AGENTS-CULT §15.6 for future consideration. |
-| Two 360RA modes | Mode 1 (ADM-variant) = this phase. Mode 2 (MPEG-H) = deferred to Phase 6B. |
-| `--lfe-mode` with 360RA | Irrelevant (no DirectSpeakers/LFE in 360RA). Emit warning if supplied, do not error. |
+| Decision                | Value                                                                                                               |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Frame strategy          | Option A — single static frame at t=0, first non-muted block per object                                             |
+| Gain field              | NOT written to LUSID nodes. Renderer assumes gain=1.0. See AGENTS-CULT §15.5 for future bug risk.                   |
+| Dispatch                | Auto (profile-based). `resolveAdmProfile()` returns `Sony360RA` → new converter invoked. No new `--in-format` flag. |
+| Node ID scheme          | `1.1` through `13.1` (encounter order of leaf audioObjects, starting at 1)                                          |
+| Container audioObject   | Skipped (any `audioObject` with `<audioObjectIDRef>` children). See AGENTS-CULT §15.6 for future consideration.     |
+| Two 360RA modes         | Mode 1 (ADM-variant) = this phase. Mode 2 (MPEG-H) = deferred to Phase 6B.                                          |
+| `--lfe-mode` with 360RA | Irrelevant (no DirectSpeakers/LFE in 360RA). Emit warning if supplied, do not error.                                |
 
 ### Deliverables
 
-| # | Deliverable | Status |
-|---|---|---|
-| P6A-1 | `transcoding/adm/sony360ra_to_lusid.hpp` — public API | ⬜ |
-| P6A-2 | `transcoding/adm/sony360ra_to_lusid.cpp` — full implementation | ⬜ |
-| P6A-3 | `src/transcoder.cpp` — Sony360RA auto-dispatch branch | ⬜ |
-| P6A-4 | `CMakeLists.txt` — add `sony360ra_to_lusid.cpp` to both targets | ⬜ |
-| P6A-5 | `tests/test_360ra.cpp` — polar→cart unit tests + structural invariants | ⬜ |
-| P6A-6 | `tests/parity/fixtures/sony_360ra_reference.lusid.json` — reference output | ⬜ |
-| P6A-7 | `internalDocsMD/AGENTS-CULT.md` — §15 Phase 6 section | ✅ 2026-03-07 |
+| #     | Deliverable                                                                | Status        |
+| ----- | -------------------------------------------------------------------------- | ------------- |
+| P6A-1 | `transcoding/adm/sony360ra_to_lusid.hpp` — public API                      | ⬜            |
+| P6A-2 | `transcoding/adm/sony360ra_to_lusid.cpp` — full implementation             | ⬜            |
+| P6A-3 | `src/transcoder.cpp` — Sony360RA auto-dispatch branch                      | ⬜            |
+| P6A-4 | `CMakeLists.txt` — add `sony360ra_to_lusid.cpp` to both targets            | ⬜            |
+| P6A-5 | `tests/test_360ra.cpp` — polar→cart unit tests + structural invariants     | ⬜            |
+| P6A-6 | `tests/parity/fixtures/sony_360ra_reference.lusid.json` — reference output | ⬜            |
+| P6A-7 | `internalDocsMD/AGENTS-CULT.md` — §15 Phase 6 section                      | ✅ 2026-03-07 |
 | P6A-8 | `internalDocsMD/DESIGN-DOC-V1-CULT.MD` — two 360RA ingestion modes section | ✅ 2026-03-07 |
-| P6A-9 | `internalDocsMD/DEV-PLAN-CULT.md` — this update | ✅ 2026-03-07 |
+| P6A-9 | `internalDocsMD/DEV-PLAN-CULT.md` — this update                            | ✅ 2026-03-07 |
 
 ### Gates
 
@@ -298,6 +298,7 @@ any MPEG-H decoder library — the input is a standard BS.2076-2 ADM XML documen
 
 MPEG-H 360RA mode (Sony Music Production `.mpf`/`.mhas` pipeline) is a separate
 ingestion mode with no ADM XML. Requires:
+
 - MPEG-H decoder (Ittiam `libmpeghdec`, default; Fraunhofer `mpeghdec`, optional)
 - CMake options: `WITH_MPEGH_ITTIAM=ON` (default), `WITH_MPEGH_FRAUNHOFER=OFF`
 - New `transcoding/mpegh/` module (entirely separate from `transcoding/adm/`)
