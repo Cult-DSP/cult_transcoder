@@ -228,19 +228,54 @@ All phases must preserve the toolchain contract authority: `LUSID/internalDocsMD
 
 ---
 
-## Phase 6 — MPEG-H Support (Sony 360RA Priority), then IAMF
+## Phase 6 — Sony 360RA ADM Conversion (Phase 6A), then MPEG-H (Phase 6B)
 
-### MPEG-H approach
+### Phase 6A — Sony 360RA ADM → LUSID (IN PROGRESS)
 
-- Implement both backends behind CMake options:
-  - `WITH_MPEGH_ITTIAM` default ON
-  - `WITH_MPEGH_FRAUNHOFER` default OFF
-- Add capability matrix + loss ledger updates for conversions.
+**Status: IN PROGRESS (2026-03-07)**
+
+Sony 360RA ADM-variant ingestion is the first deliverable of Phase 6. It does not require
+any MPEG-H decoder library — the input is a standard BS.2076-2 ADM XML document.
+
+### Pinned design decisions (all owner-confirmed 2026-03-07)
+
+| Decision | Value |
+|---|---|
+| Frame strategy | Option A — single static frame at t=0, first non-muted block per object |
+| Gain field | NOT written to LUSID nodes. Renderer assumes gain=1.0. See AGENTS-CULT §15.5 for future bug risk. |
+| Dispatch | Auto (profile-based). `resolveAdmProfile()` returns `Sony360RA` → new converter invoked. No new `--in-format` flag. |
+| Node ID scheme | `1.1` through `13.1` (encounter order of leaf audioObjects, starting at 1) |
+| Container audioObject | Skipped (any `audioObject` with `<audioObjectIDRef>` children). See AGENTS-CULT §15.6 for future consideration. |
+| Two 360RA modes | Mode 1 (ADM-variant) = this phase. Mode 2 (MPEG-H) = deferred to Phase 6B. |
+| `--lfe-mode` with 360RA | Irrelevant (no DirectSpeakers/LFE in 360RA). Emit warning if supplied, do not error. |
+
+### Deliverables
+
+| # | Deliverable | Status |
+|---|---|---|
+| P6A-1 | `transcoding/adm/sony360ra_to_lusid.hpp` — public API | ⬜ |
+| P6A-2 | `transcoding/adm/sony360ra_to_lusid.cpp` — full implementation | ⬜ |
+| P6A-3 | `src/transcoder.cpp` — Sony360RA auto-dispatch branch | ⬜ |
+| P6A-4 | `CMakeLists.txt` — add `sony360ra_to_lusid.cpp` to both targets | ⬜ |
+| P6A-5 | `tests/test_360ra.cpp` — polar→cart unit tests + structural invariants | ⬜ |
+| P6A-6 | `tests/parity/fixtures/sony_360ra_reference.lusid.json` — reference output | ⬜ |
+| P6A-7 | `internalDocsMD/AGENTS-CULT.md` — §15 Phase 6 section | ✅ 2026-03-07 |
+| P6A-8 | `internalDocsMD/DESIGN-DOC-V1-CULT.MD` — two 360RA ingestion modes section | ✅ 2026-03-07 |
+| P6A-9 | `internalDocsMD/DEV-PLAN-CULT.md` — this update | ✅ 2026-03-07 |
+
+### Gates
+
+- All 40 existing tests (Phases 1–4) still pass.
+- New `test_360ra.cpp` tests pass.
+- `sony_360ra_example.xml` produces a valid LUSID scene with exactly 13 nodes.
+- Atomic write rule maintained (temp → rename).
+- No new CLI flags or `--in-format` values added.
+- Loss ledger: Sony 360RA converter emits no lossLedger entries for the gain-mute discard
+  (not lossy for spatial data), but the report warnings must include the profile detection note.
 
 ### Sony 360RA
 
-- Support ingest via exports (ADM or MPEG-H) with resolver.
-- **No LFE / bass management in v1.** Sony 360RA carries no LFE channel; bass
+- No LFE / bass management in v1. Sony 360RA carries no LFE channel; bass
   management is delegated to the playback engine by design. Spatial Root v1
   does not implement bass management and CULT must not add any.
 
@@ -254,6 +289,26 @@ All phases must preserve the toolchain contract authority: `LUSID/internalDocsMD
 > output). This is a render-engine concern, not a CULT transcoder concern.
 > No design or implementation work should begin here without an explicit owner
 > decision and a dedicated design doc.
+
+---
+
+### Phase 6B — MPEG-H Support (DEFERRED)
+
+**Status: DEFERRED — requires MPEG-H decoder library infrastructure first.**
+
+MPEG-H 360RA mode (Sony Music Production `.mpf`/`.mhas` pipeline) is a separate
+ingestion mode with no ADM XML. Requires:
+- MPEG-H decoder (Ittiam `libmpeghdec`, default; Fraunhofer `mpeghdec`, optional)
+- CMake options: `WITH_MPEGH_ITTIAM=ON` (default), `WITH_MPEGH_FRAUNHOFER=OFF`
+- New `transcoding/mpegh/` module (entirely separate from `transcoding/adm/`)
+- Owner-confirmed fixture files (`.mpf` or `.mhas`) before any implementation
+
+### MPEG-H approach
+
+- Implement both backends behind CMake options:
+  - `WITH_MPEGH_ITTIAM` default ON
+  - `WITH_MPEGH_FRAUNHOFER` default OFF
+- Add capability matrix + loss ledger updates for conversions.
 
 ### Gates
 

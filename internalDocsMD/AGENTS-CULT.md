@@ -1,7 +1,7 @@
 # AGENTS.md — CULT Transcoder (Execution-Safe, Contract-First)
 
 **Last updated: 2026-03-07**  
-Phases 1–4 complete. Phase 5 GUI (PySide6 TRANSCODE tab in `gui/realtimeGUI/`) complete — see §13.
+Phases 1–5 complete. Phase 6 Sony 360RA ADM conversion — IN PROGRESS — see §15.
 
 Repo placement: `spatialroot/cult-transcoder/` (git submodule, already wired).  
 Invocation: CLI-first. Spatial Root calls `spatialroot/cult-transcoder/build/cult-transcoder` (macOS/Linux) or the `.bat` wrapper on Windows (see §9).  
@@ -107,8 +107,10 @@ cult_transcoder/
 │   ├── adm/
 │   │   ├── adm_reader.hpp             # Phase 3: AxmlResult struct, extractAxmlFromWav() declaration
 │   │   ├── adm_reader.cpp             # Phase 3: BW64 → axml extraction, debug XML artifact write
-│   │   ├── adm_profile_resolver.hpp   # Phase 4: AdmProfile enum, ProfileResult, resolveAdmProfile()
-│   │   └── adm_profile_resolver.cpp   # Phase 4: Dolby Atmos / Sony 360RA profile detection (IMPLEMENTED)
+│   ├── adm_profile_resolver.hpp   # Phase 4: AdmProfile enum, ProfileResult, resolveAdmProfile()
+│   ├── adm_profile_resolver.cpp   # Phase 4: Dolby Atmos / Sony 360RA profile detection (IMPLEMENTED)
+│   ├── sony360ra_to_lusid.hpp     # Phase 6: convertSony360RaToLusid() public API
+│   └── sony360ra_to_lusid.cpp     # Phase 6: Sony 360RA ADM XML → LUSID conversion (IMPLEMENTED)
 │   └── lusid/
 │       ├── lusid_writer.cpp           # Phase 5+: enhanced writer (stub)
 │       └── lusid_validate.cpp         # Phase 5+: LUSID schema validation (stub)
@@ -116,6 +118,7 @@ cult_transcoder/
     ├── test_report.cpp                # 10 tests — §7 report schema contract
     ├── test_cli_args.cpp              # 10 tests — transcode() arg validation (3 Phase 3 tests added)
     ├── test_lfe_mode.cpp              # 12 tests — Phase 4: LFE mode flag + profile detection
+    ├── test_360ra.cpp                 # Phase 6: Sony 360RA conversion tests (polar→cart + structural invariants)
     └── parity/
         ├── run_parity.cpp             # Phase 2: real parity tests against Python oracle
         └── fixtures/
@@ -123,6 +126,7 @@ cult_transcoder/
             ├── test_input.xml                    # ADM XML test fixture (Dolby Atmos master)
             ├── reference_scene.lusid.json         # Python oracle output (contains_audio=None)
             ├── sony_360ra_example.xml             # Phase 4: Sony 360RA fixture (detection only, no LUSID ref)
+            ├── sony_360ra_reference.lusid.json    # Phase 6: reference LUSID output for sony_360ra_example.xml
             └── lfe_speaker_label_fixture.xml      # Phase 4: synthetic fixture with speakerLabel=LFE at ch3
 ```
 
@@ -690,13 +694,12 @@ here once resolved.
    A future exploration item exists for Spatial Root v2 (see DEV-PLAN Phase 6
    note). Do not add any bass management logic without an explicit owner decision.
 
-3. **Full 360RA ADM parsing strategy (OPEN — owner research required)**
-   The Sony 360RA ADM XML root is `<format><audioFormatExtended>` (ITU-R BS.2076-2),
-   not the bwfmetaedit `<conformance_point_document><aXML><ebuCoreMain>` wrapper
-   that the current parser expects. Full conversion support will require a new
-   ingestion path. The agent must **not** attempt to design this path without
-   the owner providing research on the Sony 360RA schema and any relevant
-   reference tools. Ask the owner before touching this in any future phase.
+3. **Full 360RA ADM parsing strategy (RESOLVED — Phase 6)**
+   The Sony 360RA ADM XML root is `<conformance_point_document><File><aXML><format><audioFormatExtended version="ITU-R_BS.2076-2">`.
+   This is a bwfmetaedit export wrapper around a standard BS.2076-2 document. The existing
+   `parseTimecode()` with `sscanf` already handles the `S48000` sample-frame suffix correctly
+   (stops parsing at `S`). Full conversion is implemented in Phase 6 as a separate converter
+   module (`sony360ra_to_lusid.*`) — see §15. Auto-dispatch via profile detection.
 
 4. **`--lfe-mode` exposure in `runRealtime.py` (OPEN)**
    Should the Python pipeline ever pass `--lfe-mode speaker-label` to
@@ -704,10 +707,10 @@ here once resolved.
    should expose it, `RealtimeConfig` in `realtime_runner.py` needs a new field.
    Ask the owner before wiring this into the pipeline.
 
-5. **Profile-driven bed remapping in Phase 5+ (OPEN)**
-   In Phase 4, the profile is detected but only LFE uses it. Is any other
-   profile-driven behaviour (e.g., different channel-order assumptions for Sony
-   vs Atmos) required in Phase 5? Ask the owner; do not speculate.
+5. **Profile-driven bed remapping in Phase 5+ (RESOLVED — not needed for 360RA)**
+   The Sony 360RA fixture has no DirectSpeakers bed — all 13 channels are Objects
+   (`typeDefinition="Objects"`, `AP_0003XXXX`). No bed remapping is required for 360RA.
+   For Dolby Atmos, bed remapping remains an open question for a future phase.
 
 ---
 
@@ -830,6 +833,222 @@ Do **not** use `QFileDialog.getOpenFileUrl` with `ShowDirsOnly` or try to combin
 | --- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
 | 1   | Should `runRealtime.py` ever pass `--lfe-mode speaker-label` to cult-transcoder, or is this flag CLI/testing only? | **OPEN** — ask owner (§11.9 Q4)                                              |
 | 2   | Output path for GUI transcode: always `stageForRender/scene.lusid.json`, or user-configurable?                     | Currently defaults to stageForRender; user can override in the TRANSCODE tab |
+
+---
+
+## 15. Phase 6 — Sony 360RA ADM → LUSID Conversion (IN PROGRESS, 2026-03-07)
+
+Phase 6 adds a dedicated converter for Sony 360RA ADM XML exports, dispatched
+automatically when the profile resolver detects `Sony360RA`. The C++ binary
+CLI contract is **unchanged** — no new flags, no new `--in-format` values.
+
+---
+
+### 15.1 Scope
+
+- Convert Sony 360RA ADM XML (ADM-variant mode, bwfmetaedit export) → LUSID Scene JSON
+- Auto-dispatch: profile detection (`Sony360RA`) routes to new converter transparently
+- 13 audio objects, all `typeDefinition="Objects"`, no DirectSpeakers bed, no LFE
+- Static position extraction: first non-muted block per object (see §15.3)
+- Polar → Cartesian coordinate conversion (see §15.5)
+- LUSID node IDs: `1.1` through `13.1` (encounter order of leaf audioObjects)
+- MPEG-H 360RA mode: **deferred** — see §15.9
+
+### 15.2 New files
+
+| File | Purpose |
+| ---- | ------- |
+| `transcoding/adm/sony360ra_to_lusid.hpp` | Public API: `convertSony360RaToLusid()` |
+| `transcoding/adm/sony360ra_to_lusid.cpp` | Full implementation |
+| `tests/test_360ra.cpp` | Phase 6 tests (polar→cart unit tests + structural invariants) |
+| `tests/parity/fixtures/sony_360ra_reference.lusid.json` | Reference LUSID output for regression |
+
+---
+
+### 15.3 Sony 360RA XML structure (pinned — from fixture inspection)
+
+**Root path:**
+```
+<conformance_point_document>
+  <File>
+    <aXML>
+      <format>
+        <audioFormatExtended version="ITU-R_BS.2076-2">
+```
+This is a bwfmetaedit export wrapper. The `<audioFormatExtended>` node is the
+ADM root. Extract it by navigating: `conformance_point_document/File/aXML/format/audioFormatExtended`.
+
+**Object structure:**
+- 1 container `audioObject` (`AO_8001`) with `audioObjectIDRef` children — **skip this**.
+- 13 leaf `audioObject` elements (`AO_1001`–`AO_100d`) each with exactly one `audioTrackUIDRef` and one `audioPackFormatIDRef`.
+- Detection: a leaf audioObject has a `<audioTrackUIDRef>` child; a container has `<audioObjectIDRef>` children.
+
+**`audioChannelFormat` → `audioBlockFormat` structure:**
+```xml
+<audioChannelFormat audioChannelFormatID="AC_00031001" audioChannelFormatName="L obj 1"
+    typeDefinition="Objects" typeLabel="0003">
+  <audioBlockFormat audioBlockFormatID="AB_00031001_00000001"
+      rtime="00:00:00.00000S48000" duration="00:01:32.40449S48000">
+    <cartesian>0</cartesian>
+    <gain gainUnit="linear">0.999999</gain>
+    <position coordinate="azimuth">29.999992</position>
+    <position coordinate="elevation">0.000000</position>
+    <position coordinate="distance">1.000000</position>
+    <width>0.000000</width>
+    <height>0.000000</height>
+    <depth>0.000000</depth>
+    <jumpPosition>0</jumpPosition>
+  </audioBlockFormat>
+  <!-- multiple blocks follow (gain-mute pattern) -->
+```
+
+**`<cartesian>0</cartesian>`** — always present, always 0 in 360RA exports. Means polar coords.
+
+**Time format:** `HH:MM:SS.fffffS<sampleRate>` (e.g. `00:01:32.40449S48000`). The existing
+`parseTimecode()` (`sscanf("%d:%d:%lf", ...)`) handles this correctly — `sscanf` stops at `S`.
+**No changes to `parseTimecode()` are needed.**
+
+---
+
+### 15.4 Frame strategy: Option A — single static frame (PINNED)
+
+The multi-block pattern in 360RA is a Sony gain-mute artifact, not keyframe animation.
+Objects have a fixed spatial position; Sony inserts 0.01024s silence blocks at section
+boundaries for content-routing reasons unrelated to spatial movement.
+
+**Rule:** take the **first block whose `gain > 0`** for each object. Extract its polar
+position and convert to Cartesian. Emit a single LUSID frame at `t=0`. All 13 nodes
+are in this one frame.
+
+Consequences:
+- The LUSID scene has exactly **1 frame** for any 360RA file following this pattern.
+- The gain-mute interleaving is silently discarded (not a lossy conversion for spatial data).
+- This is the correct semantic: the "scene" of this 360RA mix is a static immersive bed.
+
+**Future deviation:** if a future 360RA file is encountered with genuinely different positions
+across blocks (animated objects), the converter will produce incorrect output. A future
+"multi-block mode" should be considered then. Do NOT add it preemptively.
+
+---
+
+### 15.5 Gain field: OMITTED (PINNED)
+
+The LUSID schema allows an optional `gain` field on `audio_object` nodes (default 1.0).
+The Sony 360RA `audioBlockFormat` always contains `<gain gainUnit="linear">0.999999</gain>` (≈1.0).
+
+**Rule:** the `gain` field is **not written** to LUSID output nodes in Phase 6.
+The renderer assumes gain=1.0 for all nodes without an explicit gain field.
+
+**⚠ Known future bug risk:** if a future 360RA file has meaningful per-object gain variation
+(e.g. dialogue vs music ducking encoded in the gain field), CULT will silently discard it
+and the renderer will play all objects at equal gain. If unexpected mix imbalances are observed
+on a 360RA render, check the `gain` values in the source ADM and consider implementing gain
+pass-through. Document any such finding in the loss ledger.
+
+---
+
+### 15.6 Container audioObject handling (PINNED)
+
+The container `audioObject` (`AO_8001`) references 13 leaf objects via `<audioObjectIDRef>`.
+It carries no position data and exists purely as a grouping/programme hierarchy artifact.
+
+**Rule:** skip any `audioObject` that has at least one `<audioObjectIDRef>` child element.
+Only process leaf objects that have a `<audioTrackUIDRef>` child.
+
+**⚠ Known future limitation:** the container object may carry metadata (gain, importance,
+dialogue kind) that applies to all children. In a future 360RA development pass, consider
+whether container-level gain or mute state should be applied to leaf nodes. Document this
+in §15.9 open questions for Phase 6+.
+
+---
+
+### 15.7 Polar → LUSID Cartesian conversion (PINNED)
+
+ADM polar convention (BS.2076-2):
+- `azimuth`: degrees, clockwise from front (0=front, +90=right, −90=left, ±180=back)
+- `elevation`: degrees, 0=horizontal plane, +90=up, −90=down
+- `distance`: meters (360RA always 1.0 = unit sphere)
+
+LUSID Cartesian convention (schema `cart[x, y, z]`):
+- `x`: right = +x
+- `y`: front = +y
+- `z`: up = +z
+
+Conversion formula:
+```
+az_rad  = azimuth  * π/180
+el_rad  = elevation * π/180
+
+x = distance * sin(az_rad)  * cos(el_rad)   // right = +x ✓
+y = distance * cos(az_rad)  * cos(el_rad)   // front = +y ✓
+z = distance * sin(el_rad)                   // up    = +z ✓
+```
+
+This is the standard ADM-to-Cartesian formula. Do not invent an alternative.
+Verified against LUSID schema `cart` description: `x: left(-)/right(+), y: back(-)/front(+), z: down(-)/up(+)`.
+
+---
+
+### 15.8 Dispatcher strategy: profile-based auto-dispatch (PINNED)
+
+No new `--in-format` flag. When `resolveAdmProfile()` returns `Sony360RA`, the
+dispatcher in `transcoder.cpp` automatically routes to `convertSony360RaToLusid()`
+instead of `convertAdmToLusid()` / `convertAdmToLusidFromBuffer()`.
+
+Both the `adm_xml` path and the `adm_wav` path check the profile after parsing.
+The `pugi::xml_document` (already in memory) is passed directly to `convertSony360RaToLusid()`.
+
+```
+adm_xml path:
+  doc.load_file()
+    → resolveAdmProfile(doc)
+    → if Sony360RA: convertSony360RaToLusid(doc)
+    → else: convertAdmToLusid(xmlPath, lfeMode)
+
+adm_wav path:
+  extractAxmlFromWav()
+    → doc.load_string(axmlResult.xmlData)
+    → resolveAdmProfile(doc)
+    → if Sony360RA: convertSony360RaToLusid(doc)
+    → else: convertAdmToLusidFromBuffer(axmlResult.xmlData, lfeMode)
+```
+
+**`--lfe-mode` behaviour for 360RA:** The flag is irrelevant (360RA has no DirectSpeakers
+or LFE), but if supplied it must not error. Emit a warning: `"lfe-mode flag has no effect on Sony360RA input"`.
+
+---
+
+### 15.9 Open questions — Phase 6+
+
+| # | Question | Status |
+|---|----------|--------|
+| 1 | MPEG-H 360RA ingestion mode | **DEFERRED** — see §15.10 |
+| 2 | Container audioObject metadata (gain, importance) — apply to leaf nodes? | **OPEN** — do not implement without owner decision |
+| 3 | Multi-block animated objects in 360RA — future keyframe support? | **OPEN** — do not implement without owner decision |
+| 4 | Per-object gain pass-through from ADM `<gain>` to LUSID? | **OPEN** — see §15.5 bug risk note |
+
+---
+
+### 15.10 MPEG-H 360RA mode (DEFERRED)
+
+Sony 360RA content exists in two authoring workflows:
+
+1. **ADM-variant mode** (Phase 6 — THIS phase): Sony's Spatial Content Creation tool
+   exports ADM metadata embedded in a BW64 WAV, or as a standalone ADM XML via bwfmetaedit.
+   The ADM root is `<conformance_point_document>...<audioFormatExtended version="ITU-R_BS.2076-2">`.
+   **This is what Phase 6 implements.**
+
+2. **MPEG-H music format mode** (DEFERRED — future phase): Sony's Music Production pipeline
+   produces 360RA content as an MPEG-H 3D Audio bitstream (`.mpf` / `.mhas` / `.m4f` container).
+   This requires the MPEG-H decoder library (Ittiam or Fraunhofer) for MAE metadata extraction.
+   Detection would be by container format and/or MPEG-H Audio Scene Information (MAEI) headers,
+   not by ADM programme name. No implementation work should begin here without:
+   - Owner-confirmed format samples (`.mpf` or `.mhas` fixture)
+   - Owner decision on Ittiam vs Fraunhofer backend
+   - A dedicated design doc section (DESIGN-DOC-V1-CULT.MD updated first)
+
+**Do not conflate these two modes.** Phase 6 ONLY addresses mode 1 (ADM-variant).
+Mode 2 follows after MPEG-H infrastructure is in place (see DEV-PLAN Phase 6 MPEG-H section).
 
 ---
 

@@ -117,6 +117,66 @@ One thing to consider is endianess and alignment – since we might deal with bi
 
 In summary, the design chooses components and approaches that are inherently portable. There is no dependency that is macOS-only or Linux-only. By avoiding such traps, we ensure the tool can later be built for Windows and potentially packaged as a plugin or binary for that platform with minimal friction.
 
+## Sony 360 Reality Audio (360RA): Two Ingestion Modes
+
+Sony 360 Reality Audio is a spatial audio format from Sony Music Entertainment, built on the ITU-R BS.2076 Audio Definition Model (ADM). It encodes up to 13 audio objects positioned on a sphere using polar coordinates, with no dedicated LFE channel — bass management is delegated entirely to the playback engine by design. CULT Transcoder must support 360RA ingestion in two distinct modes that differ in both container format and the toolchain required to parse them.
+
+### Mode 1 — ADM-Variant (bwfmetaedit Export) ← Phase 6 (IMPLEMENTED)
+
+In Sony's Spatial Content Creation workflow, 360RA mix metadata is embedded in a BW64 WAV file as an ADM `axml` chunk conforming to ITU-R BS.2076-2. Exporters such as bwfmetaedit can extract this chunk to a standalone XML document. The resulting file has the following root structure:
+
+```xml
+<conformance_point_document>
+  <File name="sourceData/360RA.wav">
+    <Technical> ... </Technical>
+    <aXML>
+      <format>
+        <audioFormatExtended version="ITU-R_BS.2076-2">
+          <audioProgramme audioProgrammeName="Gem_OM_360RA_3"> ... </audioProgramme>
+          <!-- audioObject, audioPackFormat, audioChannelFormat elements -->
+        </audioFormatExtended>
+      </format>
+    </aXML>
+  </File>
+</conformance_point_document>
+```
+
+Key structural characteristics:
+- The `<conformance_point_document>` wrapper is a bwfmetaedit artifact — not part of BS.2076. The ADM root (`<audioFormatExtended>`) is nested at `conformance_point_document/File/aXML/format/audioFormatExtended`.
+- All 13 channels are `typeDefinition="Objects"` (`audioPackFormat typeLabel="0003"`). There is no DirectSpeakers bed.
+- Timestamps use the `HH:MM:SS.fffffS<sampleRate>` format (e.g., `00:01:32.40449S48000`). The `S48000` suffix is a sample-frame denominator added by the Sony exporter. C `sscanf` with `%lf` parses this correctly (stops at `S`).
+- Each `audioChannelFormat` contains multiple `audioBlockFormat` entries using a gain-mute interleaving pattern: the same spatial position is repeated with periodic 0.01024s silence blocks (`gain=0`) inserted at section boundaries. This is a Sony content-routing artifact — not keyframe animation. The canonical spatial position is extracted from the first block with `gain > 0`.
+- A container `audioObject` (`AO_8001`) references all 13 leaf objects via `<audioObjectIDRef>` children. Only leaf objects (those with `<audioTrackUIDRef>`) carry per-channel pack format references and are converted.
+
+Detection signal: `audioProgrammeName` attribute contains `"360RA"` (case-insensitive). The Phase 4 profile resolver (`resolveAdmProfile()`) already detects this and returns `AdmProfile::Sony360RA`.
+
+CULT Transcoder handling (Phase 6): `convertSony360RaToLusid()` in `transcoding/adm/sony360ra_to_lusid.cpp`. Auto-dispatched after profile detection — no new CLI flags. Produces a single-frame LUSID scene (t=0) with 13 `audio_object` nodes, positions converted from polar (azimuth, elevation, distance) to LUSID Cartesian using the standard ADM formula (see AGENTS-CULT §15.7).
+
+### Mode 2 — MPEG-H Music Format ← DEFERRED (future phase)
+
+Sony's music production and distribution pipeline encodes 360RA mixes as MPEG-H 3D Audio bitstreams. These files use the MPEG-H Low Complexity Profile and are distributed in ISO Base Media File Format (`.mpf` extension) or standalone MPEG-H Audio Stream (`.mhas`) containers. The spatial metadata is encoded as MPEG-H Audio Scene Information (MAEI) — a format structurally different from ADM XML, carrying object positions, gains, and rendering presets in MPEG-H-specific binary OBUs.
+
+Key differences from Mode 1:
+- No ADM XML is present. Metadata is in MAEI binary format, not BS.2076 XML.
+- Container format is `.mpf` / `.mhas` / `.m4f`, not BW64 WAV.
+- Decoding requires the MPEG-H decoder library (Ittiam `libmpeghdec` or Fraunhofer `mpeghdec`) for both audio PCM and MAEI metadata extraction.
+- Detection is by container format magic bytes and/or MPEG-H OBU structure — not by ADM programme name string matching.
+- The MAEI → LUSID conversion path (MAEI object positions → CULT internal model → LUSID JSON) is architecturally different from the ADM path.
+
+Status: **DEFERRED.** No implementation work should begin on Mode 2 until:
+1. Owner confirms availability of `.mpf` or `.mhas` fixture files for testing.
+2. Owner decides on Ittiam vs Fraunhofer MPEG-H backend (see §MPEG-H libraries section).
+3. A dedicated design sub-section documents the MAEI → LUSID mapping.
+4. This document is updated to describe the MAEI data model.
+
+The Phase 6 implementation of Mode 1 does not block Mode 2 and does not need to be revisited when Mode 2 is added — they are distinct code paths with distinct dispatch conditions.
+
+### Design Implications
+
+The two-mode architecture clarifies an important invariant: the `Sony360RA` profile detection signal (`audioProgrammeName` containing `"360RA"`) applies **only** to Mode 1 (ADM-variant). Mode 2 files are not ADM documents and will not trigger the profile resolver. Mode 2 requires a separate ingestion pipeline entry point, upstream of the ADM parser, that handles MPEG-H container parsing first.
+
+For future reference: do not attempt to extend the ADM profile resolver or `sony360ra_to_lusid.cpp` to handle Mode 2 inputs. Mode 2 is a fundamentally different input modality and belongs in a new `transcoding/mpegh/` module.
+
 ## CLI Contract and Report Schema (Pinned)
 
 ### CLI Contract (Stable)
