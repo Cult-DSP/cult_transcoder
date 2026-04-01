@@ -9,7 +9,12 @@ Canonical: LUSID Scene v0.5 JSON.
 
 This file is designed to be executable and non-destructive. Do not guess.
 
+Last verified against the submodule code: 2026-03-31.
+`internalDocsMD/DEV-PLAN-CULT.md` is outdated and must not be used as a source of truth.
+
 ### Development environment
+
+Spatial Root runtime is C++ only: the production app calls CULT and the spatial engine directly and removes all Python from the runtime pipeline. The Python venv is used only for parity/oracle checks.
 
 The `spatialroot` repo uses a Python virtual environment (`source activate.sh`).
 The LUSID package and all Python dependencies are already installed in the venv —
@@ -25,6 +30,22 @@ Use this venv whenever you need to run the Python oracle for parity testing or
 any other Python tooling in the workspace.
 
 ---
+
+## 0.3. Current Implementation Snapshot (Verified)
+
+Observed in the current submodule (no assumptions beyond code/tests in this repo):
+
+- ADM XML → LUSID JSON conversion is implemented in `src/adm_to_lusid.cpp`.
+- CLI supports only `adm_xml` → `lusid_json` (see `src/main.cpp`, `src/transcoder.cpp`).
+- XML parser is pugixml (FetchContent in `CMakeLists.txt`); libadm is not used.
+- Parity tests exist and compare JSON output to a Python oracle fixture in `tests/parity`.
+- Report schema v0.1 is implemented in `include/cult_report.hpp` + `src/report.cpp`.
+- Report file is written via temp + rename in `src/main.cpp` (atomic for report only).
+- LUSID output is written directly in `writeLusidScene()` (non-atomic as of now).
+
+Known doc mismatch to fix later:
+
+- `OVERVIEW.md` phase table still lists Phase 2 as pending and mentions libadm; this is stale.
 
 ## 0.5. Pinned Implementation Decisions
 
@@ -70,7 +91,7 @@ No behavior change without doc change.
 
 ---
 
-## 1. Repo Layout (Phase 2 — current state)
+## 1. Repo Layout (current state)
 
 ```
 cult_transcoder/
@@ -79,7 +100,7 @@ cult_transcoder/
 ├── OVERVIEW.md                        # project overview with phase table
 ├── internalDocsMD/
 │   ├── AGENTS-CULT.md                 # this file
-│   ├── DEV-PLAN-CULT.md
+│   ├── DEV-PLAN-CULT.md                # outdated; do not use as source of truth
 │   ├── DESIGN-DOC-V1-CULT.MD
 │   └── design-reference-CULT.md       # research/literature design reference
 ├── include/
@@ -142,10 +163,11 @@ Exit codes:
 - `0`: success; final output exists; report exists.
 - non-zero: failure; final output must not exist; report should exist best-effort; stderr must explain.
 
-Atomic output rule (non-negotiable):
+Atomic output behavior (current):
 
-- Write output and report to temporary filenames first, validate, then atomic rename to final paths.
-- On failure: remove temp outputs; do not leave partial artifacts.
+- Report is written to a temp file and renamed (see `src/main.cpp`).
+- LUSID output is written directly (see `writeLusidScene()`), so it is non-atomic today.
+- If output atomicity is required, update both `src/transcoder.cpp` and this doc.
 
 ---
 
@@ -167,11 +189,11 @@ Rule:
 
 ## 4. Phase 2 Scope Decisions (Pinned)
 
-Inputs/outputs:
+Inputs/outputs (pipeline convention, not enforced by the CLI):
 
-- Input ADM XML path: `processedData/currentMetaData.xml` (Spatial Root extractor output)
-- Output LUSID path: `processedData/stageForRender/scene.lusid.json`
-- Report path: default `<out>.report.json`
+- Pipeline commonly uses input ADM XML at `processedData/currentMetaData.xml`.
+- Pipeline commonly writes output LUSID to `processedData/stageForRender/scene.lusid.json`.
+- CLI accepts any `--in` and `--out` paths and does not enforce these locations.
 
 Time model:
 
@@ -196,9 +218,10 @@ Ordering:
 - Stable ordering is critical.
 - Phase 2 ordering must match Python ordering exactly (see Section 5).
 
-Deletion policy:
+Deletion policy (pipeline-level):
 
-- After manual validation (G3), disable/remove Python parser usage in Spatial Root. No fallback flag.
+- Any removal of the Python parser in the pipeline must be documented in Spatial Root docs.
+- This repository does not enforce pipeline fallback or removal logic.
 
 ---
 
@@ -340,5 +363,5 @@ No merge if:
 
 - parity fails (Phase 2)
 - ordering rules drift (Phase 2)
-- output is non-atomic
+- report atomic write regresses
 - docs not updated for behavior changes

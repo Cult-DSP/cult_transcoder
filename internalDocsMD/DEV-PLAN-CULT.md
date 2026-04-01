@@ -118,7 +118,7 @@ All phases must preserve the toolchain contract authority: `LUSID/internalDocsMD
 
 ---
 
-## Phase 4 — ADM Profile Resolver + Improved LFE Detection (Flagged)
+## Phase 4 — ADM Profile Resolver + Improved LFE Detection (Flagged) - implemented
 
 ### Goals
 
@@ -135,7 +135,7 @@ All phases must preserve the toolchain contract authority: `LUSID/internalDocsMD
 
 ---
 
-## Phase 5 — GUI: Transcoding Tab (Report “Open” UX)
+## Phase 5 — GUI: Transcoding Tab (Report “Open” UX) - currently implemented - this is a spatial root task not a cult task
 
 ### Goals
 
