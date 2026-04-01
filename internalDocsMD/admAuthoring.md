@@ -81,11 +81,16 @@ Support both:
 Unless explicitly expanded later, the first implementation should require:
 
 - mono WAV assets for authored sources
-- consistent sample rate across all required WAVs
-- consistent duration policy across all required WAVs
+- normalized audio format for authoring: mono, 48 kHz, float32
+- explicit resampling for non-48 kHz mono WAVs (see resampling plan)
+- consistent duration by strict equal frame counts after normalization
 - explicit failure on missing assets or unsupported asset layouts
 
-If padding, truncation, resampling, or interleaved-channel splitting is later allowed, that must be documented explicitly.
+Resampling, padding, truncation, or interleaved-channel splitting must not occur silently. Resampling is allowed only via the dedicated authoring normalization stage and must be reported explicitly.
+
+### containsAudio usage
+
+`containsAudio.json` is deprecated for the authoring path. The authoring resolver must fall back to deterministic id-to-filename mapping for WAV resolution.
 
 ### Outputs
 
@@ -141,10 +146,7 @@ First pass should explicitly define support for:
 - `audio_object`
 - `LFE`
 
-Any other node type must either:
-
-- be rejected with clear error/reporting, or
-- be ignored only with explicit loss-ledger entries
+Any other node type must be ignored with explicit loss-ledger entries. These are not hard failures unless they prevent authoring.
 
 ### 6.2 Bed / object / LFE policy
 
@@ -161,10 +163,9 @@ Determinism is required.
 
 Pinned first-pass default:
 
-1. Bed/direct-speaker elements first
-2. LFE within the bed structure
-3. Objects after beds
-4. Relative source ordering follows LUSID frame-zero node order unless a documented target-profile override is required
+1. Bed/direct-speaker elements first in fixed template order (1.1, 2.1, 3.1, 4.1 LFE, 5.1..10.1)
+2. Objects after beds, ordered by ascending LUSID group id (11.1, 12.1, ...)
+3. Motion blocks ordered by ascending frame time per object
 
 Do not rely on `libadm` traversal order as the source of truth.
 
@@ -172,14 +173,12 @@ Do not rely on `libadm` traversal order as the source of truth.
 
 LUSID is frame-based. Authored ADM needs an explicit time/motion strategy.
 
-Before implementation, specify:
+Policy for v1 authoring:
 
-- how frame times become authored ADM timing
-- whether motion is represented as sampled automation, block-format style authoring, or a narrower supported subset
-- what minimum time precision is used
-- which kinds of LUSID motion are unsupported in first pass
-
-If the first pass only supports a restricted animation subset, state that clearly and report reductions in the loss ledger.
+- Use step-hold object authoring: one `audioBlockFormat` per LUSID frame per object.
+- Set explicit `rtime` and `duration` for each block.
+- Treat this as a compatibility-first motion export, not a guarantee of smooth motion equivalence.
+- Validate motion policy with manual Logic Pro import fixtures before calling it final.
 
 ### 6.5 ID policy
 
@@ -202,6 +201,8 @@ Examples of authoring-side losses that must be surfaced:
 - unsupported metadata fields
 - asset mismatches requiring rejection or approximation
 - profile-driven reductions or omissions
+
+Validation errors (missing WAVs, unsupported formats, normalization failure, post-normalization duration mismatch) are hard failures and must appear in `errors[]`, not `lossLedger`.
 
 ## 7. Implementation Steps
 
@@ -244,6 +245,13 @@ Validate:
 - sample rate agreement
 - duration agreement
 - WAV layout assumptions
+
+Additional v1 rules:
+
+- normalize audio to mono 48 kHz float32 before duration validation
+- use normalized frame counts as the authoritative duration source
+- if `scene.lusid.json` includes `duration`, validate it against the normalized audio duration; fail on mismatch
+- do not tolerate mismatched frame counts across normalized WAVs
 
 Fail early with report output.
 
@@ -292,6 +300,12 @@ Add authoring-specific summary fields as needed, such as:
 - authored channel count
 - wav file count resolved
 - authoring warnings / approximations
+
+Validation and normalization reporting:
+
+- resampling must be reported explicitly (source rate, target rate, file list)
+- post-normalization duration mismatches are hard errors in `errors[]`
+- include per-file expected vs actual frame counts in a structured report section
 
 ### Step 10: Add tests
 

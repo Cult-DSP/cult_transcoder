@@ -166,6 +166,18 @@ Rules:
 - if the input WAV is not mono, fail in v1
 - do not resample already-compliant files just to create identical processing history
 
+### 5.4 Post-normalization validation
+
+After normalization, validate strict equal frame counts across all normalized WAVs.
+
+Rules:
+
+- use normalized frame counts as the authoritative duration source
+- if any normalized frame counts differ, fail authoring
+- do not apply padding, truncation, or tolerance in v1
+- report duration mismatches as hard validation errors (not loss-ledger entries)
+- include per-file expected vs actual frame counts in a structured report section
+
 ### 5.4 Source file safety
 
 Never overwrite source WAVs.
@@ -186,6 +198,7 @@ All normalized outputs must be written to a temporary working directory for the 
 - missing referenced WAVs
 - unreadable or malformed WAVs
 - normalization failures
+- post-normalization frame-count mismatches
 - any need for automatic fold-down, padding, truncation, or time-stretching
 
 These conditions are hard validation failures, not loss-ledger events.

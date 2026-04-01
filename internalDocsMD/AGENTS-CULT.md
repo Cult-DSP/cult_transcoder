@@ -67,17 +67,20 @@ Pinned framing:
 
 These decisions are final and must not be changed without a doc-update PR.
 
-| Decision | Value |
-| --- | --- |
-| C++ standard | C++17 |
-| Test framework | Catch2 (CMake FetchContent, no install) |
-| License | Apache-2.0, Cult-DSP copyright in every source file |
-| XML parser for ingest parity path | pugixml (FetchContent, MIT license) — mirrors Python oracle's raw XML traversal for ordering parity. **Not** libadm for the current parity path |
-| ADM authoring library | `libadm` may be introduced for the new LUSID → ADM export path only |
-| BW64 packaging library | `libbw64` remains the BW64 container dependency |
-| Windows binary | `build/cult-transcoder.exe` called via `scripts/cult-transcoder.bat` wrapper |
-| `.bat` wrapper rule | Must be committed; every call-site in Spatial Root pipeline must have an inline comment explaining the indirection |
-| Fail-report behavior | On any error (missing file, unsupported format, etc.) the CLI writes a best-effort `status: "fail"` report to the default path and exits non-zero |
+| Decision                          | Value                                                                                                                                             |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C++ standard                      | C++17                                                                                                                                             |
+| Test framework                    | Catch2 (CMake FetchContent, no install)                                                                                                           |
+| License                           | Apache-2.0, Cult-DSP copyright in every source file                                                                                               |
+| XML parser for ingest parity path | pugixml (FetchContent, MIT license) — mirrors Python oracle's raw XML traversal for ordering parity. **Not** libadm for the current parity path   |
+| ADM authoring library             | `libadm` may be introduced for the new LUSID → ADM export path only                                                                               |
+| BW64 packaging library            | `libbw64` remains the BW64 container dependency                                                                                                   |
+| ADM authoring normalized audio    | mono, 48 kHz, float32 WAV (v1 export path)                                                                                                        |
+| ADM authoring resampling          | allowed only in `adm-author` normalization stage; must be explicit in report                                                                      |
+| ADM authoring duration source     | normalized WAV frame count; scene duration must match or fail                                                                                     |
+| Windows binary                    | `build/cult-transcoder.exe` called via `scripts/cult-transcoder.bat` wrapper                                                                      |
+| `.bat` wrapper rule               | Must be committed; every call-site in Spatial Root pipeline must have an inline comment explaining the indirection                                |
+| Fail-report behavior              | On any error (missing file, unsupported format, etc.) the CLI writes a best-effort `status: "fail"` report to the default path and exits non-zero |
 
 ---
 
@@ -212,6 +215,13 @@ Atomic output behavior:
 - Report is written via temp + rename.
 - Existing LUSID output remains non-atomic until separately fixed.
 - `adm-author` outputs (`export.adm.xml`, `export.adm.wav`) must be written via temp + rename from day one.
+
+Authoring path input rules (v1):
+
+- `containsAudio.json` is deprecated; resolve WAVs by deterministic id-to-filename mapping
+- normalize only non-48 kHz mono WAVs to 48 kHz float32 (resampling reported explicitly)
+- validate strict equal frame counts after normalization; fail on mismatch
+- if scene duration metadata exists, validate against normalized audio duration; fail on mismatch
 
 ---
 
