@@ -2,6 +2,12 @@
 
 ## Onboarding Tasks (New Agent)
 
+### Context Reset Prompt (Paste Into New Window)
+
+```
+You are continuing CULT Transcoder adm-author work. Resampling + validation are implemented and must not regress the parity-critical adm_xml->lusid_json ingest path. r8brain is vendored at cult_transcoder/third_party/r8brain and used by src/audio/resampler_r8brain.cpp. adm-author now normalizes mono WAVs to 48 kHz float32, validates strict equal frame counts, and checks scene duration if present. Report schema v0.1 is preserved and extended with authoringResample[] and authoringValidation. Remaining work: LUSID->ADM mapping, ADM XML + BW64 output, and tests for mapping/output. Keep atomic output rules and fail-report behavior.
+```
+
 Goal: implement the new export-side `adm-author` path without touching the existing parity-critical `transcode` path.
 
 Scope and constraints:
@@ -26,6 +32,8 @@ Step-by-step tasks:
 - Validate strict equal frame counts across normalized WAVs.
 - If `scene.lusid.json` includes `duration`, validate against audio-derived duration.
 - On mismatch, fail authoring and report expected vs actual counts per file.
+
+Status update (2026-04-01): Steps 1-2 are implemented; steps 3-6 remain.
 
 3. Build authoring mapping layer (LUSID -> ADM model)
 

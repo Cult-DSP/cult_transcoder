@@ -1,8 +1,8 @@
 # CULT Resampler Implementation Plan
 
-Status: working implementation plan for the new ADM authoring path  
+Status: implemented for normalization + validation (adm-author)  
 Scope: export-side audio normalization only  
-Last updated: 2026-03-31
+Last updated: 2026-04-01
 
 ## 1. Purpose
 
@@ -50,6 +50,16 @@ The authoring pipeline should be staged like this:
 
 Resampling belongs only in stage 3.
 
+### 2.4 Implementation status (2026-04-01)
+
+Implemented in the repo:
+
+- r8brain-backed mono resampling wrapper at `src/audio/resampler_r8brain.cpp`.
+- WAV mono read + float32 write helpers in `src/audio/wav_io.cpp`.
+- Normalization orchestration in `src/audio/normalize_audio.cpp`.
+- `adm-author` now runs normalization + strict frame validation and scene duration check.
+- Report schema extended with `authoringResample[]` and `authoringValidation` sections.
+
 ## 3. Dependency choice: r8brain-free-src
 
 ### 3.1 Why this dependency
@@ -88,7 +98,7 @@ Recommended layout:
 ```text
 cult_transcoder/
   third_party/
-    r8brain-free-src/
+    r8brain/
   include/
     audio/
       resampler.hpp
@@ -117,7 +127,7 @@ Example shape:
 ```cmake
 # third_party include
  target_include_directories(cult_transcoder PRIVATE
-   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/r8brain-free-src
+   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/r8brain
  )
 ```
 
@@ -349,6 +359,11 @@ Recommended extension block:
   }
 }
 ```
+
+Implemented report fields:
+
+- `authoringResample[]` entries include source/normalized paths, sample rates, frame counts, and resampled flag.
+- `authoringValidation` is present when validation runs and includes `expectedFrames` plus per-file status.
 
 ## 10. CLI and pipeline behavior
 
