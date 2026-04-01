@@ -53,6 +53,27 @@ struct TranscodeResult {
 };
 
 // ---------------------------------------------------------------------------
+// AdmAuthorRequest — inputs for LUSID -> ADM authoring
+// ---------------------------------------------------------------------------
+struct AdmAuthorRequest {
+    std::string lusidPath;      // path to scene.lusid.json
+    std::string wavDir;         // directory with WAV assets
+    std::string lusidPackage;   // optional package path (mutually exclusive)
+    std::string outXmlPath;     // authored ADM XML output path
+    std::string outWavPath;     // authored ADM BW64 output path
+    std::string reportPath;     // resolved path for the report file
+    bool        stdoutReport = false;
+};
+
+// ---------------------------------------------------------------------------
+// AdmAuthorResult — returned by admAuthor()
+// ---------------------------------------------------------------------------
+struct AdmAuthorResult {
+    bool   success = false;
+    Report report;              // fully populated; caller writes it to disk
+};
+
+// ---------------------------------------------------------------------------
 // transcode() — main entry point
 //
 // Phase 1 behaviour (stub):
@@ -66,5 +87,10 @@ struct TranscodeResult {
 // The function signature must NOT change between phases.
 // ---------------------------------------------------------------------------
 TranscodeResult transcode(const TranscodeRequest& req);
+
+// ---------------------------------------------------------------------------
+// admAuthor() — LUSID -> ADM authoring entry point (export-side)
+// ---------------------------------------------------------------------------
+AdmAuthorResult admAuthor(const AdmAuthorRequest& req);
 
 } // namespace cult

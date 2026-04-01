@@ -50,8 +50,11 @@ namespace fs = std::filesystem;
 // Forward declarations
 // ---------------------------------------------------------------------------
 static int cmdTranscode(const std::vector<std::string>& argv);
+static int cmdAdmAuthor(const std::vector<std::string>& argv);
 static void printUsage(const std::string& progName);
 static std::string defaultReportPath(const std::string& outPath);
+static std::string defaultAuthorReportPath(const std::string& outWavPath,
+                                           const std::string& outXmlPath);
 
 // ---------------------------------------------------------------------------
 // main()
@@ -69,6 +72,10 @@ int main(int argc, char* argv[]) {
 
     if (subcommand == "transcode") {
         return cmdTranscode(args);
+    }
+
+    if (subcommand == "adm-author") {
+        return cmdAdmAuthor(args);
     }
 
     if (subcommand == "--version" || subcommand == "-v") {
@@ -198,12 +205,126 @@ static int cmdTranscode(const std::vector<std::string>& argv) {
 }
 
 // ---------------------------------------------------------------------------
+// cmdAdmAuthor() — parse args and invoke the ADM authoring path
+// ---------------------------------------------------------------------------
+static int cmdAdmAuthor(const std::vector<std::string>& argv) {
+    cult::AdmAuthorRequest req;
+
+    // --- Parse ---
+    for (size_t i = 2; i < argv.size(); ++i) {
+        const std::string& flag = argv[i];
+
+        auto nextArg = [&](const std::string& name) -> std::string {
+            if (i + 1 >= argv.size()) {
+                std::cerr << "[cult-transcoder] ERROR: " << name
+                          << " requires an argument\n";
+                std::exit(2);
+            }
+            return argv[++i];
+        };
+
+        if      (flag == "--lusid")         req.lusidPath    = nextArg("--lusid");
+        else if (flag == "--wav-dir")       req.wavDir       = nextArg("--wav-dir");
+        else if (flag == "--lusid-package") req.lusidPackage = nextArg("--lusid-package");
+        else if (flag == "--out-xml")       req.outXmlPath   = nextArg("--out-xml");
+        else if (flag == "--out-wav")       req.outWavPath   = nextArg("--out-wav");
+        else if (flag == "--report")        req.reportPath   = nextArg("--report");
+        else if (flag == "--stdout-report") req.stdoutReport = true;
+        else {
+            std::cerr << "[cult-transcoder] ERROR: unknown flag: " << flag << "\n";
+            printUsage(argv[0]);
+            std::exit(2);
+        }
+    }
+
+    // --- Validate required flags ---
+    bool argError = false;
+    auto requireFlag = [&](const std::string& val, const std::string& name) {
+        if (val.empty()) {
+            std::cerr << "[cult-transcoder] ERROR: missing required flag: " << name << "\n";
+            argError = true;
+        }
+    };
+
+    const bool hasPackage = !req.lusidPackage.empty();
+    if (!hasPackage) {
+        requireFlag(req.lusidPath, "--lusid");
+        requireFlag(req.wavDir, "--wav-dir");
+    }
+    requireFlag(req.outXmlPath, "--out-xml");
+    requireFlag(req.outWavPath, "--out-wav");
+
+    if (argError) {
+        printUsage(argv[0]);
+        // Best-effort fail report for arg errors.
+        if (!req.outWavPath.empty() || !req.outXmlPath.empty() || !req.reportPath.empty()) {
+            std::string rpath = req.reportPath.empty()
+                                ? defaultAuthorReportPath(req.outWavPath, req.outXmlPath)
+                                : req.reportPath;
+            cult::Report failReport;
+            failReport.status = "fail";
+            failReport.args.inPath      = req.lusidPackage.empty() ? req.lusidPath : req.lusidPackage;
+            failReport.args.inFormat    = "lusid_json";
+            failReport.args.outPath     = req.outWavPath.empty() ? req.outXmlPath : req.outWavPath;
+            failReport.args.outFormat   = "adm_bw64";
+            failReport.args.reportPath  = rpath;
+            failReport.args.stdoutReport = req.stdoutReport;
+            failReport.errors.push_back("Argument error — see stderr for details");
+            failReport.writeTo(rpath);
+            if (req.stdoutReport) failReport.printToStdout();
+        }
+        return 2;
+    }
+
+    // --- Resolve default report path ---
+    if (req.reportPath.empty()) {
+        req.reportPath = defaultAuthorReportPath(req.outWavPath, req.outXmlPath);
+    }
+
+    // --- Invoke authoring ---
+    cult::AdmAuthorResult result = cult::admAuthor(req);
+
+    // --- Atomic report write ---
+    const std::string reportTmp = req.reportPath + ".tmp";
+    bool reportWritten = result.report.writeTo(reportTmp);
+    if (reportWritten) {
+        std::error_code ec;
+        fs::rename(reportTmp, req.reportPath, ec);
+        if (ec) {
+            std::cerr << "[cult-transcoder] WARNING: could not rename report: "
+                      << ec.message() << "\n";
+        }
+    }
+
+    if (req.stdoutReport) {
+        result.report.printToStdout();
+    }
+
+    if (!result.success) {
+        for (const auto& e : result.report.errors) {
+            std::cerr << "[cult-transcoder] ERROR: " << e << "\n";
+        }
+        if (fs::exists(reportTmp)) fs::remove(reportTmp);
+        return 1;
+    }
+
+    return 0;
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 static std::string defaultReportPath(const std::string& outPath) {
     // Contract §2: default report path is "<out>.report.json"
     return outPath.empty() ? "cult-transcoder.report.json"
                            : outPath + ".report.json";
+}
+
+static std::string defaultAuthorReportPath(const std::string& outWavPath,
+                                           const std::string& outXmlPath) {
+    if (!outWavPath.empty()) return outWavPath + ".report.json";
+    if (!outXmlPath.empty()) return outXmlPath + ".report.json";
+    return "cult-transcoder.report.json";
 }
 
 static void printUsage(const std::string& progName) {

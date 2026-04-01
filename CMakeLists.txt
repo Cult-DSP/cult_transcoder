@@ -96,6 +96,15 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(pugixml)
 
+# --- nlohmann/json (authoring-side LUSID reader) -------------------------
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG        v3.11.3
+    GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(nlohmann_json)
+
 # ---------------------------------------------------------------------------
 # Main executable — cult-transcoder
 # ---------------------------------------------------------------------------
@@ -104,6 +113,10 @@ add_executable(cult-transcoder
     src/report.cpp
     src/transcoder.cpp
     src/adm_to_lusid.cpp
+    src/adm_author.cpp
+    src/lusid_reader.cpp
+    src/audio/wav_io.cpp
+    src/audio/normalize_audio.cpp
 )
 
 target_include_directories(cult-transcoder
@@ -124,6 +137,7 @@ else()
 endif()
 
 target_link_libraries(cult-transcoder PRIVATE pugixml::pugixml)
+target_link_libraries(cult-transcoder PRIVATE nlohmann_json::nlohmann_json)
 
 # ---------------------------------------------------------------------------
 # Tests — Catch2
@@ -133,12 +147,17 @@ enable_testing()
 add_executable(cult_tests
     tests/test_report.cpp
     tests/test_cli_args.cpp
+    tests/test_adm_author_args.cpp
     tests/parity/run_parity.cpp
 
     # Same source files the main binary uses, so tests exercise real code
     src/report.cpp
     src/transcoder.cpp
     src/adm_to_lusid.cpp
+    src/adm_author.cpp
+    src/lusid_reader.cpp
+    src/audio/wav_io.cpp
+    src/audio/normalize_audio.cpp
 )
 
 target_include_directories(cult_tests
@@ -156,6 +175,7 @@ target_link_libraries(cult_tests
     PRIVATE
         Catch2::Catch2WithMain
         pugixml::pugixml
+    nlohmann_json::nlohmann_json
 )
 
 if(MSVC)

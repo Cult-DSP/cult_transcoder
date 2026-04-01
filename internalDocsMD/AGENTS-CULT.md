@@ -1,5 +1,57 @@
 # AGENTS.md — CULT Transcoder (Execution-Safe, Contract-First)
 
+## Onboarding Tasks (New Agent)
+
+Goal: implement the new export-side `adm-author` path without touching the existing parity-critical `transcode` path.
+
+Scope and constraints:
+
+- Do not modify or regress the existing `adm_xml -> lusid_json` ingest path.
+- Use `libadm` and `libbw64` only for export-side authoring.
+- LUSID is canonical. Authoring is layered on top and must preserve deterministic ordering.
+- Resampling policy: normalize mono WAVs to 48 kHz float32 in the authoring path only.
+- Duration policy: use normalized frame count as canonical; fail on mismatches.
+- `containsAudio.json` is deprecated; resolve WAVs by deterministic id-to-filename mapping.
+
+Step-by-step tasks:
+
+1. Implement resampling (per internalDocsMD/resamplingPlan.md)
+
+- Vendor r8brain-free-src, wrap in a small internal API.
+- Normalize only non-48 kHz mono inputs to 48 kHz float32.
+- Report resampling details in the report (source rate, target rate, files).
+
+2. Implement post-normalization validation
+
+- Validate strict equal frame counts across normalized WAVs.
+- If `scene.lusid.json` includes `duration`, validate against audio-derived duration.
+- On mismatch, fail authoring and report expected vs actual counts per file.
+
+3. Build authoring mapping layer (LUSID -> ADM model)
+
+- Supported node types: direct_speaker, audio_object, LFE.
+- Deterministic ordering: beds (1.1,2.1,3.1,4.1,5.1..10.1), then objects by id.
+- Motion: step-hold, one audioBlockFormat per LUSID frame with rtime + duration.
+
+4. Implement ADM XML + BW64 output
+
+- Write XML and BW64 via temp + rename.
+- Embed ADM metadata in BW64 with libbw64.
+
+5. Extend report schema usage (no breaking changes)
+
+- Keep v0.1 fields intact.
+- Add authoring-specific summary fields as needed.
+- Add structured validation/resampling details in a new section if required.
+
+6. Tests
+
+- CLI arg validation for adm-author.
+- Missing files, unsupported formats, sample-rate and duration mismatches.
+- Mapping tests for bed/object/LFE counts and ordering.
+- Integration test that emits ADM XML + BW64 with embedded metadata.
+- Ensure no regressions in existing parity tests.
+
 Repo placement: `spatialroot/cult-transcoder/` (git submodule, already wired).  
 Invocation: CLI-first. Spatial Root calls `spatialroot/cult-transcoder/build/cult-transcoder` (macOS/Linux) or the `.bat` wrapper on Windows (see §9).  
 Build: CMake. C++17. Cross-platform (macOS + Windows required; Linux later).  
