@@ -1,137 +1,365 @@
-## ADM Authoring Plan (cult_transcoder)
+# ADM Authoring Plan (cult_transcoder)
 
-Last verified against the submodule code: 2026-03-31.
+Last verified against the submodule code: 2026-03-31.  
+This plan supersedes the earlier rough agent plan by explicitly treating LUSID → ADM as a new export-side extension rather than an implicit continuation of the current v1 ingest baseline.
+
 `internalDocsMD/DEV-PLAN-CULT.md` is outdated and must not be used as a source of truth.
 
-### 0. Purpose
+## 0. Purpose
 
-Implement LUSID -> ADM authoring in `cult_transcoder` (C++), producing:
+Implement LUSID → authored ADM in `cult_transcoder` (C++), producing:
 
-- `export.adm.xml` (ADM XML)
+- `export.adm.xml`
 - `export.adm.wav` (BW64 with embedded ADM metadata)
+- report JSON
 
-The Spatial Root runtime is C++ only. Python is not used in production. The
-Spatial Root C++ app calls `cult-transcoder` and the spatial engine directly.
+The practical first-pass acceptance target is successful import into Logic Pro Atmos.
 
-### 1. Scope and Constraints
+## 1. Architectural Framing
 
-- Target DAW: Logic Pro Atmos (must-pass).
-- Libraries: use `libadm` for ADM XML authoring and `libbw64` for BW64 packaging.
-- Input: either a LUSID package folder OR `scene.lusid.json` + WAVs directory.
-- Output: ADM XML + ADM BW64 (both written by `cult-transcoder`).
-- Preserve existing ordering and ID behavior from LUSID.
-- No Python dependencies in runtime path.
+This feature is an **export-side extension** layered on top of the canonical LUSID scene model.
+It must not redefine or regress the current parity-critical ADM ingest path.
 
-### 2. Input/Output Contract
+Pinned framing:
 
-**Accepted inputs** (both must be supported):
+- LUSID remains the canonical intermediate.
+- Existing `adm_xml -> lusid_json` behavior remains frozen unless explicitly changed.
+- The authoring path is a separate command and API surface.
+- `libadm` may be introduced for authoring/export only.
+- The current ingest/parity path continues to use pugixml and the Python oracle model.
+- CULT continues to own scene interpretation, mapping policy, deterministic behavior, and loss reporting.
+
+## 2. Scope and Constraints
+
+### In scope
+
+- LUSID package folder input
+- explicit `scene.lusid.json` + WAV directory input
+- generation of authored ADM XML
+- generation of authored BW64 WAV with embedded metadata
+- deterministic ordering and deterministic ID policy
+- explicit loss-ledger reporting for unsupported or approximate mappings
+- tests for validation, mapping, and output generation
+
+### Out of scope for first pass
+
+- modification of the current parity-critical ingest path
+- generic ADM authoring completeness beyond the supported first-pass subset
+- renderer-side bass management or venue-specific playback policy
+- silent fallback behavior for unsupported semantics
+- claiming lossless support for semantics not actually represented in authored output
+
+## 3. Current Repo Reality (Do Not Ignore)
+
+Observed today:
+
+- CLI currently supports only `adm_xml -> lusid_json`.
+- Existing parity depends on pugixml traversal matching the Python oracle.
+- `libadm` is not part of the current parity-critical path.
+- No verified LUSID → ADM export path currently exists in the repo.
+
+Implication:
+
+The authoring implementation must be added without disturbing the existing ingest/parity baseline.
+
+## 4. Input / Output Contract
+
+### Accepted inputs
+
+Support both:
 
 1. LUSID package folder:
    - contains `scene.lusid.json`
-   - contains mono WAVs at package root
+   - contains referenced WAV assets
 
 2. Explicit input files:
    - `scene.lusid.json`
-   - WAVs directory path
+   - WAV directory path
 
-**Outputs**:
+### First-pass WAV assumptions
+
+Unless explicitly expanded later, the first implementation should require:
+
+- mono WAV assets for authored sources
+- consistent sample rate across all required WAVs
+- consistent duration policy across all required WAVs
+- explicit failure on missing assets or unsupported asset layouts
+
+If padding, truncation, resampling, or interleaved-channel splitting is later allowed, that must be documented explicitly.
+
+### Outputs
 
 - `export.adm.xml`
-- `export.adm.wav` (BW64)
-- report JSON (existing report schema, extended as needed)
+- `export.adm.wav`
+- report JSON
 
-### 3. Proposed CLI Contract (New Subcommand)
+### Atomicity
 
-Add a new CLI subcommand for ADM authoring:
+All three outputs must be written via temp + rename.
 
-```
-cult-transcoder adm-author
-  --lusid <scene.lusid.json>
-  --wav-dir <path>
-  --out-xml <export.adm.xml>
-  --out-wav <export.adm.wav>
+## 5. Proposed CLI Contract
+
+Add a new CLI subcommand:
+
+```bash
+cult-transcoder adm-author \
+  --lusid <scene.lusid.json> \
+  --wav-dir <path> \
+  --out-xml <export.adm.xml> \
+  --out-wav <export.adm.wav> \
   [--report <path>] [--stdout-report]
 
 # Alternate input:
-cult-transcoder adm-author
-  --lusid-package <path>
-  --out-xml <export.adm.xml>
-  --out-wav <export.adm.wav>
+cult-transcoder adm-author \
+  --lusid-package <path> \
+  --out-xml <export.adm.xml> \
+  --out-wav <export.adm.wav> \
   [--report <path>] [--stdout-report]
 ```
 
-**Exit codes**:
+### Exit codes
 
 - `0`: success, outputs exist
-- `1`: authoring failure, no output
+- `1`: authoring failure, no final XML/WAV outputs
 - `2`: arg/usage error
 
-**Atomicity**:
+### Contract rules
 
-- `export.adm.xml` and `export.adm.wav` must be written via temp + rename.
-- Report already uses temp + rename in `main.cpp`.
+- Keep existing `transcode` command unchanged.
+- `adm-author` must not overload the meaning of the existing ingest command.
+- Best-effort fail report still applies on errors.
 
-### 4. LUSID -> ADM Mapping Policy
+## 6. Authoring Mapping Policy (Must Be Written Before Full Implementation)
 
-**Sources**:
+This is the critical missing layer. Do not begin broad implementation without making this explicit.
 
-- `direct_speaker` nodes map to ADM beds/channels.
-- `audio_object` nodes map to ADM objects.
-- `LFE` node must map to the LFE channel in the ADM bed.
+### 6.1 Supported LUSID node types
 
-**Ordering**:
+First pass should explicitly define support for:
 
-- Preserve LUSID frame order and node order.
-- Beds first, objects after.
+- `direct_speaker`
+- `audio_object`
+- `LFE`
 
-**Timebase**:
+Any other node type must either:
 
-- LUSID uses `timeUnit: "seconds"`. Convert to ADM timecode/frames using
-  the sample rate from LUSID or default 48000.
+- be rejected with clear error/reporting, or
+- be ignored only with explicit loss-ledger entries
 
-**Channel mapping**:
+### 6.2 Bed / object / LFE policy
 
-- Use existing LUSID IDs to map to ADM channels. Maintain deterministic
-  ordering: beds then objects.
+Pinned first-pass direction:
 
-### 5. Implementation Steps
+- `direct_speaker` nodes map to authored ADM bed/direct-speaker structures.
+- `audio_object` nodes map to authored ADM objects.
+- `LFE` maps inside the bed structure, not as a free object.
+- If target-profile constraints require stricter placement or ordering, document and test that explicitly.
 
-1. Add new `adm-author` subcommand and argument parsing in `src/main.cpp`.
-2. Extend `cult_transcoder.hpp` to support an ADM authoring request struct
-   and result struct (do not change existing transcode API).
-3. Create new implementation unit(s):
-   - `src/lusid_to_adm.cpp` (LUSID JSON -> ADM model)
-   - `src/adm_bw64.cpp` (ADM model -> BW64 + embedded XML)
-4. Link in `libadm` and `libbw64` via CMake FetchContent.
-5. Implement LUSID scene parser for C++ (if not already present):
-   - Minimal JSON reader to parse `scene.lusid.json` fields needed for ADM.
-6. Implement ADM XML writer using `libadm`.
-7. Implement BW64 packaging using `libbw64`.
-8. Extend report schema if needed (new fields for ADM export stats).
-9. Add tests:
-   - Unit tests for CLI arg validation
-   - Mapping tests for LUSID -> ADM object and bed counts
-   - Golden tests comparing ADM XML structure for a known LUSID scene
-10. Add a small integration test that produces `export.adm.wav` from a sample
-    LUSID package and validates headers + embedded XML.
+### 6.3 Ordering policy
 
-### 6. Validation Plan (Logic Pro Atmos)
+Determinism is required.
 
-1. Import `export.adm.wav` into Logic Pro Atmos.
-2. Verify bed channels + object tracks appear and are routed correctly.
-3. Verify LFE is recognized and silent beds are accepted.
-4. Confirm timing aligns with LUSID frame times.
+Pinned first-pass default:
 
-### 7. Risks and Open Items
+1. Bed/direct-speaker elements first
+2. LFE within the bed structure
+3. Objects after beds
+4. Relative source ordering follows LUSID frame-zero node order unless a documented target-profile override is required
 
-- LUSID -> ADM mapping semantics may need iteration to satisfy Logic Pro.
-- libadm traversal order may differ from LUSID ordering; enforce explicit
-  ordering in the writer.
-- JSON parsing for LUSID requires careful handling of frames and node order.
+Do not rely on `libadm` traversal order as the source of truth.
 
-### 8. Deliverables
+### 6.4 Time and motion policy
 
-- `cult-transcoder adm-author` command implemented and documented.
-- ADM XML writer and BW64 packager integrated.
-- Tests covering mapping correctness and output validity.
-- Updated docs (this file + AGENTS-CULT.md) to reflect new CLI contract.
+LUSID is frame-based. Authored ADM needs an explicit time/motion strategy.
+
+Before implementation, specify:
+
+- how frame times become authored ADM timing
+- whether motion is represented as sampled automation, block-format style authoring, or a narrower supported subset
+- what minimum time precision is used
+- which kinds of LUSID motion are unsupported in first pass
+
+If the first pass only supports a restricted animation subset, state that clearly and report reductions in the loss ledger.
+
+### 6.5 ID policy
+
+Define deterministic mapping from LUSID IDs to authored ADM entity IDs.
+
+Rules:
+
+- ID assignment must be deterministic across runs.
+- Do not allow library auto-generation to become the only stable identity source.
+- If IDs must be renumbered for profile compatibility, preserve a traceable mapping in code/reporting.
+
+### 6.6 Loss-ledger policy
+
+Report, do not invent.
+
+Examples of authoring-side losses that must be surfaced:
+
+- unsupported node types
+- unsupported motion patterns
+- unsupported metadata fields
+- asset mismatches requiring rejection or approximation
+- profile-driven reductions or omissions
+
+## 7. Implementation Steps
+
+### Step 1: Doc-first contract update
+
+Update, in the same change set if contract behavior changes:
+
+- `internalDocsMD/AGENTS-CULT.md`
+- design doc language around export-side authoring extension
+- coupled LUSID / toolchain docs if the toolchain contract changes
+
+### Step 2: Add separate request/result API
+
+Extend `cult_transcoder.hpp` with dedicated structures such as:
+
+- `AdmAuthorRequest`
+- `AdmAuthorResult`
+
+Do not overload the existing transcode API semantically.
+
+### Step 3: Add new CLI subcommand in `src/main.cpp`
+
+Implement `adm-author` argument parsing and dispatch.
+
+### Step 4: Add a LUSID reader / resolver for authoring
+
+Create a minimal, explicit reader for:
+
+- `scene.lusid.json`
+- package path resolution
+- asset lookup and validation
+
+### Step 5: Implement validation layer before writing output
+
+Validate:
+
+- mutually valid CLI arg combinations
+- required files exist
+- supported node types only
+- sample rate agreement
+- duration agreement
+- WAV layout assumptions
+
+Fail early with report output.
+
+### Step 6: Build an internal authoring model
+
+Create a clean intermediate representation between LUSID and `libadm`.
+
+This model should own:
+
+- source ordering
+- entity typing
+- timing/motion interpretation
+- deterministic IDs
+- mapping-loss bookkeeping
+
+Do not let `libadm` become the implicit mapping policy.
+
+### Step 7: Write authored ADM XML
+
+Use `libadm` at this stage only.
+
+Requirements:
+
+- preserve explicit ordering from the internal authoring model
+- write XML via temp + rename
+- avoid hidden library defaults becoming contract behavior
+
+### Step 8: Package BW64 output
+
+Use `libbw64` to package audio + embedded metadata.
+
+Requirements:
+
+- write BW64 via temp + rename
+- validate expected metadata embedding
+- keep authored XML and packaged BW64 generation logically separate so either can be debugged
+
+### Step 9: Extend report generation
+
+Preserve existing required report fields.
+
+Add authoring-specific summary fields as needed, such as:
+
+- authored bed count
+- authored object count
+- authored channel count
+- wav file count resolved
+- authoring warnings / approximations
+
+### Step 10: Add tests
+
+Required minimum test coverage:
+
+- CLI arg validation tests
+- asset validation tests
+- mapping tests for node-type counts and ordering
+- deterministic ID tests
+- integration test generating XML + BW64
+- validation of embedded metadata presence
+- zero regressions to existing parity tests
+
+## 8. Validation Plan (Logic Pro Atmos)
+
+### Automated validation
+
+- verify outputs exist only on success
+- verify report behavior on both success and failure
+- verify authoring subset constraints
+- verify deterministic output structure across repeated runs
+
+### Manual validation
+
+Import `export.adm.wav` into Logic Pro Atmos and verify:
+
+- bed channels are recognized correctly
+- objects appear correctly
+- LFE is recognized in the intended structure
+- timing aligns with LUSID frame times within the documented authoring policy
+- no obvious import rejection due to malformed metadata or unsupported structure
+
+Manual validation status must be stated explicitly in the PR.
+
+## 9. Risks and Open Items
+
+### Highest-risk items
+
+1. **Mapping policy ambiguity**  
+   The major risk is implementing XML/BW64 output before fully defining the supported LUSID → ADM subset.
+
+2. **Over-broad use of libadm**  
+   `libadm` should be confined to the export-writing layer, not allowed to redefine CULT’s canonical semantics.
+
+3. **Ordering drift**  
+   Deterministic ordering must come from CULT’s own mapping policy, not from incidental library traversal.
+
+4. **Target mismatch**  
+   “Generic ADM” is not the same thing as “must-pass in Logic Pro Atmos.” The first implementation should optimize for the latter.
+
+5. **Silent reductions**  
+   Unsupported motion or metadata must not be silently dropped without a loss-ledger entry.
+
+### Open items that should be resolved in writing
+
+- exact supported motion subset for first pass
+- exact WAV duration policy
+- exact sample-rate policy
+- exact default report path for `adm-author`
+- exact deterministic ADM ID policy
+
+## 10. Deliverables
+
+- `cult-transcoder adm-author` command implemented and documented
+- dedicated authoring API surface added
+- explicit mapping-policy documentation committed
+- authored ADM XML writer integrated
+- authored BW64 packager integrated
+- tests covering validation, mapping, and integration
+- updated docs reflecting the new export-side contract
+- explicit statement of Logic Pro Atmos validation status
