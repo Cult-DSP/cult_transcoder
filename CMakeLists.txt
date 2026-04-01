@@ -117,11 +117,13 @@ add_executable(cult-transcoder
     src/lusid_reader.cpp
     src/audio/wav_io.cpp
     src/audio/normalize_audio.cpp
+    src/audio/resampler_r8brain.cpp
 )
 
 target_include_directories(cult-transcoder
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/r8brain
 )
 
 target_compile_definitions(cult-transcoder
@@ -158,11 +160,13 @@ add_executable(cult_tests
     src/lusid_reader.cpp
     src/audio/wav_io.cpp
     src/audio/normalize_audio.cpp
+    src/audio/resampler_r8brain.cpp
 )
 
 target_include_directories(cult_tests
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/r8brain
 )
 
 target_compile_definitions(cult_tests

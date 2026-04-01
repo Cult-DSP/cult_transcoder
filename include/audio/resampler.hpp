@@ -15,32 +15,33 @@
 #pragma once
 
 // ---------------------------------------------------------------------------
-// wav_io.hpp — minimal WAV inspection helpers for authoring
+// resampler.hpp — r8brain-backed mono WAV resampling helper
 // ---------------------------------------------------------------------------
 
 #include <cstdint>
 #include <string>
-#include <vector>
 
 namespace cult {
 
-struct WavFileInfo {
-    std::string path;
-    uint16_t audioFormat = 0;  // 1 = PCM, 3 = IEEE float
-    uint16_t channels = 0;
-    uint32_t sampleRate = 0;
-    uint16_t bitsPerSample = 0;
-    uint64_t frameCount = 0;
+struct NormalizeRequest {
+    std::string inputPath;
+    std::string outputPath;
+    uint32_t    sourceSampleRate = 0;
+    uint32_t    targetSampleRate = 0;
+    uint64_t    sourceFrameCount = 0;
 };
 
-bool readWavInfo(const std::string& path, WavFileInfo& info, std::string& error);
-bool readWavMonoSamples(const std::string& path,
-                         WavFileInfo& info,
-                         std::vector<float>& samples,
-                         std::string& error);
-bool writeFloat32MonoWav(const std::string& path,
-                         uint32_t sampleRate,
-                         const std::vector<float>& samples,
-                         std::string& error);
+struct NormalizeResult {
+    std::string sourcePath;
+    std::string normalizedPath;
+    uint32_t    sourceSampleRate = 0;
+    uint32_t    targetSampleRate = 0;
+    uint64_t    sourceFrameCount = 0;
+    uint64_t    normalizedFrameCount = 0;
+    bool        resampled = false;
+    std::string error;
+};
+
+NormalizeResult normalizeMonoWavTo48kFloat32(const NormalizeRequest& request);
 
 } // namespace cult

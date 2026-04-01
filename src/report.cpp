@@ -135,6 +135,43 @@ std::string Report::toJson() const {
     }
     o << "\n" << ind(1) << "},\n";
 
+    // authoringResample (optional)
+    if (!authoringResample.empty()) {
+        o << ind(1) << "\"authoringResample\": [";
+        for (size_t i = 0; i < authoringResample.size(); ++i) {
+            const auto& e = authoringResample[i];
+            o << "\n" << ind(2) << "{\n";
+            o << ind(3) << "\"sourcePath\": " << jsonStr(e.sourcePath) << ",\n";
+            o << ind(3) << "\"normalizedPath\": " << jsonStr(e.normalizedPath) << ",\n";
+            o << ind(3) << "\"sourceSampleRate\": " << e.sourceSampleRate << ",\n";
+            o << ind(3) << "\"targetSampleRate\": " << e.targetSampleRate << ",\n";
+            o << ind(3) << "\"sourceFrameCount\": " << e.sourceFrameCount << ",\n";
+            o << ind(3) << "\"normalizedFrameCount\": " << e.normalizedFrameCount << ",\n";
+            o << ind(3) << "\"resampled\": " << (e.resampled ? "true" : "false") << "\n";
+            o << ind(2) << "}";
+            if (i + 1 < authoringResample.size()) o << ",";
+        }
+        o << "\n" << ind(1) << "],\n";
+    }
+
+    // authoringValidation (optional)
+    if (hasAuthoringValidation) {
+        o << ind(1) << "\"authoringValidation\": {\n";
+        o << ind(2) << "\"expectedFrames\": " << authoringValidation.expectedFrames << ",\n";
+        o << ind(2) << "\"files\": [";
+        for (size_t i = 0; i < authoringValidation.files.size(); ++i) {
+            const auto& f = authoringValidation.files[i];
+            o << "\n" << ind(3) << "{\n";
+            o << ind(4) << "\"path\": " << jsonStr(f.path) << ",\n";
+            o << ind(4) << "\"frames\": " << f.frames << ",\n";
+            o << ind(4) << "\"ok\": " << (f.ok ? "true" : "false") << "\n";
+            o << ind(3) << "}";
+            if (i + 1 < authoringValidation.files.size()) o << ",";
+        }
+        o << (authoringValidation.files.empty() ? "" : "\n" + ind(2)) << "]\n";
+        o << ind(1) << "},\n";
+    }
+
     // lossLedger — required even when empty (§7)
     o << ind(1) << "\"lossLedger\": [";
     for (size_t i = 0; i < lossLedger.size(); ++i) {

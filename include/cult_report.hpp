@@ -36,6 +36,7 @@
 // desired — the public API of this header stays stable.
 // ---------------------------------------------------------------------------
 
+#include <cstdint>
 #include <map>
 #include <string>
 #include <vector>
@@ -65,6 +66,33 @@ struct ReportSummary {
 };
 
 // ---------------------------------------------------------------------------
+// AuthoringResampleEntry — authoring-only normalization detail
+// ---------------------------------------------------------------------------
+struct AuthoringResampleEntry {
+    std::string sourcePath;
+    std::string normalizedPath;
+    uint32_t    sourceSampleRate = 0;
+    uint32_t    targetSampleRate = 0;
+    uint64_t    sourceFrameCount = 0;
+    uint64_t    normalizedFrameCount = 0;
+    bool        resampled = false;
+};
+
+// ---------------------------------------------------------------------------
+// AuthoringValidation — authoring-only duration/frame validation detail
+// ---------------------------------------------------------------------------
+struct AuthoringValidationFile {
+    std::string path;
+    uint64_t    frames = 0;
+    bool        ok = false;
+};
+
+struct AuthoringValidation {
+    uint64_t expectedFrames = 0;
+    std::vector<AuthoringValidationFile> files;
+};
+
+// ---------------------------------------------------------------------------
 // ResolvedArgs — the CLI args recorded verbatim in the report (§7)
 // ---------------------------------------------------------------------------
 struct ResolvedArgs {
@@ -89,6 +117,11 @@ struct Report {
     std::vector<std::string> warnings;
     ReportSummary            summary;
     std::vector<LossLedgerEntry> lossLedger; // required even when empty
+
+    // Authoring-only sections (optional).
+    std::vector<AuthoringResampleEntry> authoringResample;
+    AuthoringValidation authoringValidation;
+    bool hasAuthoringValidation = false;
 
     // ---------------------------------------------------------------------------
     // Serialise to a JSON string.

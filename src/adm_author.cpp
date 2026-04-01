@@ -22,9 +22,11 @@
 
 #include "cult_transcoder.hpp"
 #include "lusid_reader.hpp"
+#include "audio/normalize_audio.hpp"
 #include "audio/wav_io.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <vector>
 
@@ -176,6 +178,60 @@ AdmAuthorResult admAuthor(const AdmAuthorRequest& req) {
             continue;
         }
         wavInfos.push_back(info);
+    }
+
+    if (!report.errors.empty()) {
+        report.status = "fail";
+        return result;
+    }
+
+    const uint32_t targetSampleRate = 48000;
+    fs::path workDir = fs::path(req.outWavPath + ".work");
+    auto normalized = normalizeWavSet(wavInfos, workDir.string(), targetSampleRate);
+    if (!normalized.success) {
+        for (const auto& e : normalized.errors) {
+            report.errors.push_back("adm-author: " + e);
+        }
+        report.status = "fail";
+        return result;
+    }
+
+    for (const auto& n : normalized.files) {
+        AuthoringResampleEntry entry;
+        entry.sourcePath = n.sourcePath;
+        entry.normalizedPath = n.normalizedPath;
+        entry.sourceSampleRate = n.sourceSampleRate;
+        entry.targetSampleRate = n.targetSampleRate;
+        entry.sourceFrameCount = n.sourceFrameCount;
+        entry.normalizedFrameCount = n.normalizedFrameCount;
+        entry.resampled = n.resampled;
+        report.authoringResample.push_back(entry);
+    }
+
+    report.hasAuthoringValidation = true;
+    uint64_t expectedFrames = normalized.files.front().normalizedFrameCount;
+    bool frameMismatch = false;
+    for (const auto& n : normalized.files) {
+        AuthoringValidationFile vf;
+        vf.path = n.normalizedPath;
+        vf.frames = n.normalizedFrameCount;
+        vf.ok = (n.normalizedFrameCount == expectedFrames);
+        if (!vf.ok) frameMismatch = true;
+        report.authoringValidation.files.push_back(vf);
+    }
+    report.authoringValidation.expectedFrames = expectedFrames;
+
+    if (frameMismatch) {
+        report.errors.push_back("adm-author: normalized WAV frame counts do not match");
+    }
+
+    if (sceneResult.scene.duration >= 0.0) {
+        const uint64_t expectedFromScene = static_cast<uint64_t>(
+            std::llround(sceneResult.scene.duration * static_cast<double>(targetSampleRate)));
+        if (expectedFromScene != expectedFrames) {
+            report.errors.push_back(
+                "adm-author: scene duration does not match audio frame count");
+        }
     }
 
     if (!report.errors.empty()) {
