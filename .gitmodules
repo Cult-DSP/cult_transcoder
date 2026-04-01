@@ -1,0 +1,3 @@
+[submodule "third_party/r8brain"]
+	path = third_party/r8brain
+	url = https://github.com/avaneev/r8brain-free-src
