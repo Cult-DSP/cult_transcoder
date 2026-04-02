@@ -111,7 +111,9 @@ if(NOT EXISTS "${LIBBW64_DIR}/include/bw64/bw64.hpp")
     )
 endif()
 add_library(libbw64 INTERFACE)
-target_include_directories(libbw64 INTERFACE "${LIBBW64_DIR}/include")
+# SYSTEM suppresses warnings from libbw64 headers under -Werror (gcc treats
+# plain INTERFACE includes as project headers, promoting warnings to errors).
+target_include_directories(libbw64 SYSTEM INTERFACE "${LIBBW64_DIR}/include")
 
 # ---------------------------------------------------------------------------
 # Main executable — cult-transcoder
