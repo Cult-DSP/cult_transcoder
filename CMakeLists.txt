@@ -142,6 +142,7 @@ target_compile_definitions(cult-transcoder
 # Strict warnings — helps catch issues early on all platforms
 if(MSVC)
     target_compile_options(cult-transcoder PRIVATE /W4 /WX)
+    target_compile_definitions(cult-transcoder PRIVATE _CRT_SECURE_NO_WARNINGS)
 else()
     target_compile_options(cult-transcoder PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
@@ -190,6 +191,7 @@ target_link_libraries(cult_tests
 
 if(MSVC)
     target_compile_options(cult_tests PRIVATE /W4)
+    target_compile_definitions(cult_tests PRIVATE _CRT_SECURE_NO_WARNINGS)
 else()
     target_compile_options(cult_tests PRIVATE -Wall -Wextra -Wpedantic)
 endif()

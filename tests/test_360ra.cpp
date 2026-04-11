@@ -55,6 +55,9 @@
 #include <catch2/catch_approx.hpp>
 #include <pugixml.hpp>
 
+#ifdef _MSC_VER
+#  define _USE_MATH_DEFINES
+#endif
 #include <cmath>
 #include <filesystem>
 #include <string>
