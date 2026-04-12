@@ -111,6 +111,9 @@ static double parseTimecode360Ra(const char* tc) {
     if (!tc || tc[0] == '\0') return 0.0;
     int h = 0, m = 0;
     double s = 0.0;
+#ifdef _MSC_VER
+#pragma warning(suppress: 4996)
+#endif
     if (std::sscanf(tc, "%d:%d:%lf", &h, &m, &s) == 3) {
         return h * 3600.0 + m * 60.0 + s;
     }

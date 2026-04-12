@@ -92,6 +92,9 @@ double parseTimecode(const std::string& tc) {
     // Format: HH:MM:SS.SSSSS
     int hours = 0, minutes = 0;
     double seconds = 0.0;
+#ifdef _MSC_VER
+#pragma warning(suppress: 4996)
+#endif
     if (std::sscanf(tc.c_str(), "%d:%d:%lf", &hours, &minutes, &seconds) == 3) {
         return hours * 3600.0 + minutes * 60.0 + seconds;
     }
@@ -178,6 +181,9 @@ std::string fmtDouble(double v) {
     for (int prec = 6; prec <= 17; ++prec) {
         std::snprintf(buf, sizeof(buf), "%.*g", prec, v);
         double roundtrip = 0;
+#ifdef _MSC_VER
+#pragma warning(suppress: 4996)
+#endif
         std::sscanf(buf, "%lf", &roundtrip);
         if (roundtrip == v) return buf;
     }
