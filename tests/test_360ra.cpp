@@ -55,12 +55,17 @@
 #include <catch2/catch_approx.hpp>
 #include <pugixml.hpp>
 
-#ifdef _MSC_VER
-#  define _USE_MATH_DEFINES
-#endif
 #include <cmath>
 #include <filesystem>
 #include <string>
+
+// M_PI is a POSIX extension; MSVC only defines it with _USE_MATH_DEFINES, but
+// that flag must precede the very first (transitive) inclusion of <math.h>.
+// Since project headers above pull in <cmath> before we can set the flag,
+// define M_PI ourselves as a guaranteed fallback.
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 namespace fs = std::filesystem;
 
