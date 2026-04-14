@@ -96,6 +96,17 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(pugixml)
 
+# --- nlohmann/json (LUSID reader — authoring path) -----------------------
+# Used by src/lusid_reader.cpp to parse scene.lusid.json in the adm-author
+# command.  Not used in the ingest/parity path.
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG        v3.11.3
+    GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(nlohmann_json)
+
 # --- libbw64 (EBU BW64/RF64 container reader, Apache-2.0, header-only) ---
 # Phase 3+: used by transcoding/adm/adm_reader.cpp to extract the axml chunk
 # from ADM BW64/WAV files (--in-format adm_wav).
@@ -115,6 +126,19 @@ add_library(libbw64 INTERFACE)
 # plain INTERFACE includes as project headers, promoting warnings to errors).
 target_include_directories(libbw64 SYSTEM INTERFACE "${LIBBW64_DIR}/include")
 
+# --- r8brain-free-src (resampler, MIT license, header-only) ---------------
+# Used by src/audio/resampler_r8brain.cpp in the adm-author normalization
+# path.  Vendored as a git submodule at third_party/r8brain.
+# Not used in the parity-critical adm_xml → lusid_json ingest path.
+set(R8BRAIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/r8brain")
+if(NOT EXISTS "${R8BRAIN_DIR}/CDSPResampler.h")
+    message(FATAL_ERROR
+        "r8brain headers not found at ${R8BRAIN_DIR}/CDSPResampler.h\n"
+        "Run:  git submodule update --init thirdparty/r8brain\n"
+        "from inside the cult_transcoder directory."
+    )
+endif()
+
 # ---------------------------------------------------------------------------
 # Main executable — cult-transcoder
 # ---------------------------------------------------------------------------
@@ -123,6 +147,11 @@ add_executable(cult-transcoder
     src/report.cpp
     src/transcoder.cpp
     src/adm_to_lusid.cpp
+    src/adm_author.cpp                       # adm-author command (Steps 1-2 functional)
+    src/lusid_reader.cpp                     # LUSID JSON reader (authoring path)
+    src/audio/wav_io.cpp                     # self-contained RIFF WAV reader/writer
+    src/audio/normalize_audio.cpp            # 48 kHz float32 normalization coordinator
+    src/audio/resampler_r8brain.cpp          # r8brain-backed mono resampling
     transcoding/adm/adm_reader.cpp           # Phase 3: BW64 axml extraction (libbw64)
     transcoding/adm/adm_profile_resolver.cpp # Phase 4: ADM profile detection
     transcoding/adm/sony360ra_to_lusid.cpp   # Phase 6: Sony 360RA ADM → LUSID
@@ -132,6 +161,7 @@ target_include_directories(cult-transcoder
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/transcoding/adm  # adm_reader.hpp (Phase 3)
+        ${R8BRAIN_DIR}                               # CDSPResampler.h (adm-author path)
 )
 
 target_compile_definitions(cult-transcoder
@@ -147,7 +177,7 @@ else()
     target_compile_options(cult-transcoder PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 
-target_link_libraries(cult-transcoder PRIVATE pugixml::pugixml libbw64)
+target_link_libraries(cult-transcoder PRIVATE pugixml::pugixml libbw64 nlohmann_json::nlohmann_json)
 
 # ---------------------------------------------------------------------------
 # Tests — Catch2
@@ -159,12 +189,18 @@ add_executable(cult_tests
     tests/test_cli_args.cpp
     tests/test_lfe_mode.cpp                  # Phase 4: LFE mode + profile detection tests
     tests/test_360ra.cpp                     # Phase 6: Sony 360RA conversion tests
+    tests/test_adm_author_args.cpp           # adm-author CLI validation tests
     tests/parity/run_parity.cpp
 
     # Same source files the main binary uses, so tests exercise real code
     src/report.cpp
     src/transcoder.cpp
     src/adm_to_lusid.cpp
+    src/adm_author.cpp
+    src/lusid_reader.cpp
+    src/audio/wav_io.cpp
+    src/audio/normalize_audio.cpp
+    src/audio/resampler_r8brain.cpp
     transcoding/adm/adm_reader.cpp           # Phase 3: needed by transcoder
     transcoding/adm/adm_profile_resolver.cpp # Phase 4: ADM profile detection
     transcoding/adm/sony360ra_to_lusid.cpp   # Phase 6: Sony 360RA ADM → LUSID
@@ -174,6 +210,7 @@ target_include_directories(cult_tests
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/transcoding/adm  # adm_reader.hpp (Phase 3)
+        ${R8BRAIN_DIR}                               # CDSPResampler.h (adm-author path)
 )
 
 target_compile_definitions(cult_tests
@@ -187,6 +224,7 @@ target_link_libraries(cult_tests
         Catch2::Catch2WithMain
         pugixml::pugixml
         libbw64
+        nlohmann_json::nlohmann_json
 )
 
 if(MSVC)
@@ -218,5 +256,7 @@ message(STATUS "  Binary path : ${CMAKE_BINARY_DIR}/cult-transcoder")
 message(STATUS "  Tests       : enabled (Catch2 v3)")
 message(STATUS "  XML parser  : pugixml (encounter-order parity with Python oracle)")
 message(STATUS "  WAV reader  : libbw64 (git submodule, thirdparty/libbw64)")
+message(STATUS "  Resampler   : r8brain-free-src (git submodule, thirdparty/r8brain)")
+message(STATUS "  JSON parser : nlohmann/json v3.11.3 (FetchContent)")
 message(STATUS "===========================================")
 message(STATUS "")

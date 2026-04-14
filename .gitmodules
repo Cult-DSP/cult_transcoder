@@ -1,3 +1,8 @@
 [submodule "thirdparty/libbw64"]
 	path = thirdparty/libbw64
 	url = https://github.com/ebu/libbw64.git
+
+[submodule "thirdparty/r8brain"]
+	path = thirdparty/r8brain
+	url = https://github.com/avaneev/r8brain-free-src
+

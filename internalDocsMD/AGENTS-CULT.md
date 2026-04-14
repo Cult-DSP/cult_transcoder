@@ -5,7 +5,7 @@
 ### Context Reset Prompt (Paste Into New Window)
 
 ```
-You are continuing CULT Transcoder adm-author work. Resampling + validation are implemented and must not regress the parity-critical adm_xml->lusid_json ingest path. r8brain is vendored at cult_transcoder/third_party/r8brain and used by src/audio/resampler_r8brain.cpp. adm-author now normalizes mono WAVs to 48 kHz float32, validates strict equal frame counts, and checks scene duration if present. Report schema v0.1 is preserved and extended with authoringResample[] and authoringValidation. Remaining work: LUSID->ADM mapping, ADM XML + BW64 output, and tests for mapping/output. Keep atomic output rules and fail-report behavior.
+You are continuing CULT Transcoder adm-author work. Resampling + validation are implemented and must not regress the parity-critical adm_xml->lusid_json ingest path. r8brain is a git submodule at cult_transcoder/thirdparty/r8brain and used by src/audio/resampler_r8brain.cpp. WAV I/O is a self-contained RIFF parser in src/audio/wav_io.cpp (no libsndfile). adm-author now normalizes mono WAVs to 48 kHz float32, validates strict equal frame counts, and checks scene duration if present. admAuthor() validates and normalizes but returns "not implemented yet" at the XML/BW64 write step — that is Step 3-4 work. Report schema v0.1 is preserved. Remaining work: LUSID->ADM mapping, ADM XML + BW64 output, and tests for mapping/output. Keep atomic output rules and fail-report behavior.
 ```
 
 Goal: implement the new export-side `adm-author` path without touching the existing parity-critical `transcode` path.
@@ -33,7 +33,7 @@ Step-by-step tasks:
 - If `scene.lusid.json` includes `duration`, validate against audio-derived duration.
 - On mismatch, fail authoring and report expected vs actual counts per file.
 
-Status update (2026-04-01): Steps 1-2 are implemented; steps 3-6 remain.
+Status update (2026-04-13): Steps 1-2 are implemented and building correctly after merge reconciliation; steps 3-6 remain. The adm-author pipeline validates inputs, normalizes WAVs, and validates frame counts, but returns "not implemented yet" at the XML/BW64 write step. test_adm_author_args.cpp covers CLI validation and is wired into the build.
 
 3. Build authoring mapping layer (LUSID -> ADM model)
 
@@ -69,7 +69,7 @@ Canonical: LUSID Scene v0.5 JSON.
 
 This file is designed to be executable and non-destructive. Do not guess.
 
-Last verified against the submodule code: 2026-03-31.  
+Last verified against the submodule code: 2026-04-13.  
 This document is updated to reflect the planned ADM authoring extension from LUSID.  
 `internalDocsMD/DEV-PLAN-CULT.md` is outdated and must not be used as a source of truth.
 
@@ -92,22 +92,36 @@ any other Python tooling in the workspace.
 
 ---
 
-## 0.3. Current Implementation Snapshot (Verified)
+## 0.3. Current Implementation Snapshot (Verified 2026-04-13)
 
 Observed in the current submodule (no assumptions beyond code/tests in this repo):
 
+**Ingest/parity path (complete):**
 - ADM XML → LUSID JSON conversion is implemented in `src/adm_to_lusid.cpp`.
-- CLI supports only `adm_xml` → `lusid_json` today (see `src/main.cpp`, `src/transcoder.cpp`).
-- XML parser is pugixml (FetchContent in `CMakeLists.txt`); libadm is not used in the current ingest/parity path.
-- Parity tests exist and compare JSON output to a Python oracle fixture in `tests/parity`.
-- Report schema v0.1 is implemented in `include/cult_report.hpp` + `src/report.cpp`.
-- Report file is written via temp + rename in `src/main.cpp` (atomic for report only).
-- LUSID output is written directly in `writeLusidScene()` (non-atomic as of now).
-- No LUSID → ADM authoring implementation is currently verified in the repo.
+- CLI supports `adm_xml` and `adm_wav` → `lusid_json` (see `src/main.cpp`, `src/transcoder.cpp`).
+- XML parser is pugixml (FetchContent); libadm is not used in the ingest/parity path.
+- Phase 4 ADM profile resolver + `--lfe-mode` flag: `transcoding/adm/adm_profile_resolver.cpp`.
+- Phase 6 Sony 360RA conversion: `transcoding/adm/sony360ra_to_lusid.cpp`.
+- Parity tests exist in `tests/parity`; 65/65 tests passing as of Phase 6A.
+- Report schema v0.1 in `include/cult_report.hpp` + `src/report.cpp`.
+- Report written via temp + rename (atomic). LUSID output is non-atomic (known).
+
+**adm-author path (Steps 1-2 functional, Steps 3-6 pending):**
+- `src/adm_author.cpp` — validates inputs and orchestrates the pipeline; returns `"not implemented yet"` at the XML/BW64 write step.
+- `src/lusid_reader.cpp` — complete minimal LUSID JSON parser (nlohmann/json, FetchContent).
+- `src/audio/wav_io.cpp` — self-contained RIFF WAV reader/writer; no libsndfile dependency.
+- `src/audio/normalize_audio.cpp` — 48 kHz float32 normalization coordinator; validates frame counts.
+- `src/audio/resampler_r8brain.cpp` — r8brain-backed mono resampling; r8brain at `thirdparty/r8brain` (git submodule).
+- `tests/test_adm_author_args.cpp` — CLI validation tests (3 tests; all designed to pass with current stub).
+
+**Skeleton files (copyright header only — not compiled):**
+- `transcoding/adm/adm_to_lusid.cpp` — placeholder for future orchestration layer.
+- `transcoding/lusid/lusid_validate.cpp` — placeholder for Phase 3+ schema validation.
+- `transcoding/lusid/lusid_writer.cpp` — placeholder for Phase 3+ atomic writer.
 
 Known doc mismatch to fix later:
 
-- `OVERVIEW.md` phase table still lists Phase 2 as pending and mentions libadm; this is stale.
+- `README.md` (formerly `OVERVIEW.md`) phase table may reference stale phase numbering.
 
 ## 0.4. Architectural Position of the ADM Authoring Extension (Pinned)
 
@@ -133,8 +147,11 @@ These decisions are final and must not be changed without a doc-update PR.
 | Test framework                    | Catch2 (CMake FetchContent, no install)                                                                                                           |
 | License                           | Apache-2.0, Cult-DSP copyright in every source file                                                                                               |
 | XML parser for ingest parity path | pugixml (FetchContent, MIT license) — mirrors Python oracle's raw XML traversal for ordering parity. **Not** libadm for the current parity path   |
+| JSON parser (authoring path)      | nlohmann/json v3.11.3 (FetchContent) — used by `src/lusid_reader.cpp` only; not in ingest path                                                   |
 | ADM authoring library             | `libadm` may be introduced for the new LUSID → ADM export path only                                                                               |
-| BW64 packaging library            | `libbw64` remains the BW64 container dependency                                                                                                   |
+| BW64 packaging library            | `libbw64` (git submodule, `thirdparty/libbw64`)                                                                                                   |
+| Resampling library                | r8brain-free-src (git submodule, `thirdparty/r8brain`) — authoring path only                                                                      |
+| WAV I/O                           | Self-contained RIFF parser in `src/audio/wav_io.cpp` — no libsndfile dependency                                                                   |
 | ADM authoring normalized audio    | mono, 48 kHz, float32 WAV (v1 export path)                                                                                                        |
 | ADM authoring resampling          | allowed only in `adm-author` normalization stage; must be explicit in report                                                                      |
 | ADM authoring duration source     | normalized WAV frame count; scene duration must match or fail                                                                                     |
@@ -180,8 +197,9 @@ No behavior change without doc change.
 ```text
 cult_transcoder/
 ├── .gitignore
+├── .gitmodules
 ├── CMakeLists.txt
-├── OVERVIEW.md
+├── README.md
 ├── internalDocsMD/
 │   ├── AGENTS-CULT.md
 │   ├── DEV-PLAN-CULT.md                # outdated; do not use as source of truth
@@ -189,33 +207,49 @@ cult_transcoder/
 │   └── design-reference-CULT.md
 ├── include/
 │   ├── adm_to_lusid.hpp
-│   ├── cult_transcoder.hpp
+│   ├── cult_transcoder.hpp             # AdmAuthorRequest / AdmAuthorResult defined here
 │   ├── cult_report.hpp
-│   └── cult_version.hpp
+│   ├── cult_version.hpp
+│   ├── lusid_reader.hpp
+│   └── audio/
+│       ├── wav_io.hpp
+│       ├── resampler.hpp
+│       └── normalize_audio.hpp
 ├── scripts/
 │   └── cult-transcoder.bat
 ├── src/
 │   ├── main.cpp
 │   ├── transcoder.cpp
 │   ├── adm_to_lusid.cpp
-│   └── report.cpp
+│   ├── report.cpp
+│   ├── adm_author.cpp                  # adm-author entry point (Steps 1-2 functional)
+│   ├── lusid_reader.cpp                # LUSID JSON parser (nlohmann/json)
+│   └── audio/
+│       ├── wav_io.cpp                  # self-contained RIFF reader/writer (no libsndfile)
+│       ├── normalize_audio.cpp         # normalization coordinator
+│       └── resampler_r8brain.cpp       # r8brain-backed mono resampling
+├── thirdparty/
+│   ├── libbw64/                        # git submodule — EBU BW64 container (Phase 3+)
+│   └── r8brain/                        # git submodule — r8brain resampler (adm-author)
 ├── transcoding/
 │   ├── adm/
-│   │   ├── adm_reader.cpp
-│   │   ├── adm_to_lusid.cpp
-│   │   ├── adm_profile_resolver.cpp
-│   │   ├── lusid_to_adm.cpp           # planned: canonical scene -> ADM authoring model
-│   │   └── adm_bw64.cpp               # planned: authored ADM + audio -> BW64 output
+│   │   ├── adm_reader.cpp              # Phase 3: BW64 axml extraction
+│   │   ├── adm_reader.hpp
+│   │   ├── adm_to_lusid.cpp            # skeleton — not compiled
+│   │   ├── adm_profile_resolver.cpp    # Phase 4: ADM profile detection
+│   │   ├── adm_profile_resolver.hpp
+│   │   └── sony360ra_to_lusid.cpp      # Phase 6: Sony 360RA ADM → LUSID
 │   └── lusid/
-│       ├── lusid_writer.cpp
-│       ├── lusid_validate.cpp
-│       └── lusid_reader.cpp           # planned: minimal reader for authoring path
+│       ├── lusid_writer.cpp            # skeleton — not compiled
+│       └── lusid_validate.cpp          # skeleton — not compiled
 └── tests/
     ├── test_report.cpp
     ├── test_cli_args.cpp
-    ├── test_adm_author_args.cpp       # planned
-    ├── test_lusid_to_adm_mapping.cpp  # planned
-    ├── test_adm_author_integration.cpp# planned
+    ├── test_lfe_mode.cpp               # Phase 4: LFE mode + profile detection
+    ├── test_360ra.cpp                  # Phase 6: Sony 360RA conversion
+    ├── test_adm_author_args.cpp        # adm-author CLI validation (3 tests)
+    ├── test_lusid_to_adm_mapping.cpp   # planned: Step 3
+    ├── test_adm_author_integration.cpp # planned: Step 4
     └── parity/
         ├── run_parity.cpp
         └── fixtures/
