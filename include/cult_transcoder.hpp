@@ -27,6 +27,7 @@
 // ---------------------------------------------------------------------------
 
 #include "cult_report.hpp"
+#include "adm_to_lusid.hpp"  // LfeMode enum
 
 #include <string>
 
@@ -37,11 +38,12 @@ namespace cult {
 // ---------------------------------------------------------------------------
 struct TranscodeRequest {
     std::string inPath;
-    std::string inFormat;   // currently only "adm_xml" is planned (Phase 2+)
+    std::string inFormat;   // "adm_xml" | "adm_wav"
     std::string outPath;
-    std::string outFormat;  // currently only "lusid_json" is planned (Phase 2+)
+    std::string outFormat;  // "lusid_json"
     std::string reportPath; // resolved path for the report file
     bool        stdoutReport = false;
+    LfeMode     lfeMode = LfeMode::Hardcoded; // Phase 4: --lfe-mode flag
 };
 
 // ---------------------------------------------------------------------------

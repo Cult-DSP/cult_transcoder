@@ -37,6 +37,17 @@
 namespace cult {
 
 // ---------------------------------------------------------------------------
+// LfeMode — controls how the LFE channel is identified (AGENTS §11.2, §11.4)
+// ---------------------------------------------------------------------------
+enum class LfeMode {
+    /// Phase 2 default (forever): LFE = 4th DirectSpeaker encountered (1-based).
+    Hardcoded,
+    /// Opt-in (Phase 4+): LFE = any DirectSpeaker whose speakerLabel child
+    /// element text is "LFE" or "LFE1" (case-insensitive).
+    SpeakerLabel,
+};
+
+// ---------------------------------------------------------------------------
 // LUSID scene data model (mirrors LUSID/src/scene.py)
 // ---------------------------------------------------------------------------
 
@@ -84,7 +95,15 @@ struct ConversionResult {
 
 /// Parse an ADM XML file and produce a LUSID scene.
 /// This mirrors parse_adm_xml_to_lusid_scene(xml_path, contains_audio=None).
-ConversionResult convertAdmToLusid(const std::string& xmlPath);
+ConversionResult convertAdmToLusid(const std::string& xmlPath,
+                                    LfeMode lfeMode = LfeMode::Hardcoded);
+
+/// Parse an ADM XML string (in-memory buffer) and produce a LUSID scene.
+/// Phase 3: used when the XML was extracted from a BW64 WAV in-memory by
+/// extractAxmlFromWav() — avoids writing then re-reading from disk.
+/// Semantically identical to convertAdmToLusid(); all parity rules apply.
+ConversionResult convertAdmToLusidFromBuffer(const std::string& xmlBuffer,
+                                              LfeMode lfeMode = LfeMode::Hardcoded);
 
 /// Serialize a LusidScene to a JSON string.
 /// Output matches Python's json.dump(scene.to_dict(), indent=2) format.

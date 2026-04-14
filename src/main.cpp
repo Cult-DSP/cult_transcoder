@@ -38,6 +38,7 @@
 #include "cult_transcoder.hpp"
 #include "cult_report.hpp"
 #include "cult_version.hpp"
+#include "adm_to_lusid.hpp"  // LfeMode
 
 #include <filesystem>
 #include <iostream>
@@ -119,6 +120,18 @@ static int cmdTranscode(const std::vector<std::string>& argv) {
         else if (flag == "--out-format")   req.outFormat   = nextArg("--out-format");
         else if (flag == "--report")       req.reportPath  = nextArg("--report");
         else if (flag == "--stdout-report") req.stdoutReport = true;
+        else if (flag == "--lfe-mode") {
+            const std::string val = nextArg("--lfe-mode");
+            if (val == "hardcoded") {
+                req.lfeMode = cult::LfeMode::Hardcoded;
+            } else if (val == "speaker-label") {
+                req.lfeMode = cult::LfeMode::SpeakerLabel;
+            } else {
+                std::cerr << "[cult-transcoder] ERROR: unknown --lfe-mode value: '"
+                          << val << "'. Valid values: hardcoded, speaker-label\n";
+                std::exit(2);
+            }
+        }
         else {
             std::cerr << "[cult-transcoder] ERROR: unknown flag: " << flag << "\n";
             printUsage(argv[0]);
@@ -149,12 +162,14 @@ static int cmdTranscode(const std::vector<std::string>& argv) {
                                 : req.reportPath;
             cult::Report failReport;
             failReport.status = "fail";
-            failReport.args.inPath      = req.inPath;
-            failReport.args.inFormat    = req.inFormat;
-            failReport.args.outPath     = req.outPath;
-            failReport.args.outFormat   = req.outFormat;
-            failReport.args.reportPath  = rpath;
+            failReport.args.inPath       = req.inPath;
+            failReport.args.inFormat     = req.inFormat;
+            failReport.args.outPath      = req.outPath;
+            failReport.args.outFormat    = req.outFormat;
+            failReport.args.reportPath   = rpath;
             failReport.args.stdoutReport = req.stdoutReport;
+            failReport.args.lfeMode      = (req.lfeMode == cult::LfeMode::SpeakerLabel)
+                                               ? "speaker-label" : "hardcoded";
             failReport.errors.push_back("Argument error — see stderr for details");
             failReport.writeTo(rpath);
             if (req.stdoutReport) failReport.printToStdout();
@@ -331,11 +346,12 @@ static void printUsage(const std::string& progName) {
     std::cerr <<
         "Usage: " << progName << " transcode\n"
         "           --in <path>         input file\n"
-        "           --in-format <fmt>   input format  (adm_xml)\n"
+        "           --in-format <fmt>   input format  (adm_xml, adm_wav)\n"
         "           --out <path>        output file\n"
         "           --out-format <fmt>  output format (lusid_json)\n"
         "           [--report <path>]   report path (default: <out>.report.json)\n"
         "           [--stdout-report]   also print report to stdout\n"
+        "           [--lfe-mode <val>]  LFE detection: hardcoded (default) | speaker-label\n"
         "\n"
         "       " << progName << " --version\n"
         "       " << progName << " --help\n";

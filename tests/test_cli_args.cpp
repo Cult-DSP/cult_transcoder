@@ -57,12 +57,6 @@ static bool containsError(const cult::Report& r, const std::string& substr) {
     return false;
 }
 
-static bool containsWarning(const cult::Report& r, const std::string& substr) {
-    for (const auto& w : r.warnings)
-        if (w.find(substr) != std::string::npos) return true;
-    return false;
-}
-
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -180,4 +174,78 @@ TEST_CASE("transcode: summary.timeUnit is always 'seconds'", "[cli][summary]") {
 
     // timeUnit must be "seconds" regardless of success/failure — pinned by AGENTS §4
     REQUIRE(result.report.summary.timeUnit == "seconds");
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3 tests — adm_wav format
+// ---------------------------------------------------------------------------
+
+TEST_CASE("transcode: adm_wav in-format is accepted (missing file → fail)",
+          "[cli][phase3]") {
+    // adm_wav must be a known format (not rejected as unknown).
+    // The file doesn't exist so we expect a "not found" error, NOT an
+    // "Unsupported --in-format" error — this proves the format is recognized.
+    cult::TranscodeRequest req;
+    req.inPath    = "/nonexistent/path/file.wav";
+    req.inFormat  = "adm_wav";
+    req.outPath   = "/tmp/out.lusid.json";
+    req.outFormat = "lusid_json";
+    req.reportPath = "/tmp/out.lusid.json.report.json";
+
+    auto result = cult::transcode(req);
+
+    REQUIRE_FALSE(result.success);
+    REQUIRE(result.report.status == "fail");
+    // Must fail on "not found", NOT on "in-format" — adm_wav is recognized
+    REQUIRE_FALSE(containsError(result.report, "in-format"));
+    REQUIRE(containsError(result.report, "not found"));
+}
+
+TEST_CASE("transcode: adm_xml in-format still accepted (Phase 2 regression)",
+          "[cli][phase3]") {
+    // adm_xml must remain valid after Phase 3 adds adm_wav.
+    cult::TranscodeRequest req;
+    req.inPath    = "/nonexistent/path/file.xml";
+    req.inFormat  = "adm_xml";
+    req.outPath   = "/tmp/out.lusid.json";
+    req.outFormat = "lusid_json";
+    req.reportPath = "/tmp/out.lusid.json.report.json";
+
+    auto result = cult::transcode(req);
+
+    REQUIRE_FALSE(result.success);
+    REQUIRE(result.report.status == "fail");
+    // Must NOT reject on format — only on missing file
+    REQUIRE_FALSE(containsError(result.report, "in-format"));
+    REQUIRE(containsError(result.report, "not found"));
+}
+
+TEST_CASE("transcode: non-WAV file as adm_wav returns fail (no axml chunk)",
+          "[cli][phase3]") {
+    // Pass a real existing file that is NOT a BW64 WAV.
+    // libbw64 should throw, extractAxmlFromWav returns failure,
+    // and transcode returns status="fail".
+    TempFile tmp(".wav");
+    // Write some garbage bytes — definitely not a valid BW64 container
+    {
+        std::ofstream f(tmp.path, std::ios::binary);
+        f << "GARBAGE_NOT_A_WAV_FILE";
+    }
+
+    cult::TranscodeRequest req;
+    req.inPath    = tmp.path.string();
+    req.inFormat  = "adm_wav";
+    req.outPath   = "/tmp/out.lusid.json";
+    req.outFormat = "lusid_json";
+    req.reportPath = "/tmp/out.lusid.json.report.json";
+
+    auto result = cult::transcode(req);
+
+    REQUIRE_FALSE(result.success);
+    REQUIRE(result.report.status == "fail");
+    // Error should mention the file or BW64/axml
+    REQUIRE((containsError(result.report, "BW64") ||
+             containsError(result.report, "axml") ||
+             containsError(result.report, "open") ||
+             containsError(result.report, tmp.path.filename().string())));
 }

@@ -34,6 +34,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <fstream>
 #include <map>
 #include <sstream>
@@ -91,6 +92,9 @@ double parseTimecode(const std::string& tc) {
     // Format: HH:MM:SS.SSSSS
     int hours = 0, minutes = 0;
     double seconds = 0.0;
+#ifdef _MSC_VER
+#pragma warning(suppress: 4996)
+#endif
     if (std::sscanf(tc.c_str(), "%d:%d:%lf", &hours, &minutes, &seconds) == 3) {
         return hours * 3600.0 + minutes * 60.0 + seconds;
     }
@@ -177,6 +181,9 @@ std::string fmtDouble(double v) {
     for (int prec = 6; prec <= 17; ++prec) {
         std::snprintf(buf, sizeof(buf), "%.*g", prec, v);
         double roundtrip = 0;
+#ifdef _MSC_VER
+#pragma warning(suppress: 4996)
+#endif
         std::sscanf(buf, "%lf", &roundtrip);
         if (roundtrip == v) return buf;
     }
@@ -193,23 +200,13 @@ std::string indent(int level) {
 // ---------------------------------------------------------------------------
 // convertAdmToLusid — main entry point
 // ---------------------------------------------------------------------------
-ConversionResult convertAdmToLusid(const std::string& xmlPath) {
+// ---------------------------------------------------------------------------
+// parseAdmDocument() — internal helper shared by both public entry points.
+// Called after the pugi::xml_document has been loaded (from file or buffer).
+// ---------------------------------------------------------------------------
+static ConversionResult parseAdmDocument(pugi::xml_document& doc,
+                                          LfeMode lfeMode = LfeMode::Hardcoded) {
     ConversionResult result;
-
-    // -- Parse XML --
-    pugi::xml_document doc;
-    // Parse without namespace processing so element names appear without
-    // the {ns} prefix, matching Python's ElementTree iter() behavior when
-    // we search by local name.  However, EBU ADM XML typically has xmlns on
-    // the root element which means child names are namespace-qualified in
-    // pugixml's default mode.  We need to handle both cases.
-    auto parseResult = doc.load_file(xmlPath.c_str());
-    if (!parseResult) {
-        result.errors.push_back(
-            "Failed to parse XML: " + std::string(parseResult.description()) +
-            " at offset " + std::to_string(parseResult.offset));
-        return result;
-    }
 
     // -- Find EBU root --
     auto ebuRoot = findEbuRoot(doc);
@@ -357,8 +354,22 @@ ConversionResult convertAdmToLusid(const std::string& xmlPath) {
         channel1based++;
         int groupId = channel1based;
 
-        // LFE detection — mirrors _is_lfe_channel()
-        if (kLfeHardcoded && channel1based == 4) {
+        // LFE detection — controlled by lfeMode (AGENTS §11.2, §11.4)
+        bool isLfe = false;
+        if (lfeMode == LfeMode::Hardcoded) {
+            // Phase 2 default: LFE = 4th DirectSpeaker encountered (1-based).
+            // Mirrors Python _is_lfe_channel() with _DEV_LFE_HARDCODED = True.
+            isLfe = kLfeHardcoded && (channel1based == 4);
+        } else {
+            // SpeakerLabel mode (Phase 4 opt-in): LFE = speakerLabel is
+            // "LFE" or "LFE1" (case-insensitive). Channel-4 rule not applied.
+            std::string lbl = si.speakerLabel;
+            std::transform(lbl.begin(), lbl.end(), lbl.begin(),
+                           [](unsigned char c){ return std::tolower(c); });
+            isLfe = (lbl == "lfe" || lbl == "lfe1");
+        }
+
+        if (isLfe) {
             LusidNode node;
             node.id = std::to_string(groupId) + ".1";
             node.type = "LFE";
@@ -428,6 +439,52 @@ ConversionResult convertAdmToLusid(const std::string& xmlPath) {
 
     result.success = true;
     return result;
+}
+
+// ---------------------------------------------------------------------------
+// convertAdmToLusid() — public API, parses from file path
+// ---------------------------------------------------------------------------
+ConversionResult convertAdmToLusid(const std::string& xmlPath, LfeMode lfeMode) {
+    ConversionResult result;
+
+    pugi::xml_document doc;
+    // Parse without namespace processing so element names appear without
+    // the {ns} prefix, matching Python's ElementTree iter() behavior when
+    // we search by local name.  However, EBU ADM XML typically has xmlns on
+    // the root element which means child names are namespace-qualified in
+    // pugixml's default mode.  We need to handle both cases.
+    auto parseResult = doc.load_file(xmlPath.c_str());
+    if (!parseResult) {
+        result.errors.push_back(
+            "Failed to parse XML: " + std::string(parseResult.description()) +
+            " at offset " + std::to_string(parseResult.offset));
+        return result;
+    }
+
+    return parseAdmDocument(doc, lfeMode);
+}
+
+// ---------------------------------------------------------------------------
+// convertAdmToLusidFromBuffer() — public API, parses from in-memory string
+//
+// Phase 3: used when the XML was extracted from a BW64 WAV in-memory by
+// extractAxmlFromWav(). Avoids a disk write+re-read cycle. All parity rules
+// from AGENTS-CULT §3/§5 apply identically — same parseAdmDocument() call.
+// ---------------------------------------------------------------------------
+ConversionResult convertAdmToLusidFromBuffer(const std::string& xmlBuffer,
+                                              LfeMode lfeMode) {
+    ConversionResult result;
+
+    pugi::xml_document doc;
+    auto parseResult = doc.load_string(xmlBuffer.c_str());
+    if (!parseResult) {
+        result.errors.push_back(
+            "Failed to parse XML buffer: " + std::string(parseResult.description()) +
+            " at offset " + std::to_string(parseResult.offset));
+        return result;
+    }
+
+    return parseAdmDocument(doc, lfeMode);
 }
 
 // ---------------------------------------------------------------------------

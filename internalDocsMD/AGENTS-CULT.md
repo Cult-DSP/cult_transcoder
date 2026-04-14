@@ -272,10 +272,13 @@ Exit codes for both commands:
 
 Atomic output behavior:
 
+- `0`: success; final output exists; report exists.
+- non-zero: failure; final output must not exist; report should exist best-effort; stderr must explain.
 - Report is written via temp + rename.
 - Existing LUSID output remains non-atomic until separately fixed.
 - `adm-author` outputs (`export.adm.xml`, `export.adm.wav`) must be written via temp + rename from day one.
 
+Atomic output rule (non-negotiable):
 Authoring path input rules (v1):
 
 - `containsAudio.json` is deprecated; resolve WAVs by deterministic id-to-filename mapping
@@ -526,7 +529,665 @@ Sony 360RA priority:
 
 ---
 
-## 11. Agent PR Checklist (Required)
+## 11. Phase 4 — Implementation Notes (COMPLETE)
+
+**Phase 4 is fully implemented as of 2026-03-07. 40/40 tests pass.
+These notes are preserved for archaeology and future agent context.**
+
+### Agent research delegation rule (applies to all phases)
+
+Agents must **not** attempt brute-force or token-intensive research into
+external format specifications, third-party schema conventions, or toolchain
+internals they cannot fully resolve from files already in the workspace.
+If you hit a question that requires knowledge of an external standard (e.g.,
+Sony 360RA ADM schema conventions, MPEG-H MAE metadata semantics, IAMF OBU
+structure), **stop and ask the owner**. The owner handles external research and
+will return with the answer. Document the open question in §11.9 so it is
+visible and trackable.
+
+These notes exist so the next agent has enough context to implement Phase 4
+without a clarifying Q&A round. Read all of §11 before touching any file.
+
+---
+
+### 11.1 What Phase 4 actually is (precise scope)
+
+Phase 4 has two separable sub-tasks that should be implemented together because
+they share the same XML inspection pass:
+
+**Sub-task A — ADM profile detection**
+Inspect the parsed `pugi::xml_document` (already in memory after axml extraction
+or file load) and return a `AdmProfile` enum value. The converter uses this to
+adjust extraction behavior. In Phase 4, the only behavioral change driven by
+profile is LFE detection (sub-task B). Future phases may use profile for bed
+channel remapping, Sony 360RA ID normalisation, etc.
+
+**Sub-task B — Improved LFE detection, behind a flag**
+The Phase 2 hardcoded rule (4th DirectSpeaker encountered, 1-based) must remain
+the **default** forever. Phase 4 adds a new opt-in mode that uses `speakerLabel`
+attribute inspection. The flag is a new CLI argument; it must not change any
+existing behaviour when absent.
+
+These two sub-tasks live entirely inside `transcoding/adm/adm_profile_resolver.cpp`
+(and `adm_profile_resolver.hpp`) plus a small addition to `src/transcoder.cpp` to pass the
+flag through. `adm_to_lusid.cpp` also received a `lfeMode` param to implement the
+`SpeakerLabel` branch — see §11.4.
+override is applied at the `LusidNode` construction layer inside
+`parseAdmDocument()` only if the flag is explicitly set.
+
+---
+
+### 11.2 Pinned CLI contract for the new flag
+
+The flag name and semantics are pinned here to prevent an agent from inventing
+something incompatible:
+
+```
+--lfe-mode <value>
+```
+
+| Value           | Behaviour                                                            | Default? |
+| --------------- | -------------------------------------------------------------------- | -------- |
+| `hardcoded`     | LFE = 4th DirectSpeaker encountered (1-based). Phase 2 behaviour.    | **YES**  |
+| `speaker-label` | LFE = any DirectSpeaker whose `speakerLabel` is `"LFE"` or `"LFE1"`. | no       |
+
+Rules:
+
+- If `--lfe-mode` is omitted the behaviour is identical to `--lfe-mode hardcoded`.
+- The flag is only meaningful for `--in-format adm_xml` and `--in-format adm_wav`.
+  If supplied with any other future in-format, emit a warning to the report and ignore.
+- The resolved value of `--lfe-mode` **must appear in the report `args` block**
+  (so the report is always self-describing).
+- Non-default LFE mode **must produce a `warnings[]` entry** in the report:
+  `"lfe-mode=speaker-label: LFE assignment differs from Phase 2 hardcoded default"`
+- Parity tests using `--lfe-mode hardcoded` (or omitted) must still pass 28/28.
+
+Do **not** add `--lfe-mode` to `kKnownInFormats` — it is a separate top-level
+argument. Add it to `TranscodeRequest` in `cult_transcoder.hpp`.
+
+---
+
+### 11.3 Pinned API shape for adm_profile_resolver
+
+The resolver must expose this public API (in a new `adm_profile_resolver.hpp`):
+
+```cpp
+namespace cult {
+
+enum class AdmProfile {
+    Generic,       // Standard EBU BS.2076, no tool-specific extensions detected
+    DolbyAtmos,    // audioProgrammeName contains "Atmos" (case-insensitive), or
+                   // audioPackFormatName contains "Atmos" or "51" + objects pattern
+    Sony360RA,     // audioPackFormatName contains "360RA" or "360" (case-insensitive),
+                   // OR audioProgrammeName contains "360RA"
+    Unknown,       // XML present but no profile signals found — treat as Generic
+};
+
+struct ProfileResult {
+    AdmProfile profile = AdmProfile::Unknown;
+    std::string detectedFrom;   // human-readable: which attribute triggered detection
+    std::vector<std::string> warnings;
+};
+
+/// Inspect an already-parsed pugi::xml_document and return the detected profile.
+/// This is a read-only pass — does not modify the document.
+/// Called by transcoder.cpp after extractAxmlFromWav() or before convertAdmToLusid().
+ProfileResult resolveAdmProfile(const pugi::xml_document& doc);
+
+} // namespace cult
+```
+
+Detection heuristics (implement exactly these, in priority order):
+
+1. Search all `audioProgramme` nodes for `audioProgrammeName` attribute.
+   - If value contains `"Atmos"` (case-insensitive) → `DolbyAtmos`
+   - If value contains `"360RA"` (case-insensitive) → `Sony360RA`
+2. Search all `audioPackFormat` nodes for `audioPackFormatName` attribute.
+   - If value contains `"Atmos"` (case-insensitive) → `DolbyAtmos`
+   - If value contains `"360RA"` (case-insensitive) → `Sony360RA`
+3. If no signals found → `Unknown` (caller treats as `Generic`)
+
+**Note:** bare `"360"` is intentionally excluded as a detection signal — it is
+too broad and would produce false positives. Only `"360RA"` is used. The real
+Sony fixture (`audioProgrammeName="Gem_OM_360RA_3"`) matches on `"360RA"`.
+Do not re-add `"360"` without an explicit owner decision.
+
+**Do not** use libadm for this pass. pugixml is already available and the
+detection is purely attribute-string inspection — no ADM semantic model needed.
+
+---
+
+### 11.4 How the profile and LFE flag wire into existing code
+
+The call chain in `transcoder.cpp` becomes:
+
+```
+adm_wav path:
+  extractAxmlFromWav()
+    → resolveAdmProfile(doc)          ← NEW Phase 4 call
+    → convertAdmToLusidFromBuffer(xmlBuffer, lfeMode)   ← lfeMode added
+
+adm_xml path:
+  doc.load_file()
+    → resolveAdmProfile(doc)          ← NEW Phase 4 call
+    → convertAdmToLusid(xmlPath, lfeMode)               ← lfeMode added
+```
+
+`parseAdmDocument()` in `adm_to_lusid.cpp` gains one new parameter:
+
+```cpp
+static ConversionResult parseAdmDocument(
+    pugi::xml_document& doc,
+    LfeMode lfeMode = LfeMode::Hardcoded   // new, default = Hardcoded
+);
+```
+
+Where `LfeMode` is a simple enum in `adm_to_lusid.hpp`:
+
+```cpp
+enum class LfeMode { Hardcoded, SpeakerLabel };
+```
+
+The `speaker-label` branch inside `parseAdmDocument()`:
+
+- When `lfeMode == SpeakerLabel`: a DirectSpeaker node is typed `LFE` if its
+  `speakerLabel` child element text equals `"LFE"` or `"LFE1"` (case-insensitive).
+  The hardcoded channel-4 rule is **not applied** in this branch.
+- When `lfeMode == Hardcoded` (default): existing Phase 2 logic unchanged.
+
+The profile result is stored in `ConversionResult::warnings` if Sony360RA or
+DolbyAtmos is detected (for report transparency), but does **not** change
+conversion behaviour in Phase 4 beyond the LFE mode. Full profile-driven
+conversion is Phase 5+.
+
+---
+
+### 11.5 CMake changes (done)
+
+`adm_profile_resolver.cpp` is **implemented and compiled**. Both targets
+(`cult-transcoder` and `cult_tests`) include it. `adm_profile_resolver.hpp`
+is in `transcoding/adm/` which is already on the include path.
+
+---
+
+### 11.6 Test requirements (done — see `tests/test_lfe_mode.cpp`)
+
+All 12 Phase 4 tests are implemented in `tests/test_lfe_mode.cpp`.
+The full suite runs as 40 test cases / 150 assertions (was 28/105).
+
+| Test                                                                      | Input                            | Expected                                                                                                  |
+| ------------------------------------------------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `--lfe-mode hardcoded` explicit = same as default                         | parity fixture                   | passes parity                                                                                             |
+| `--lfe-mode speaker-label` on fixture with `speakerLabel="LFE"`           | new fixture (see below)          | node typed `LFE`                                                                                          |
+| `--lfe-mode speaker-label` on Atmos fixture (LFE at ch4, no speakerLabel) | existing Atmos fixture           | ch4 node typed differently if no speakerLabel, or same if speakerLabel present — document expected result |
+| `--lfe-mode garbage`                                                      | any                              | non-zero exit, `status: "fail"` report                                                                    |
+| Profile detection: Atmos XML → `detectedFrom` correct                     | Atmos fixture                    | `DolbyAtmos` detected                                                                                     |
+| Profile detection: generic XML → `Generic` or `Unknown`                   | existing parity fixture          | `Unknown` or `Generic`                                                                                    |
+| Profile detection: 360RA XML → `Sony360RA` detected                       | `sony_360ra_example.xml` fixture | `Sony360RA` detected via `audioProgrammeName="Gem_OM_360RA_3"` (contains `"360RA"`)                       |
+| Parity regression with default lfe-mode                                   | parity fixtures                  | 28/28 still pass                                                                                          |
+
+**Fixtures needed** (must be committed to `tests/parity/fixtures/`):
+
+- `sony_360ra_example.xml` — copy of `processedData/sony360RA_example.xml`
+  (already confirmed present in the workspace). Do not modify the source file.
+  Use this file directly for profile detection tests; its `audioProgrammeName`
+  is `"Gem_OM_360RA_3"` which contains `"360RA"` — the unambiguous detection
+  signal. **No Python oracle reference LUSID is committed for this fixture.**
+  The Python oracle cannot parse Sony 360RA ADM (`<audioFormatExtended>` root)
+  and is not a valid baseline. Sony 360RA support was never in the oracle scope.
+
+- `sony_360ra_example.xml` is used **only** for Phase 4 profile detection tests
+  (assert `Sony360RA` is returned by `resolveAdmProfile()`). It is **not** used
+  for LUSID conversion parity in Phase 4. Full 360RA conversion support is a
+  later phase (see §11.9 open questions).
+
+- The existing `speakerLabel`-based LFE test needs a minimal synthetic fixture
+  (a small hand-authored ADM XML with a DirectSpeaker element that has a
+  `<speakerLabel>LFE</speakerLabel>` child). Craft this fixture in-repo at
+  `tests/parity/fixtures/lfe_speaker_label_fixture.xml`. Do not derive it from
+  the Sony 360RA file (that file has no LFE/speakerLabel elements — confirmed
+  by inspection).
+
+---
+
+### 11.7 Report contract additions
+
+`lfeMode` must be added to `ResolvedArgs` in `cult_report.hpp` so it is copied
+from `TranscodeRequest` alongside all other args before transcoding begins.
+This mirrors the existing pattern: `inPath`, `inFormat`, etc. are already on
+`ResolvedArgs` and serialized verbatim. `lfeMode` follows the same path —
+`TranscodeRequest` → copy into `Report::args` → serialized to JSON. The field
+name in the JSON report args block is `"lfeMode"` (camelCase).
+
+Profile detection results must **always** produce a `warnings[]` entry,
+unconditionally — even when the detected profile does not change conversion
+behavior (e.g., `DolbyAtmos` detected but `--lfe-mode hardcoded` in use). The
+report is a transparency artifact for the pipeline and renderer; it must reflect
+everything that was observed, not just what changed.
+
+No other report schema changes in Phase 4. `reportVersion` stays `"0.1"`.
+
+---
+
+### 11.8 Files to touch in Phase 4 (complete list)
+
+| File                                                       | Change                                                                                               |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `transcoding/adm/adm_profile_resolver.hpp`                 | **NEW** — ProfileResult, AdmProfile enum, resolveAdmProfile()                                        |
+| `transcoding/adm/adm_profile_resolver.cpp`                 | **IMPLEMENT** stub → full detection logic                                                            |
+| `include/adm_to_lusid.hpp`                                 | Add `LfeMode` enum; add `lfeMode` param to `convertAdmToLusid()` and `convertAdmToLusidFromBuffer()` |
+| `src/adm_to_lusid.cpp`                                     | Add `lfeMode` param to `parseAdmDocument()`; add `SpeakerLabel` branch                               |
+| `include/cult_transcoder.hpp`                              | Add `lfeMode` field to `TranscodeRequest`                                                            |
+| `include/cult_report.hpp`                                  | Add `lfeMode` field to `ResolvedArgs` (copied from `TranscodeRequest` before transcoding)            |
+| `src/transcoder.cpp`                                       | Parse `--lfe-mode` arg; pass to `resolveAdmProfile()` + converter calls                              |
+| `src/main.cpp`                                             | Copy `lfeMode` into `report.args`; profile detection warnings into `report.warnings`                 |
+| `src/report.cpp`                                           | Serialise `lfeMode` in the `args` JSON block                                                         |
+| `CMakeLists.txt`                                           | Add `adm_profile_resolver.cpp` to both targets                                                       |
+| `tests/test_cli_args.cpp` or new `tests/test_lfe_mode.cpp` | New Phase 4 tests (see §11.6)                                                                        |
+| `tests/parity/fixtures/`                                   | Add `sony_360ra_example.xml` + synthetic `lfe_speaker_label_fixture.xml`                             |
+| `internalDocsMD/AGENTS-CULT.md`                            | Update §1 repo layout, §2 CLI contract, §11 status                                                   |
+| `internalDocsMD/DEV-PLAN-CULT.md`                          | Mark Phase 4 work items complete                                                                     |
+| `spatialroot/internalDocsMD/AGENTS.md`                     | Note `--lfe-mode` flag exists, update binary contract if needed                                      |
+
+**Do not touch**: `transcoding/lusid/lusid_writer.cpp`, `lusid_validate.cpp`
+(Phase 5+ stubs), `runPipeline.py` (deprecated), any LUSID Python files.
+
+---
+
+### 11.9 Open questions — ask the owner, do not guess
+
+These questions require external research or owner judgment. The agent must
+**stop and ask** rather than guess or implement speculatively. Document answers
+here once resolved.
+
+1. **Sony 360RA conversion scope (RESOLVED — Phase 4 scope is detection only)**
+   Confirmed: Phase 4 only detects the 360RA profile and reports it. Full
+   360RA ADM-to-LUSID conversion (the `<audioFormatExtended>` root structure)
+   is out of scope for Phase 4. The Sony fixture is used only for profile
+   detection tests. The Python oracle does not support 360RA and is not used
+   as a reference for this format.
+
+2. **Sony 360RA speakerLabel / LFE convention (RESOLVED — not applicable in Phase 4)**
+   Confirmed by file inspection: `processedData/sony360RA_example.xml` contains
+   no `speakerLabel` elements and no LFE channels. It is a 13-channel object-only
+   360RA file (no DirectSpeakers bed). The `--lfe-mode speaker-label` branch
+   therefore cannot be tested against this file; a synthetic fixture is used
+   instead (see §11.6).
+
+   **Bass management note (owner-confirmed, 2026-03-07):** Sony 360RA has no
+   LFE channel by design. Bass management is the responsibility of the playback
+   engine, not the authoring tool. Spatial Root v1 does **not** implement bass
+   management. This is intentional and must not be worked around in CULT.
+   A future exploration item exists for Spatial Root v2 (see DEV-PLAN Phase 6
+   note). Do not add any bass management logic without an explicit owner decision.
+
+3. **Full 360RA ADM parsing strategy (RESOLVED — Phase 6)**
+   The Sony 360RA ADM XML root is `<conformance_point_document><File><aXML><format><audioFormatExtended version="ITU-R_BS.2076-2">`.
+   This is a bwfmetaedit export wrapper around a standard BS.2076-2 document. The existing
+   `parseTimecode()` with `sscanf` already handles the `S48000` sample-frame suffix correctly
+   (stops parsing at `S`). Full conversion is implemented in Phase 6 as a separate converter
+   module (`sony360ra_to_lusid.*`) — see §15. Auto-dispatch via profile detection.
+
+4. **`--lfe-mode` exposure in `runRealtime.py` (OPEN)**
+   Should the Python pipeline ever pass `--lfe-mode speaker-label` to
+   cult-transcoder, or is this flag only for CLI / testing use? If the pipeline
+   should expose it, `RealtimeConfig` in `realtime_runner.py` needs a new field.
+   Ask the owner before wiring this into the pipeline.
+
+5. **Profile-driven bed remapping in Phase 5+ (RESOLVED — not needed for 360RA)**
+   The Sony 360RA fixture has no DirectSpeakers bed — all 13 channels are Objects
+   (`typeDefinition="Objects"`, `AP_0003XXXX`). No bed remapping is required for 360RA.
+   For Dolby Atmos, bed remapping remains an open question for a future phase.
+
+---
+
+## 13. Phase 5 — GUI Transcoding Tab (COMPLETE, 2026-03-07)
+
+Phase 5 adds a **TRANSCODE tab** to the existing realtime GUI (`gui/realtimeGUI/`).
+It exposes the `cult-transcoder transcode` CLI to users without requiring a terminal.
+The C++ binary is unchanged; all new code is Python/PySide6 only.
+
+### 13.1 Scope
+
+- Offline ADM → LUSID transcoding from the GUI (not real-time engine)
+- Exposes `--in`, `--in-format`, `--out-format lusid_json`, `--report`, `--lfe-mode` flags
+- Streams `cult-transcoder` stdout/stderr live into the GUI log
+- "Open Report" button to view the JSON report after a successful run
+- Cross-platform file dialog pattern (see §13.4)
+
+### 13.2 New files
+
+**`gui/realtimeGUI/realtime_panels/RealtimeTranscodePanel.py`** — PySide6 panel for the TRANSCODE tab.
+
+Signals:
+
+- `run_requested(in_path: str, in_format: str, out_path: str, lfe_mode: str)` — emitted when TRANSCODE button clicked
+- `open_report_requested(report_path: str)` — emitted when Open Report button clicked
+
+Public API:
+
+- `set_running(running: bool)` — disables inputs + shows spinner state
+- `set_finished(success: bool, report_path: str)` — re-enables inputs, colours status, reveals Open Report
+- `append_line(text: str)` — appends one line to the streaming log widget
+
+Browse pattern (two separate buttons per §13.4):
+
+- `File…` button → `QFileDialog.getOpenFileName(filter="ADM Files (*.wav *.xml);;All Files (*)")`
+- `Dir…` button → `QFileDialog.getExistingDirectory()`
+
+Combos:
+
+- In-format: `auto`, `adm_wav`, `adm_xml`, `lusid_json`
+- LFE mode: `hardcoded` (default), `speaker-label`
+
+---
+
+**`gui/realtimeGUI/realtime_transcoder_runner.py`** — `QProcess` wrapper.
+
+Signals:
+
+- `output(str)` — one line of stdout/stderr
+- `started()` — process started
+- `finished(int, str)` — (exit_code, report_path)
+
+Binary resolution (`_resolve_binary()`):
+
+```python
+project_root / "cult_transcoder" / "build" / "cult-transcoder"      # macOS/Linux
+project_root / "cult_transcoder" / "build" / "cult-transcoder.exe"  # Windows
+```
+
+`project_root` is resolved as `Path(__file__).resolve().parents[3]` (3 levels up from `gui/realtimeGUI/`).
+
+Command constructed:
+
+```
+cult-transcoder transcode
+  --in         <in_path>
+  --in-format  <in_format>
+  --out        <out_path>
+  --out-format lusid_json
+  --report     <out_path>.report.json
+  --lfe-mode   <lfe_mode>
+```
+
+`out_path` defaults to `processedData/stageForRender/scene.lusid.json` (relative to project root) if not specified by the user.
+
+Drains stdout and stderr on `_on_finished()` before emitting `finished`.
+
+### 13.3 Modified files
+
+**`gui/realtimeGUI/realtimeGUI.py`**:
+
+- `RealtimeWindow` now wraps a `QTabWidget` (`self._tabs`) with two tabs: **ENGINE** (all original 4 panels) and **TRANSCODE** (`RealtimeTranscodePanel` in its own scroll area)
+- `self._tc_runner = RealtimeTranscoderRunner(project_root)` instantiated in `__init__`
+- Signal wiring in `_connect_runner()`: `tc_runner.output → panel.append_line`, `tc_runner.started → panel.set_running(True)`, `tc_runner.finished → _on_transcode_finished`
+- Handlers: `_on_run_transcode()` (starts QProcess), `_on_transcode_finished(exit_code, report_path)`
+
+**`gui/realtimeGUI/realtime_panels/theme.py`** (font system overhaul):
+
+- Added `_UI_FONT_FAMILY = "Courier New"` constant
+- Added `ui_font(size: int = 8) -> QFont` helper — `QFont("Courier New", size + 2)` with `StyleHint.TypeWriter`. **No bold/DemiBold.**
+- QSS base rule: `QWidget { font-family: 'Courier New', 'Courier', monospace; }`
+- All QSS font sizes bumped +2pt: `7pt→9pt`, `8pt→10pt`, `9pt→10pt`, `12pt→13pt`
+- Added `QTabWidget` / `QTabBar` styles for ENGINE/TRANSCODE tab appearance
+
+**`gui/realtimeGUI/realtime_panels/RealtimeInputPanel.py`**:
+
+- Replaced single `Browse` button with two: `File…` (getOpenFileName) + `Pkg…` (getExistingDirectory — for LUSID packages)
+- `set_enabled_for_state()` updated to include both new buttons
+- `QFont("Space Mono", N)` → `ui_font(N)` throughout
+
+All other panel files (`RealtimeLogPanel.py`, `RealtimeControlsPanel.py`, `RealtimeTransportPanel.py`):
+
+- `QFont("Space Mono", N)` → `ui_font(N)` throughout; broken sed-fused import lines fixed
+
+### 13.4 Cross-platform file dialog pattern (pinned)
+
+macOS `NSOpenPanel` cannot mix file and directory selection in a single dialog.
+The two-button pattern is the cross-platform solution used everywhere in this codebase:
+
+| Button label     | Dialog call                             | Used for                                    |
+| ---------------- | --------------------------------------- | ------------------------------------------- |
+| `File…`          | `QFileDialog.getOpenFileName(...)`      | ADM WAV / ADM XML input                     |
+| `Dir…` or `Pkg…` | `QFileDialog.getExistingDirectory(...)` | LUSID package directory or output directory |
+
+Do **not** use `QFileDialog.getOpenFileUrl` with `ShowDirsOnly` or try to combine file+dir selection in a single call — this is broken on macOS and inconsistent on Windows/Linux.
+
+### 13.5 Open questions
+
+| #   | Question                                                                                                           | Status                                                                       |
+| --- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| 1   | Should `runRealtime.py` ever pass `--lfe-mode speaker-label` to cult-transcoder, or is this flag CLI/testing only? | **OPEN** — ask owner (§11.9 Q4)                                              |
+| 2   | Output path for GUI transcode: always `stageForRender/scene.lusid.json`, or user-configurable?                     | Currently defaults to stageForRender; user can override in the TRANSCODE tab |
+
+---
+
+## 15. Phase 6 — Sony 360RA ADM → LUSID Conversion (IN PROGRESS, 2026-03-07)
+
+Phase 6 adds a dedicated converter for Sony 360RA ADM XML exports, dispatched
+automatically when the profile resolver detects `Sony360RA`. The C++ binary
+CLI contract is **unchanged** — no new flags, no new `--in-format` values.
+
+---
+
+### 15.1 Scope
+
+- Convert Sony 360RA ADM XML (ADM-variant mode, bwfmetaedit export) → LUSID Scene JSON
+- Auto-dispatch: profile detection (`Sony360RA`) routes to new converter transparently
+- 13 audio objects, all `typeDefinition="Objects"`, no DirectSpeakers bed, no LFE
+- Static position extraction: first non-muted block per object (see §15.3)
+- Polar → Cartesian coordinate conversion (see §15.5)
+- LUSID node IDs: `1.1` through `13.1` (encounter order of leaf audioObjects)
+- MPEG-H 360RA mode: **deferred** — see §15.9
+
+### 15.2 New files
+
+| File                                                    | Purpose                                                       |
+| ------------------------------------------------------- | ------------------------------------------------------------- |
+| `transcoding/adm/sony360ra_to_lusid.hpp`                | Public API: `convertSony360RaToLusid()`                       |
+| `transcoding/adm/sony360ra_to_lusid.cpp`                | Full implementation                                           |
+| `tests/test_360ra.cpp`                                  | Phase 6 tests (polar→cart unit tests + structural invariants) |
+| `tests/parity/fixtures/sony_360ra_reference.lusid.json` | Reference LUSID output for regression                         |
+
+---
+
+### 15.3 Sony 360RA XML structure (pinned — from fixture inspection)
+
+**Root path:**
+
+```
+<conformance_point_document>
+  <File>
+    <aXML>
+      <format>
+        <audioFormatExtended version="ITU-R_BS.2076-2">
+```
+
+This is a bwfmetaedit export wrapper. The `<audioFormatExtended>` node is the
+ADM root. Extract it by navigating: `conformance_point_document/File/aXML/format/audioFormatExtended`.
+
+**Object structure:**
+
+- 1 container `audioObject` (`AO_8001`) with `audioObjectIDRef` children — **skip this**.
+- 13 leaf `audioObject` elements (`AO_1001`–`AO_100d`) each with exactly one `audioTrackUIDRef` and one `audioPackFormatIDRef`.
+- Detection: a leaf audioObject has a `<audioTrackUIDRef>` child; a container has `<audioObjectIDRef>` children.
+
+**`audioChannelFormat` → `audioBlockFormat` structure:**
+
+```xml
+<audioChannelFormat audioChannelFormatID="AC_00031001" audioChannelFormatName="L obj 1"
+    typeDefinition="Objects" typeLabel="0003">
+  <audioBlockFormat audioBlockFormatID="AB_00031001_00000001"
+      rtime="00:00:00.00000S48000" duration="00:01:32.40449S48000">
+    <cartesian>0</cartesian>
+    <gain gainUnit="linear">0.999999</gain>
+    <position coordinate="azimuth">29.999992</position>
+    <position coordinate="elevation">0.000000</position>
+    <position coordinate="distance">1.000000</position>
+    <width>0.000000</width>
+    <height>0.000000</height>
+    <depth>0.000000</depth>
+    <jumpPosition>0</jumpPosition>
+  </audioBlockFormat>
+  <!-- multiple blocks follow (gain-mute pattern) -->
+```
+
+**`<cartesian>0</cartesian>`** — always present, always 0 in 360RA exports. Means polar coords.
+
+**Time format:** `HH:MM:SS.fffffS<sampleRate>` (e.g. `00:01:32.40449S48000`). The existing
+`parseTimecode()` (`sscanf("%d:%d:%lf", ...)`) handles this correctly — `sscanf` stops at `S`.
+**No changes to `parseTimecode()` are needed.**
+
+---
+
+### 15.4 Frame strategy: Option A — single static frame (PINNED)
+
+The multi-block pattern in 360RA is a Sony gain-mute artifact, not keyframe animation.
+Objects have a fixed spatial position; Sony inserts 0.01024s silence blocks at section
+boundaries for content-routing reasons unrelated to spatial movement.
+
+**Rule:** take the **first block whose `gain > 0`** for each object. Extract its polar
+position and convert to Cartesian. Emit a single LUSID frame at `t=0`. All 13 nodes
+are in this one frame.
+
+Consequences:
+
+- The LUSID scene has exactly **1 frame** for any 360RA file following this pattern.
+- The gain-mute interleaving is silently discarded (not a lossy conversion for spatial data).
+- This is the correct semantic: the "scene" of this 360RA mix is a static immersive bed.
+
+**Future deviation:** if a future 360RA file is encountered with genuinely different positions
+across blocks (animated objects), the converter will produce incorrect output. A future
+"multi-block mode" should be considered then. Do NOT add it preemptively.
+
+---
+
+### 15.5 Gain field: OMITTED (PINNED)
+
+The LUSID schema allows an optional `gain` field on `audio_object` nodes (default 1.0).
+The Sony 360RA `audioBlockFormat` always contains `<gain gainUnit="linear">0.999999</gain>` (≈1.0).
+
+**Rule:** the `gain` field is **not written** to LUSID output nodes in Phase 6.
+The renderer assumes gain=1.0 for all nodes without an explicit gain field.
+
+**⚠ Known future bug risk:** if a future 360RA file has meaningful per-object gain variation
+(e.g. dialogue vs music ducking encoded in the gain field), CULT will silently discard it
+and the renderer will play all objects at equal gain. If unexpected mix imbalances are observed
+on a 360RA render, check the `gain` values in the source ADM and consider implementing gain
+pass-through. Document any such finding in the loss ledger.
+
+---
+
+### 15.6 Container audioObject handling (PINNED)
+
+The container `audioObject` (`AO_8001`) references 13 leaf objects via `<audioObjectIDRef>`.
+It carries no position data and exists purely as a grouping/programme hierarchy artifact.
+
+**Rule:** skip any `audioObject` that has at least one `<audioObjectIDRef>` child element.
+Only process leaf objects that have a `<audioTrackUIDRef>` child.
+
+**⚠ Known future limitation:** the container object may carry metadata (gain, importance,
+dialogue kind) that applies to all children. In a future 360RA development pass, consider
+whether container-level gain or mute state should be applied to leaf nodes. Document this
+in §15.9 open questions for Phase 6+.
+
+---
+
+### 15.7 Polar → LUSID Cartesian conversion (PINNED)
+
+ADM polar convention (BS.2076-2):
+
+- `azimuth`: degrees, clockwise from front (0=front, +90=right, −90=left, ±180=back)
+- `elevation`: degrees, 0=horizontal plane, +90=up, −90=down
+- `distance`: meters (360RA always 1.0 = unit sphere)
+
+LUSID Cartesian convention (schema `cart[x, y, z]`):
+
+- `x`: right = +x
+- `y`: front = +y
+- `z`: up = +z
+
+Conversion formula:
+
+```
+az_rad  = azimuth  * π/180
+el_rad  = elevation * π/180
+
+x = distance * sin(az_rad)  * cos(el_rad)   // right = +x ✓
+y = distance * cos(az_rad)  * cos(el_rad)   // front = +y ✓
+z = distance * sin(el_rad)                   // up    = +z ✓
+```
+
+This is the standard ADM-to-Cartesian formula. Do not invent an alternative.
+Verified against LUSID schema `cart` description: `x: left(-)/right(+), y: back(-)/front(+), z: down(-)/up(+)`.
+
+---
+
+### 15.8 Dispatcher strategy: profile-based auto-dispatch (PINNED)
+
+No new `--in-format` flag. When `resolveAdmProfile()` returns `Sony360RA`, the
+dispatcher in `transcoder.cpp` automatically routes to `convertSony360RaToLusid()`
+instead of `convertAdmToLusid()` / `convertAdmToLusidFromBuffer()`.
+
+Both the `adm_xml` path and the `adm_wav` path check the profile after parsing.
+The `pugi::xml_document` (already in memory) is passed directly to `convertSony360RaToLusid()`.
+
+```
+adm_xml path:
+  doc.load_file()
+    → resolveAdmProfile(doc)
+    → if Sony360RA: convertSony360RaToLusid(doc)
+    → else: convertAdmToLusid(xmlPath, lfeMode)
+
+adm_wav path:
+  extractAxmlFromWav()
+    → doc.load_string(axmlResult.xmlData)
+    → resolveAdmProfile(doc)
+    → if Sony360RA: convertSony360RaToLusid(doc)
+    → else: convertAdmToLusidFromBuffer(axmlResult.xmlData, lfeMode)
+```
+
+**`--lfe-mode` behaviour for 360RA:** The flag is irrelevant (360RA has no DirectSpeakers
+or LFE), but if supplied it must not error. Emit a warning: `"lfe-mode flag has no effect on Sony360RA input"`.
+
+---
+
+### 15.9 Open questions — Phase 6+
+
+| #   | Question                                                                 | Status                                             |
+| --- | ------------------------------------------------------------------------ | -------------------------------------------------- |
+| 1   | MPEG-H 360RA ingestion mode                                              | **DEFERRED** — see §15.10                          |
+| 2   | Container audioObject metadata (gain, importance) — apply to leaf nodes? | **OPEN** — do not implement without owner decision |
+| 3   | Multi-block animated objects in 360RA — future keyframe support?         | **OPEN** — do not implement without owner decision |
+| 4   | Per-object gain pass-through from ADM `<gain>` to LUSID?                 | **OPEN** — see §15.5 bug risk note                 |
+
+---
+
+### 15.10 MPEG-H 360RA mode (DEFERRED)
+
+Sony 360RA content exists in two authoring workflows:
+
+1. **ADM-variant mode** (Phase 6 — THIS phase): Sony's Spatial Content Creation tool
+   exports ADM metadata embedded in a BW64 WAV, or as a standalone ADM XML via bwfmetaedit.
+   The ADM root is `<conformance_point_document>...<audioFormatExtended version="ITU-R_BS.2076-2">`.
+   **This is what Phase 6 implements.**
+
+2. **MPEG-H music format mode** (DEFERRED — future phase): Sony's Music Production pipeline
+   produces 360RA content as an MPEG-H 3D Audio bitstream (`.mpf` / `.mhas` / `.m4f` container).
+   This requires the MPEG-H decoder library (Ittiam or Fraunhofer) for MAE metadata extraction.
+   Detection would be by container format and/or MPEG-H Audio Scene Information (MAEI) headers,
+   not by ADM programme name. No implementation work should begin here without:
+   - Owner-confirmed format samples (`.mpf` or `.mhas` fixture)
+   - Owner decision on Ittiam vs Fraunhofer backend
+   - A dedicated design doc section (DESIGN-DOC-V1-CULT.MD updated first)
+
+**Do not conflate these two modes.** Phase 6 ONLY addresses mode 1 (ADM-variant).
+Mode 2 follows after MPEG-H infrastructure is in place (see DEV-PLAN Phase 6 MPEG-H section).
+
+---
+
+## 14. Agent PR Checklist (Required)
 
 Every PR must include:
 

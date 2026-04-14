@@ -29,6 +29,10 @@
 #include "cult_transcoder.hpp"
 #include "cult_version.hpp"
 #include "adm_to_lusid.hpp"
+#include "adm_reader.hpp"            // Phase 3: BW64 axml extraction
+#include "adm_profile_resolver.hpp"  // Phase 4: ADM profile detection
+#include "sony360ra_to_lusid.hpp"    // Phase 6: Sony 360RA ADM → LUSID
+#include <pugixml.hpp>
 
 #include <filesystem>
 #include <set>
@@ -37,10 +41,10 @@ namespace cult {
 
 namespace {
 
-// Formats recognised by the CLI contract (§2).  Only adm_xml→lusid_json is
-// implemented; others are rejected with a clear error so the contract exit
-// code semantics are exercised.
-const std::set<std::string> kKnownInFormats  = { "adm_xml" };
+// Formats recognised by the CLI contract (§2).
+// adm_xml  → Phase 2: input is a pre-extracted ADM XML file
+// adm_wav  → Phase 3: input is a BW64/RF64 WAV containing an axml chunk
+const std::set<std::string> kKnownInFormats  = { "adm_xml", "adm_wav" };
 const std::set<std::string> kKnownOutFormats = { "lusid_json" };
 
 } // anonymous namespace
@@ -59,6 +63,8 @@ TranscodeResult transcode(const TranscodeRequest& req) {
     report.args.outFormat    = req.outFormat;
     report.args.reportPath   = req.reportPath;
     report.args.stdoutReport = req.stdoutReport;
+    report.args.lfeMode      = (req.lfeMode == LfeMode::SpeakerLabel)
+                                   ? "speaker-label" : "hardcoded";
 
     // --- Validation ---
 
@@ -96,7 +102,63 @@ TranscodeResult transcode(const TranscodeRequest& req) {
     }
 
     // --- ADM → LUSID Conversion ---
-    auto conversion = convertAdmToLusid(req.inPath);
+    ConversionResult conversion;
+
+    if (req.inFormat == "adm_xml") {
+        // Phase 2 path: input is a pre-extracted ADM XML file.
+        // Phase 4: load doc first so we can run profile detection before converting.
+        pugi::xml_document doc;
+        auto parseRes = doc.load_file(req.inPath.c_str());
+        if (!parseRes) {
+            report.errors.push_back(
+                "Failed to parse XML: " + std::string(parseRes.description()));
+            report.status = "fail";
+            return result;
+        }
+
+        // Profile detection (Phase 4) — always runs, always logs to warnings.
+        ProfileResult profile = resolveAdmProfile(doc);
+        for (auto& w : profile.warnings)
+            report.warnings.push_back(w);
+
+        // Phase 6: auto-dispatch to Sony 360RA converter when detected.
+        // The pugi::xml_document is already in memory — pass it directly.
+        if (profile.profile == AdmProfile::Sony360RA) {
+            conversion = convertSony360RaToLusid(doc, req.lfeMode);
+        } else {
+            conversion = convertAdmToLusid(req.inPath, req.lfeMode);
+        }
+
+    } else {
+        // Phase 3 path: input is a BW64/WAV file containing an axml chunk.
+        auto axmlResult = extractAxmlFromWav(req.inPath);
+
+        // Forward warnings from extraction (e.g. debug XML artifact write failure)
+        for (auto& w : axmlResult.warnings)
+            report.warnings.push_back(w);
+
+        if (!axmlResult.success) {
+            for (auto& e : axmlResult.errors)
+                report.errors.push_back(e);
+            report.status = "fail";
+            return result;
+        }
+
+        // Phase 4: profile detection on the extracted XML buffer.
+        pugi::xml_document doc;
+        doc.load_string(axmlResult.xmlData.c_str());
+        ProfileResult profile = resolveAdmProfile(doc);
+        for (auto& w : profile.warnings)
+            report.warnings.push_back(w);
+
+        // Phase 6: auto-dispatch to Sony 360RA converter when detected.
+        if (profile.profile == AdmProfile::Sony360RA) {
+            conversion = convertSony360RaToLusid(doc, req.lfeMode);
+        } else {
+            // Parse directly from the in-memory XML buffer — no disk re-read.
+            conversion = convertAdmToLusidFromBuffer(axmlResult.xmlData, req.lfeMode);
+        }
+    }
 
     // Forward warnings from conversion
     for (auto& w : conversion.warnings)
@@ -109,12 +171,29 @@ TranscodeResult transcode(const TranscodeRequest& req) {
         return result;
     }
 
-    // Write LUSID scene JSON
-    if (!writeLusidScene(conversion.scene, req.outPath)) {
-        report.errors.push_back(
-            "Failed to write output file: '" + req.outPath + "'");
-        report.status = "fail";
-        return result;
+    // Write LUSID scene JSON — atomic write (work item 5, Phase 3).
+    // Write to a temp file first, then rename to final path so no partial
+    // artifact is ever visible at the final path (AGENTS §2 atomic rule).
+    {
+        const std::string tmpOut = req.outPath + ".tmp";
+        if (!writeLusidScene(conversion.scene, tmpOut)) {
+            report.errors.push_back(
+                "Failed to write output file: '" + req.outPath + "'");
+            report.status = "fail";
+            // Clean up temp file if it exists
+            std::filesystem::remove(tmpOut);
+            return result;
+        }
+        std::error_code ec;
+        std::filesystem::rename(tmpOut, req.outPath, ec);
+        if (ec) {
+            report.errors.push_back(
+                "Failed to finalize output file (rename failed): '" +
+                req.outPath + "': " + ec.message());
+            report.status = "fail";
+            std::filesystem::remove(tmpOut);
+            return result;
+        }
     }
 
     // --- Populate report summary ---

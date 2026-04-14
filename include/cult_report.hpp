@@ -102,6 +102,7 @@ struct ResolvedArgs {
     std::string outFormat;
     std::string reportPath;
     bool        stdoutReport = false;
+    std::string lfeMode = "hardcoded"; // Phase 4: resolved --lfe-mode value
 };
 
 // ---------------------------------------------------------------------------

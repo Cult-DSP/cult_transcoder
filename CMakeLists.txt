@@ -96,14 +96,24 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(pugixml)
 
-# --- nlohmann/json (authoring-side LUSID reader) -------------------------
-FetchContent_Declare(
-    nlohmann_json
-    GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG        v3.11.3
-    GIT_SHALLOW    TRUE
-)
-FetchContent_MakeAvailable(nlohmann_json)
+# --- libbw64 (EBU BW64/RF64 container reader, Apache-2.0, header-only) ---
+# Phase 3+: used by transcoding/adm/adm_reader.cpp to extract the axml chunk
+# from ADM BW64/WAV files (--in-format adm_wav).
+# Added as a git submodule at thirdparty/libbw64 (not FetchContent) so that
+# cult_transcoder owns the dependency without requiring spatialroot's
+# thirdparty/libbw64 submodule.  (AGENTS-CULT §8, DEV-PLAN Phase 3)
+set(LIBBW64_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/libbw64")
+if(NOT EXISTS "${LIBBW64_DIR}/include/bw64/bw64.hpp")
+    message(FATAL_ERROR
+        "libbw64 headers not found at ${LIBBW64_DIR}/include/bw64/bw64.hpp\n"
+        "Run:  git submodule update --init thirdparty/libbw64\n"
+        "from inside the cult_transcoder directory."
+    )
+endif()
+add_library(libbw64 INTERFACE)
+# SYSTEM suppresses warnings from libbw64 headers under -Werror (gcc treats
+# plain INTERFACE includes as project headers, promoting warnings to errors).
+target_include_directories(libbw64 SYSTEM INTERFACE "${LIBBW64_DIR}/include")
 
 # ---------------------------------------------------------------------------
 # Main executable — cult-transcoder
@@ -113,17 +123,15 @@ add_executable(cult-transcoder
     src/report.cpp
     src/transcoder.cpp
     src/adm_to_lusid.cpp
-    src/adm_author.cpp
-    src/lusid_reader.cpp
-    src/audio/wav_io.cpp
-    src/audio/normalize_audio.cpp
-    src/audio/resampler_r8brain.cpp
+    transcoding/adm/adm_reader.cpp           # Phase 3: BW64 axml extraction (libbw64)
+    transcoding/adm/adm_profile_resolver.cpp # Phase 4: ADM profile detection
+    transcoding/adm/sony360ra_to_lusid.cpp   # Phase 6: Sony 360RA ADM → LUSID
 )
 
 target_include_directories(cult-transcoder
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/r8brain
+        ${CMAKE_CURRENT_SOURCE_DIR}/transcoding/adm  # adm_reader.hpp (Phase 3)
 )
 
 target_compile_definitions(cult-transcoder
@@ -134,12 +142,12 @@ target_compile_definitions(cult-transcoder
 # Strict warnings — helps catch issues early on all platforms
 if(MSVC)
     target_compile_options(cult-transcoder PRIVATE /W4 /WX)
+    target_compile_definitions(cult-transcoder PRIVATE _CRT_SECURE_NO_WARNINGS)
 else()
     target_compile_options(cult-transcoder PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 
-target_link_libraries(cult-transcoder PRIVATE pugixml::pugixml)
-target_link_libraries(cult-transcoder PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(cult-transcoder PRIVATE pugixml::pugixml libbw64)
 
 # ---------------------------------------------------------------------------
 # Tests — Catch2
@@ -149,24 +157,23 @@ enable_testing()
 add_executable(cult_tests
     tests/test_report.cpp
     tests/test_cli_args.cpp
-    tests/test_adm_author_args.cpp
+    tests/test_lfe_mode.cpp                  # Phase 4: LFE mode + profile detection tests
+    tests/test_360ra.cpp                     # Phase 6: Sony 360RA conversion tests
     tests/parity/run_parity.cpp
 
     # Same source files the main binary uses, so tests exercise real code
     src/report.cpp
     src/transcoder.cpp
     src/adm_to_lusid.cpp
-    src/adm_author.cpp
-    src/lusid_reader.cpp
-    src/audio/wav_io.cpp
-    src/audio/normalize_audio.cpp
-    src/audio/resampler_r8brain.cpp
+    transcoding/adm/adm_reader.cpp           # Phase 3: needed by transcoder
+    transcoding/adm/adm_profile_resolver.cpp # Phase 4: ADM profile detection
+    transcoding/adm/sony360ra_to_lusid.cpp   # Phase 6: Sony 360RA ADM → LUSID
 )
 
 target_include_directories(cult_tests
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/r8brain
+        ${CMAKE_CURRENT_SOURCE_DIR}/transcoding/adm  # adm_reader.hpp (Phase 3)
 )
 
 target_compile_definitions(cult_tests
@@ -179,11 +186,12 @@ target_link_libraries(cult_tests
     PRIVATE
         Catch2::Catch2WithMain
         pugixml::pugixml
-    nlohmann_json::nlohmann_json
+        libbw64
 )
 
 if(MSVC)
     target_compile_options(cult_tests PRIVATE /W4)
+    target_compile_definitions(cult_tests PRIVATE _CRT_SECURE_NO_WARNINGS)
 else()
     target_compile_options(cult_tests PRIVATE -Wall -Wextra -Wpedantic)
 endif()
@@ -209,5 +217,6 @@ message(STATUS "  C++ standard: ${CMAKE_CXX_STANDARD}")
 message(STATUS "  Binary path : ${CMAKE_BINARY_DIR}/cult-transcoder")
 message(STATUS "  Tests       : enabled (Catch2 v3)")
 message(STATUS "  XML parser  : pugixml (encounter-order parity with Python oracle)")
+message(STATUS "  WAV reader  : libbw64 (git submodule, thirdparty/libbw64)")
 message(STATUS "===========================================")
 message(STATUS "")
