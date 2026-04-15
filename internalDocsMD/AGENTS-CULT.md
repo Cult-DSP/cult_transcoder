@@ -232,16 +232,13 @@ cult_transcoder/
 │   ├── libbw64/                        # git submodule — EBU BW64 container (Phase 3+)
 │   └── r8brain/                        # git submodule — r8brain resampler (adm-author)
 ├── transcoding/
-│   ├── adm/
-│   │   ├── adm_reader.cpp              # Phase 3: BW64 axml extraction
-│   │   ├── adm_reader.hpp
-│   │   ├── adm_to_lusid.cpp            # skeleton — not compiled
-│   │   ├── adm_profile_resolver.cpp    # Phase 4: ADM profile detection
-│   │   ├── adm_profile_resolver.hpp
-│   │   └── sony360ra_to_lusid.cpp      # Phase 6: Sony 360RA ADM → LUSID
-│   └── lusid/
-│       ├── lusid_writer.cpp            # skeleton — not compiled
-│       └── lusid_validate.cpp          # skeleton — not compiled
+│   └── adm/
+│       ├── adm_reader.cpp              # Phase 3: BW64 axml extraction
+│       ├── adm_reader.hpp
+│       ├── adm_profile_resolver.cpp    # Phase 4: ADM profile detection
+│       ├── adm_profile_resolver.hpp
+│       ├── sony360ra_to_lusid.cpp      # Phase 6: Sony 360RA ADM → LUSID
+│       └── sony360ra_to_lusid.hpp
 └── tests/
     ├── test_report.cpp
     ├── test_cli_args.cpp
