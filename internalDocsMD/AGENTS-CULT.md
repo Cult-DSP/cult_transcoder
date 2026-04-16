@@ -2,13 +2,7 @@
 
 ## Onboarding Tasks (New Agent)
 
-### Context Reset Prompt A — Header Reorganization (Current Task)
-
-```
-You are doing a header reorganization in cult_transcoder. The repo currently has two CMake include roots: include/ and transcoding/adm/. The three headers in transcoding/adm/ (adm_reader.hpp, adm_profile_resolver.hpp, sony360ra_to_lusid.hpp) belong in include/ — they were placed in transcoding/adm/ incrementally and never normalised. There is also a struct duplication: NormalizeResult (include/audio/resampler.hpp) and NormalizedWavInfo (include/audio/normalize_audio.hpp) have identical fields; NormalizeResult has an additional error field and is the lower-level type. The task is: (1) move the three headers from transcoding/adm/ to include/, (2) drop the transcoding/adm include path from CMakeLists.txt, (3) remove the redundant direct includes in adm_author.cpp (wav_io.hpp already pulled in by normalize_audio.hpp) and sony360ra_to_lusid.cpp (adm_to_lusid.hpp already pulled in by its own header), (4) delete NormalizedWavInfo from normalize_audio.hpp and replace all uses with NormalizeResult, updating NormalizeSetResult::files accordingly. Do not change any function signatures, data field names, CLI behaviour, or parity tests. Run cmake -B build_check and confirm it configures cleanly, then delete build_check. Update AGENTS-CULT.md repo layout when done.
-```
-
-### Context Reset Prompt B — adm-author Steps 3–6
+### Context Reset Prompt — adm-author Steps 3–6
 
 ```
 You are continuing CULT Transcoder adm-author work. Resampling + validation are implemented and must not regress the parity-critical adm_xml->lusid_json ingest path. r8brain is a git submodule at thirdparty/r8brain and used by src/audio/resampler_r8brain.cpp. WAV I/O is a self-contained RIFF parser in src/audio/wav_io.cpp (no libsndfile). adm-author validates inputs, normalizes mono WAVs to 48 kHz float32, and validates frame counts, but returns "not implemented yet" at the XML/BW64 write step — that is Step 3-4 work. All ingest/parity tests pass (65/65). Remaining work: LUSID->ADM mapping, ADM XML + BW64 output, report extension, and tests for mapping/output. Keep atomic output rules and fail-report behavior.
@@ -120,12 +114,6 @@ Observed in the current submodule (no assumptions beyond code/tests in this repo
 - `src/audio/resampler_r8brain.cpp` — r8brain-backed mono resampling; r8brain at `thirdparty/r8brain` (git submodule).
 - `tests/test_adm_author_args.cpp` — CLI validation tests (3 tests; all designed to pass with current stub).
 
-Known structural issues (see onboarding prompt A — header reorganization task):
-
-- `transcoding/adm/adm_reader.hpp`, `adm_profile_resolver.hpp`, `sony360ra_to_lusid.hpp` should live in `include/` — they are public API headers placed in `transcoding/adm/` incrementally and not yet normalised. CMakeLists.txt currently adds both `include/` and `transcoding/adm/` as include roots as a result.
-- `NormalizeResult` (`include/audio/resampler.hpp`) and `NormalizedWavInfo` (`include/audio/normalize_audio.hpp`) are the same struct under two names — `NormalizeResult` is more complete (has `error` field) and should be the canonical type.
-- Minor: redundant transitive includes in `adm_author.cpp` (wav_io.hpp) and `sony360ra_to_lusid.cpp` (adm_to_lusid.hpp).
-
 Known doc mismatch to fix later:
 
 - `README.md` (formerly `OVERVIEW.md`) phase table may reference stale phase numbering.
@@ -212,40 +200,38 @@ cult_transcoder/
 │   ├── DEV-PLAN-CULT.md                # outdated; do not use as source of truth
 │   ├── DESIGN-DOC-V1-CULT.MD
 │   └── design-reference-CULT.md
-├── include/
-│   ├── adm_to_lusid.hpp
-│   ├── cult_transcoder.hpp             # AdmAuthorRequest / AdmAuthorResult defined here
-│   ├── cult_report.hpp
-│   ├── cult_version.hpp
-│   ├── lusid_reader.hpp
-│   └── audio/
-│       ├── wav_io.hpp
-│       ├── resampler.hpp
-│       └── normalize_audio.hpp
 ├── scripts/
 │   └── cult-transcoder.bat
 ├── src/
 │   ├── main.cpp
 │   ├── transcoder.cpp
 │   ├── adm_to_lusid.cpp
+│   ├── adm_to_lusid.hpp
 │   ├── report.cpp
+│   ├── cult_report.hpp
+│   ├── cult_transcoder.hpp             # AdmAuthorRequest / AdmAuthorResult defined here
+│   ├── cult_version.hpp
 │   ├── adm_author.cpp                  # adm-author entry point (Steps 1-2 functional)
 │   ├── lusid_reader.cpp                # LUSID JSON parser (nlohmann/json)
+│   ├── lusid_reader.hpp
 │   └── audio/
 │       ├── wav_io.cpp                  # self-contained RIFF reader/writer (no libsndfile)
+│       ├── wav_io.hpp
 │       ├── normalize_audio.cpp         # normalization coordinator
-│       └── resampler_r8brain.cpp       # r8brain-backed mono resampling
+│       ├── normalize_audio.hpp
+│       ├── resampler_r8brain.cpp       # r8brain-backed mono resampling
+│       └── resampler.hpp
 ├── thirdparty/
 │   ├── libbw64/                        # git submodule — EBU BW64 container (Phase 3+)
 │   └── r8brain/                        # git submodule — r8brain resampler (adm-author)
 ├── transcoding/
 │   └── adm/
 │       ├── adm_reader.cpp              # Phase 3: BW64 axml extraction
-│       ├── adm_reader.hpp              # TODO: move to include/ (see onboarding prompt A)
+│       ├── adm_reader.hpp
 │       ├── adm_profile_resolver.cpp    # Phase 4: ADM profile detection
-│       ├── adm_profile_resolver.hpp    # TODO: move to include/ (see onboarding prompt A)
+│       ├── adm_profile_resolver.hpp
 │       ├── sony360ra_to_lusid.cpp      # Phase 6: Sony 360RA ADM → LUSID
-│       └── sony360ra_to_lusid.hpp      # TODO: move to include/ (see onboarding prompt A)
+│       └── sony360ra_to_lusid.hpp
 └── tests/
     ├── test_report.cpp
     ├── test_cli_args.cpp

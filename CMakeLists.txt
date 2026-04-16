@@ -159,7 +159,7 @@ add_executable(cult-transcoder
 
 target_include_directories(cult-transcoder
     PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}/transcoding/adm  # adm_reader.hpp (Phase 3)
         ${R8BRAIN_DIR}                               # CDSPResampler.h (adm-author path)
 )
@@ -208,7 +208,7 @@ add_executable(cult_tests
 
 target_include_directories(cult_tests
     PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}/transcoding/adm  # adm_reader.hpp (Phase 3)
         ${R8BRAIN_DIR}                               # CDSPResampler.h (adm-author path)
 )
