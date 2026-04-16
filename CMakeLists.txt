@@ -146,7 +146,7 @@ add_executable(cult-transcoder
     src/main.cpp
     src/report.cpp
     src/transcoder.cpp
-    src/adm_to_lusid.cpp
+    transcoding/adm/adm_to_lusid.cpp
     src/adm_author.cpp                       # adm-author command (Steps 1-2 functional)
     src/lusid_reader.cpp                     # LUSID JSON reader (authoring path)
     src/audio/wav_io.cpp                     # self-contained RIFF WAV reader/writer
@@ -195,7 +195,7 @@ add_executable(cult_tests
     # Same source files the main binary uses, so tests exercise real code
     src/report.cpp
     src/transcoder.cpp
-    src/adm_to_lusid.cpp
+    transcoding/adm/adm_to_lusid.cpp
     src/adm_author.cpp
     src/lusid_reader.cpp
     src/audio/wav_io.cpp

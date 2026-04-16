@@ -205,8 +205,6 @@ cult_transcoder/
 ├── src/
 │   ├── main.cpp
 │   ├── transcoder.cpp
-│   ├── adm_to_lusid.cpp
-│   ├── adm_to_lusid.hpp
 │   ├── report.cpp
 │   ├── cult_report.hpp
 │   ├── cult_transcoder.hpp             # AdmAuthorRequest / AdmAuthorResult defined here
@@ -226,6 +224,8 @@ cult_transcoder/
 │   └── r8brain/                        # git submodule — r8brain resampler (adm-author)
 ├── transcoding/
 │   └── adm/
+│       ├── adm_to_lusid.cpp            # ADM XML → LUSID conversion (core ingest path)
+│       ├── adm_to_lusid.hpp
 │       ├── adm_reader.cpp              # Phase 3: BW64 axml extraction
 │       ├── adm_reader.hpp
 │       ├── adm_profile_resolver.cpp    # Phase 4: ADM profile detection
