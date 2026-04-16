@@ -99,13 +99,15 @@ FetchContent_MakeAvailable(pugixml)
 # --- nlohmann/json (LUSID reader — authoring path) -----------------------
 # Used by src/lusid_reader.cpp to parse scene.lusid.json in the adm-author
 # command.  Not used in the ingest/parity path.
-FetchContent_Declare(
-    nlohmann_json
-    GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG        v3.11.3
-    GIT_SHALLOW    TRUE
-)
-FetchContent_MakeAvailable(nlohmann_json)
+if(NOT TARGET nlohmann_json AND NOT TARGET nlohmann_json::nlohmann_json)
+    FetchContent_Declare(
+        nlohmann_json
+        GIT_REPOSITORY https://github.com/nlohmann/json.git
+        GIT_TAG        v3.11.3
+        GIT_SHALLOW    TRUE
+    )
+    FetchContent_MakeAvailable(nlohmann_json)
+endif()
 
 # --- libbw64 (EBU BW64/RF64 container reader, Apache-2.0, header-only) ---
 # Phase 3+: used by transcoding/adm/adm_reader.cpp to extract the axml chunk
