@@ -36,6 +36,8 @@
 // desired — the public API of this header stays stable.
 // ---------------------------------------------------------------------------
 
+#include "audio/resampler.hpp"
+
 #include <cstdint>
 #include <map>
 #include <string>
@@ -63,19 +65,6 @@ struct ReportSummary {
     std::string timeUnit     = "seconds"; // always "seconds" in Phase 2 (§4)
     int         numFrames    = 0;
     std::map<std::string, int> countsByNodeType; // e.g. {"DirectSpeaker":8,"Object":4}
-};
-
-// ---------------------------------------------------------------------------
-// AuthoringResampleEntry — authoring-only normalization detail
-// ---------------------------------------------------------------------------
-struct AuthoringResampleEntry {
-    std::string sourcePath;
-    std::string normalizedPath;
-    uint32_t    sourceSampleRate = 0;
-    uint32_t    targetSampleRate = 0;
-    uint64_t    sourceFrameCount = 0;
-    uint64_t    normalizedFrameCount = 0;
-    bool        resampled = false;
 };
 
 // ---------------------------------------------------------------------------
@@ -120,7 +109,7 @@ struct Report {
     std::vector<LossLedgerEntry> lossLedger; // required even when empty
 
     // Authoring-only sections (optional).
-    std::vector<AuthoringResampleEntry> authoringResample;
+    std::vector<NormalizeResult> authoringResample;
     AuthoringValidation authoringValidation;
     bool hasAuthoringValidation = false;
 

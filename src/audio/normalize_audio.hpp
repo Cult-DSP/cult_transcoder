@@ -19,25 +19,16 @@
 // ---------------------------------------------------------------------------
 
 #include "audio/wav_io.hpp"
+#include "audio/resampler.hpp"
 
 #include <string>
 #include <vector>
 
 namespace cult {
 
-struct NormalizedWavInfo {
-    std::string sourcePath;
-    std::string normalizedPath;
-    uint32_t sourceSampleRate = 0;
-    uint32_t targetSampleRate = 0;
-    uint64_t sourceFrameCount = 0;
-    uint64_t normalizedFrameCount = 0;
-    bool resampled = false;
-};
-
 struct NormalizeSetResult {
     bool success = false;
-    std::vector<NormalizedWavInfo> files;
+    std::vector<NormalizeResult> files;
     std::vector<std::string> errors;
 };
 

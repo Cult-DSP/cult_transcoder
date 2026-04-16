@@ -196,17 +196,7 @@ AdmAuthorResult admAuthor(const AdmAuthorRequest& req) {
         return result;
     }
 
-    for (const auto& n : normalized.files) {
-        AuthoringResampleEntry entry;
-        entry.sourcePath = n.sourcePath;
-        entry.normalizedPath = n.normalizedPath;
-        entry.sourceSampleRate = n.sourceSampleRate;
-        entry.targetSampleRate = n.targetSampleRate;
-        entry.sourceFrameCount = n.sourceFrameCount;
-        entry.normalizedFrameCount = n.normalizedFrameCount;
-        entry.resampled = n.resampled;
-        report.authoringResample.push_back(entry);
-    }
+    report.authoringResample = normalized.files;
 
     report.hasAuthoringValidation = true;
     uint64_t expectedFrames = normalized.files.front().normalizedFrameCount;

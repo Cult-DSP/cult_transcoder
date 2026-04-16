@@ -18,7 +18,7 @@
 // lusid_reader.hpp — minimal LUSID scene reader for authoring
 // ---------------------------------------------------------------------------
 
-#include "adm_to_lusid.hpp"
+#include "lusid_scene.hpp"
 
 #include <string>
 #include <vector>

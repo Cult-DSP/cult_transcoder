@@ -71,7 +71,7 @@ NormalizeSetResult normalizeWavSet(const std::vector<WavFileInfo>& inputs,
         const bool needsResample = input.sampleRate != targetSampleRate;
         const bool needsFloat = !(input.audioFormat == 3 && input.bitsPerSample == 32);
         if (!needsResample && !needsFloat) {
-            NormalizedWavInfo info;
+            NormalizeResult info;
             info.sourcePath = input.path;
             info.normalizedPath = input.path;
             info.sourceSampleRate = input.sampleRate;
@@ -91,20 +91,12 @@ NormalizeSetResult normalizeWavSet(const std::vector<WavFileInfo>& inputs,
         req.targetSampleRate = targetSampleRate;
         req.sourceFrameCount = input.frameCount;
 
-        NormalizeResult normalized = normalizeMonoWavTo48kFloat32(req);
-        if (!normalized.error.empty()) {
-            result.errors.push_back("Normalization failed: " + normalized.error);
+        NormalizeResult info = normalizeMonoWavTo48kFloat32(req);
+        if (!info.error.empty()) {
+            result.errors.push_back("Normalization failed: " + info.error);
             continue;
         }
 
-        NormalizedWavInfo info;
-        info.sourcePath = normalized.sourcePath;
-        info.normalizedPath = normalized.normalizedPath;
-        info.sourceSampleRate = normalized.sourceSampleRate;
-        info.targetSampleRate = normalized.targetSampleRate;
-        info.sourceFrameCount = normalized.sourceFrameCount;
-        info.normalizedFrameCount = normalized.normalizedFrameCount;
-        info.resampled = normalized.resampled;
         result.files.push_back(info);
     }
 

@@ -17,3 +17,8 @@ All notable changes to cult_transcoder are documented here. This file is scoped 
 - Added strict frame-count validation and scene-duration check in adm-author.
 - Extended report schema with authoring resample + validation sections.
 - Wired r8brain include path and resampler source into CMake targets.
+
+## 2026-04-15
+
+- Extracted LUSID scene model (`LusidNode`, `LusidFrame`, `LusidScene`) into `lusid_scene.hpp`.
+- Collapsed three normalisation struct variants (`NormalizedWavInfo` in `normalize_audio.hpp`, `AuthoringResampleEntry` in `cult_report.hpp`, and `NormalizeResult` in `resampler.hpp`) into a single `NormalizeResult` type to remove redundancy and eliminate copy loops.

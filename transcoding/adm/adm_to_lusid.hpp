@@ -30,9 +30,11 @@
 // JSON objects (not byte-identical string comparison).
 // ---------------------------------------------------------------------------
 
+#include "lusid_scene.hpp"
+
+#include <map>
 #include <string>
 #include <vector>
-#include <map>
 
 namespace cult {
 
@@ -45,33 +47,6 @@ enum class LfeMode {
     /// Opt-in (Phase 4+): LFE = any DirectSpeaker whose speakerLabel child
     /// element text is "LFE" or "LFE1" (case-insensitive).
     SpeakerLabel,
-};
-
-// ---------------------------------------------------------------------------
-// LUSID scene data model (mirrors LUSID/src/scene.py)
-// ---------------------------------------------------------------------------
-
-struct LusidNode {
-    std::string id;        // "X.1"
-    std::string type;      // "audio_object", "direct_speaker", "LFE"
-    double cart[3] = {0,0,0};
-    std::string speakerLabel;  // direct_speaker only
-    std::string channelID;     // direct_speaker only
-    bool hasCart = false;       // false for LFE nodes
-};
-
-struct LusidFrame {
-    double time = 0.0;
-    std::vector<LusidNode> nodes;
-};
-
-struct LusidScene {
-    std::string version = "0.5";
-    std::string timeUnit = "seconds";
-    double duration = -1.0;     // <0 means not set
-    int sampleRate = 0;         // 0 means not set
-    std::map<std::string, std::string> metadata;
-    std::vector<LusidFrame> frames;
 };
 
 // ---------------------------------------------------------------------------

@@ -501,6 +501,8 @@ Must support both:
 
 Must be specified in code/docs before broad implementation assumptions are made:
 
+- Canonical in-memory scene model: `lusid_scene.hpp` (defines `LusidNode`, `LusidFrame`, `LusidScene`), ensuring no ADM-specific types leak into the core representations.
+- unified `NormalizeResult`: collapsed multiple redundant audio normalisation info structs (`NormalizedWavInfo`, `AuthoringResampleEntry`) into a single canonical type sourced from `resampler.hpp`.
 - supported LUSID node types
 - mapping of `direct_speaker`, `audio_object`, and `LFE`
 - time/automation strategy from frame-based LUSID data to authored ADM representation
