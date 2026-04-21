@@ -23,6 +23,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -144,7 +145,11 @@ TEST_CASE("admAuthor: validates required scene + wav files", "[adm-author][valid
     req.reportPath = (temp.path / "out.report.json").string();
 
     auto result = cult::admAuthor(req);
-    REQUIRE_FALSE(result.success);
-    REQUIRE(result.report.status == "fail");
-    REQUIRE(containsError(result.report, "not implemented"));
+    if (!result.success) {
+        for (const auto& err : result.report.errors) {
+            std::cerr << "ADM ERROR: " << err << "\n";
+        }
+    }
+    REQUIRE(result.success);
+    REQUIRE(result.report.status == "pass");
 }

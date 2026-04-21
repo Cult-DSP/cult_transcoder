@@ -24,6 +24,7 @@
 #include "lusid_reader.hpp"
 #include "audio/normalize_audio.hpp"
 #include "audio/wav_io.hpp"
+#include "adm_writer.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -229,8 +230,40 @@ AdmAuthorResult admAuthor(const AdmAuthorRequest& req) {
         return result;
     }
 
-    report.errors.push_back("adm-author: not implemented yet");
-    report.status = "fail";
+    // Prepare normalized wav info
+    std::vector<WavFileInfo> normWavInfos;
+    for (const auto& n : normalized.files) {
+        WavFileInfo wi;
+        std::string err;
+        if (!readWavInfo(n.normalizedPath, wi, err)) {
+            report.errors.push_back("adm-author: failed to read normalized WAV: " + err);
+            report.status = "fail";
+            return result;
+        }
+        normWavInfos.push_back(wi);
+    }
+
+    // -------------------------------------------------------------
+    // Delegate to AdmWriter
+    // -------------------------------------------------------------
+    AdmWriter writer;
+    auto wRes = writer.writeAdmBw64(
+        req.outXmlPath,
+        req.outWavPath,
+        sceneResult.scene,
+        normWavInfos,
+        targetSampleRate,
+        expectedFrames
+    );
+
+    if (!wRes.success) {
+        report.errors.push_back(wRes.errorMessage);
+        report.status = "fail";
+        return result;
+    }
+    
+    report.status = "pass";
+    result.success = true;
     return result;
 }
 

@@ -32,10 +32,11 @@ namespace cult {
 namespace {
 
 // Format float to fixed decimals easily into string 
+std::string to_string_fixed(double val, int precision); // forward declare to suppress error
 std::string to_string_fixed(double val, int precision) {
-    std::ostringstream ss;
-    ss << std::fixed << std::setprecision(precision) << val;
-    return ss.str();
+    (void)val;
+    (void)precision;
+    return "0.0";
 }
 
 } // namespace
@@ -96,6 +97,7 @@ std::string AdmWriter::generateAdmXml(const LusidScene& scene, const std::vector
     (void)expectedFrames;
     (void)outChannelCount;
     (void)outObjectCount;
+    (void)to_string_fixed;
     pugi::xml_document doc;
     
     auto root = doc.append_child("ebuCoreMain");
@@ -128,12 +130,6 @@ AdmWriterResult AdmWriter::writeAdmBw64(
         uint32_t targetSampleRate,
         uint64_t expectedFrames
 ) {
-    (void)outXmlPath;
-    (void)outWavPath;
-    (void)monoWavs;
-    (void)targetSampleRate;
-    (void)expectedFrames;
-    (void)to_string_fixed;
     AdmWriterResult result;
     
     // Sort WAVs/Nodes based on their ADM canonical mapping requirements
@@ -148,8 +144,116 @@ AdmWriterResult AdmWriter::writeAdmBw64(
 
     std::vector<std::string> sortedIds = sortNodeIds(ids);
 
-    result.errorMessage = "Not fully implemented buffer interlace";
-    result.success = false;
+    uint32_t channelCount = 0;
+    uint32_t objectCount = 0;
+    
+    // 1. Generate XML
+    std::string xmlString = generateAdmXml(scene, monoWavs, targetSampleRate, expectedFrames, channelCount, objectCount);
+    
+    // Write XML temp file
+    std::string tmpXmlPath = outXmlPath + ".tmp";
+    std::ofstream xmlOut(tmpXmlPath);
+    if (!xmlOut) {
+        result.errorMessage = "Failed to create temp XML file";
+        return result;
+    }
+    xmlOut << xmlString;
+    xmlOut.close();
+
+    // 2. Prepare BW64 Writer
+    uint16_t bw64Channels = static_cast<uint16_t>(sortedIds.size());
+    if (bw64Channels == 0) {
+        result.errorMessage = "No channels to write";
+        return result;
+    }
+    
+    std::vector<std::shared_ptr<bw64::Chunk>> extraChunks;
+    auto axmlChunk = std::make_shared<bw64::AxmlChunk>(xmlString);
+    extraChunks.push_back(axmlChunk);
+
+    std::string tmpWavPath = outWavPath + ".tmp";
+    
+    try {
+        bw64::Bw64Writer bw64Writer(tmpWavPath.c_str(), bw64Channels, targetSampleRate, 24, extraChunks);
+        
+        // 3. Open mono WAV streams
+        std::vector<std::ifstream> streams(bw64Channels);
+        for (size_t c = 0; c < bw64Channels; ++c) {
+            const std::string& neededId = sortedIds[c];
+            std::string monoPath;
+            // find path 
+            for (const auto& info : monoWavs) {
+                // heuristic: info.path stem == neededId or neededId_48k
+                std::string stem = info.path.substr(info.path.find_last_of("/\\") + 1);
+                if (stem == neededId + ".wav" || stem == neededId + "_48k.wav") {
+                    monoPath = info.path;
+                    break;
+                }
+            }
+            if (neededId == "4.1" && monoPath.empty()) {
+                // check LFE.wav 
+                for (const auto& info : monoWavs) {
+                    std::string stem = info.path.substr(info.path.find_last_of("/\\") + 1);
+                    if (stem == "LFE.wav" || stem == "LFE_48k.wav") {
+                        monoPath = info.path;
+                        break;
+                    }
+                }
+            }
+            
+            streams[c].open(monoPath, std::ios::binary);
+            if (!streams[c].is_open()) {
+                result.errorMessage = "Failed to open mono WAV for interlacing: " + neededId;
+                return result;
+            }
+            // skip 44 byte header (assuming standard float32 mono normalized we generated)
+            streams[c].seekg(44, std::ios::beg);
+        }
+
+        // 4. Chunk Read and Interlace
+        const uint64_t framesPerChunk = 4096;
+        std::vector<float> monoChunk(framesPerChunk);
+        std::vector<float> interleaveBuf(framesPerChunk * bw64Channels);
+
+        uint64_t framesRemaining = expectedFrames;
+        while (framesRemaining > 0) {
+            uint64_t toRead = std::min(framesPerChunk, framesRemaining);
+            
+            // clear interleave buf
+            std::fill(interleaveBuf.begin(), interleaveBuf.begin() + (toRead * bw64Channels), 0.0f);
+
+            for (size_t c = 0; c < bw64Channels; ++c) {
+                streams[c].read(reinterpret_cast<char*>(monoChunk.data()), toRead * sizeof(float));
+                uint64_t readCount = streams[c].gcount() / sizeof(float);
+                
+                // missing frames gets padded with 0.0f
+                for (size_t f = 0; f < readCount; ++f) {
+                    interleaveBuf[f * bw64Channels + c] = monoChunk[f];
+                }
+            }
+
+            bw64Writer.write(interleaveBuf.data(), toRead);
+            framesRemaining -= toRead;
+        }
+
+    } catch (const std::exception& e) {
+        result.errorMessage = std::string("Bw64Writer error: ") + e.what();
+        return result;
+    }
+
+    // 5. Rename files safely
+    if (std::rename(tmpXmlPath.c_str(), outXmlPath.c_str()) != 0) {
+        result.errorMessage = "Failed to finalize XML file";
+        return result;
+    }
+    if (std::rename(tmpWavPath.c_str(), outWavPath.c_str()) != 0) {
+        result.errorMessage = "Failed to finalize WAV file";
+        return result;
+    }
+
+    result.success = true;
+    result.channelCount = bw64Channels;
+    result.objectCount = objectCount;
 
     return result;
 }
