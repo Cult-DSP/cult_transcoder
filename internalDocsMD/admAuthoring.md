@@ -1,6 +1,6 @@
 # ADM Authoring Plan (cult_transcoder)
 
-Last verified against the submodule code: 2026-03-31.  
+Last verified against the submodule code: April 2026.  
 This plan supersedes the earlier rough agent plan by explicitly treating LUSID → ADM as a new export-side extension rather than an implicit continuation of the current v1 ingest baseline.
 
 `internalDocsMD/DEV-PLAN-CULT.md` is outdated and must not be used as a source of truth.
@@ -255,9 +255,9 @@ Additional v1 rules:
 
 Fail early with report output.
 
-### Step 6: Build an internal authoring model
+### Step 6: Build an internal authoring model (IMPLEMENTED)
 
-Create a clean intermediate representation between LUSID and `libadm`.
+Create a clean intermediate representation between LUSID and `pugixml`.
 
 This model should own:
 
@@ -267,11 +267,13 @@ This model should own:
 - deterministic IDs
 - mapping-loss bookkeeping
 
-Do not let `libadm` become the implicit mapping policy.
+Do not let `libadm` become the implicit mapping policy. 
 
-### Step 7: Write authored ADM XML
+*(We fully isolated this in `src/adm_writer.cpp` with deterministic ordering rules and exact IDs.)*
 
-Use `libadm` at this stage only.
+### Step 7: Write authored ADM XML (IMPLEMENTED)
+
+Use `pugixml` at this stage.
 
 Requirements:
 
@@ -279,7 +281,7 @@ Requirements:
 - write XML via temp + rename
 - avoid hidden library defaults becoming contract behavior
 
-### Step 8: Package BW64 output
+### Step 8: Package BW64 output (IMPLEMENTED)
 
 Use `libbw64` to package audio + embedded metadata.
 
@@ -289,7 +291,7 @@ Requirements:
 - validate expected metadata embedding
 - keep authored XML and packaged BW64 generation logically separate so either can be debugged
 
-### Step 9: Extend report generation
+### Step 9: Extend report generation (IMPLEMENTED)
 
 Preserve existing required report fields.
 
@@ -307,7 +309,7 @@ Validation and normalization reporting:
 - post-normalization duration mismatches are hard errors in `errors[]`
 - include per-file expected vs actual frame counts in a structured report section
 
-### Step 10: Add tests
+### Step 10: Add tests (PENDING)
 
 Required minimum test coverage:
 
