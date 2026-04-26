@@ -30,6 +30,7 @@ All notable changes to cult_transcoder are documented here. This file is scoped 
   - `src/lusid_reader.hpp`
   - `src/report.cpp`
   - `src/cult_report.hpp`
+- Final refactor gate evidence: `cmake --build build && ctest --test-dir build --output-on-failure` passes 70/70 after shim removal, including parity and authoring tests.
 
 ## 2026-03-31
 

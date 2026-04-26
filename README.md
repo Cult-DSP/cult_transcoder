@@ -72,7 +72,7 @@ current export-side ADM authoring plan.
 
 ## Source module layout (April 2026 scaffolding)
 
-To reduce duplication and make ownership explicit, source is being organized into module folders:
+To reduce duplication and make ownership explicit, source is organized into module folders:
 
 - `src/authoring/` — LUSID → ADM export (`adm-author`) ownership.
 - `src/parsing/` — scene/file parsing ownership.
@@ -80,12 +80,11 @@ To reduce duplication and make ownership explicit, source is being organized int
 
 Current state:
 
-- These folders are scaffolded with module `README.md` files.
 - `src/authoring/` owns `adm-author` orchestration and ADM/BW64 writing.
 - `src/parsing/` owns the LUSID scene reader (`src/parsing/lusid_reader.*`).
 - `src/reporting/` owns report schema/serialization (`src/reporting/cult_report.hpp`, `src/reporting/report.cpp`).
-- Remaining functional code moves are tracked in `internalDocsMD/AGENTS-CULT.md` under the refactor task list.
-- Ingest/parity-critical behavior must remain unchanged while module moves are in progress.
+- Root-level transitional shims from the move have been removed.
+- Ingest/parity-critical behavior remains unchanged across the module re-org.
 
 ## License
 

@@ -18,6 +18,34 @@
 
 ---
 
+## 0. Refactor Gate Evidence
+
+The April 2026 source re-organization is complete inside `cult_transcoder`:
+
+- `src/authoring/` owns `adm-author` orchestration and ADM/BW64 writing.
+- `src/parsing/` owns LUSID scene parsing.
+- `src/reporting/` owns report schema and JSON serialization.
+- Root-level transitional shims for moved files were removed after project references were updated.
+
+Removed shim paths:
+
+- `src/adm_author.cpp`
+- `src/adm_writer.cpp`
+- `src/adm_writer.hpp`
+- `src/lusid_reader.cpp`
+- `src/lusid_reader.hpp`
+- `src/report.cpp`
+- `src/cult_report.hpp`
+
+Non-regression evidence:
+
+- `cmake --build build && ctest --test-dir build --output-on-failure`
+- Result: 70/70 tests passed, including ingest/parity and authoring mapping/integration coverage.
+
+Manual Logic Pro Atmos import validation is intentionally outside this refactor gate and remains pending.
+
+---
+
 ## 1. What SpatialSeed Actually Calls Today
 
 SpatialSeed's pipeline (`src/pipeline.py`) is entirely Python. It **does not invoke the cult-transcoder binary at any point.** No `subprocess` call to `cult-transcoder` exists anywhere in `src/`.

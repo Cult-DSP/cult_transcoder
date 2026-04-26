@@ -62,11 +62,13 @@ Status update (2026-04-26): Steps 1-6 are covered by automated tests. `adm-autho
 
 ### Refactor Task List — DRY + Module Re-Organization (April 2026)
 
-This list is now pinned for the next cleanup pass. Each task must include a matching markdown/doc update in the same PR.
+Status 2026-04-26: complete through structure stabilization. Module ownership is now under `src/authoring/`, `src/parsing/`, and `src/reporting/`; root-level transitional shims were removed; `ctest --test-dir build --output-on-failure` passes 70/70.
+
+This list is retained as the completion record. Each task included a matching markdown/doc update in the same PR.
 
 Execution order is mandatory: complete in sequence and keep ingest/parity behavior unchanged.
 
-1. Create source submodule layout (scaffolding only)
+1. Create source submodule layout (scaffolding only) — COMPLETE
 
 - Add folders: `src/authoring/`, `src/parsing/`, `src/reporting/`.
 - Add `README.md` in each folder describing ownership and non-goals.
@@ -74,7 +76,7 @@ Execution order is mandatory: complete in sequence and keep ingest/parity behavi
   - `README.md` (top-level source tree section)
   - `internalDocsMD/DESIGN-DOC-V1-CULT.MD` (module boundaries)
 
-2. Move authoring implementation behind `src/authoring/`
+2. Move authoring implementation behind `src/authoring/` — COMPLETE
 
 - Move/split `src/adm_author.cpp`, `src/adm_writer.cpp`, `src/adm_writer.hpp` into `src/authoring/` with minimal behavior change.
 - Keep deterministic ordering + current validation semantics exactly as implemented.
@@ -82,7 +84,7 @@ Execution order is mandatory: complete in sequence and keep ingest/parity behavi
   - `internalDocsMD/admAuthoring.md` (paths and stage boundaries)
   - `internalDocsMD/AUTHORING.md` (entrypoints and responsibilities)
 
-3. Move LUSID scene parsing behind `src/parsing/`
+3. Move LUSID scene parsing behind `src/parsing/` — COMPLETE
 
 - Move/split `src/lusid_reader.cpp`, `src/lusid_reader.hpp` into `src/parsing/`.
 - Keep parser behavior stable; no schema/semantic changes.
@@ -90,7 +92,7 @@ Execution order is mandatory: complete in sequence and keep ingest/parity behavi
   - `internalDocsMD/design-reference-CULT.md` (parser ownership and interfaces)
   - `README.md` (file map)
 
-4. Move report construction/writing behind `src/reporting/`
+4. Move report construction/writing behind `src/reporting/` — COMPLETE
 
 - Move/split `src/report.cpp`, `src/cult_report.hpp` into `src/reporting/` (or adapters that preserve external includes during transition).
 - Centralize fail-report write behavior and temp+rename policy.
@@ -98,7 +100,7 @@ Execution order is mandatory: complete in sequence and keep ingest/parity behavi
   - `internalDocsMD/CHANGELOG.md` (migration note + compatibility)
   - `README.md` (reporting module location)
 
-5. Remove duplication in CLI and pipeline orchestration
+5. Remove duplication in CLI and pipeline orchestration — COMPLETE
 
 - Extract shared arg parsing/default-report-path logic used by both `transcode` and `adm-author`.
 - Keep CLI contract and error text stable unless intentionally changed.
@@ -107,18 +109,20 @@ Execution order is mandatory: complete in sequence and keep ingest/parity behavi
   - `internalDocsMD/AGENTS-CULT.md` (CLI contract section, if changed)
   - `README.md` (usage/help examples)
 
-6. Test and regression gate for each re-org slice
+6. Test and regression gate for each re-org slice — COMPLETE
 
 - Run focused authoring tests + full existing ingest/parity tests for every refactor slice.
 - No merge if parity tests regress.
+- Status 2026-04-26: full test gate passes 70/70 after the final shim-removal cleanup, including parity tests.
 - **Required doc update in same PR:**
   - `internalDocsMD/audit.md` (what was moved, evidence of non-regression)
   - `internalDocsMD/CHANGELOG.md` (test/status note)
 
-7. Finish pending Step 6 validation after structure stabilization
+7. Finish pending Step 6 validation after structure stabilization — AUTOMATED TESTS COMPLETE, MANUAL VALIDATION PENDING
 
 - Complete `tests/test_lusid_to_adm_mapping.cpp` and `tests/test_adm_author_integration.cpp`.
 - Perform manual Logic Pro Atmos import validation and capture notes.
+- Status 2026-04-26: mapping/integration tests are complete; Logic Pro Atmos manual import remains the next external validation gate.
 - **Required doc update in same PR:**
   - `internalDocsMD/admAuthoring.md` (validation outcomes)
   - `internalDocsMD/CHANGELOG.md` (feature-complete test milestone)
