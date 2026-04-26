@@ -1,4 +1,12 @@
 Design Document: Open-Source Immersive Audio Format Parser & Authoring Tool
+
+Project-specific parser ownership note (April 2026):
+
+- `src/parsing/` owns stable scene/file parsing adapters.
+- The LUSID scene reader entrypoint is `cult::readLusidScene()` in `src/parsing/lusid_reader.hpp`.
+- New code should include `parsing/lusid_reader.hpp`; the old root-level LUSID reader shims have been removed.
+- Parser moves must preserve schema interpretation, ordering behavior, and error semantics unless a contract doc explicitly changes them.
+
 Introduction
 Next-generation audio formats enable immersive spatial audio experiences by moving beyond traditional stereo or 5.1 channels. Modern standards can represent sound scenes with channel-based, object-based, and scene-based (ambisonics) audio elements to achieve 3D audio immersion 1 2 . This design document outlines a plan to support key open standards – MPEG-H 3D Audio, Immersive Audio Model & Format (IAMF), and Higher-Order Ambisonics (HOA) – in a cross-platform C++ tool for parsing and authoring immersive audio content. We focus on open-source implementations (permissive licensing) to allow integration into an open-source workflow, and we prioritize portability (macOS initially, with Windows/ Linux support) by avoiding any platform-specific dependencies. The tool’s scope will be primarily data parsing and file authoring, i.e. reading and writing these immersive audio formats (while leaving advanced signal processing or rendering to external modules). All design decisions and technical facts in this document are backed by literature and specifications, to serve as a reliable reference for future development and academic writing.
 Background: Immersive Audio Standards and Models MPEG-H 3D Audio (ISO/IEC 23008-3)

@@ -97,7 +97,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(pugixml)
 
 # --- nlohmann/json (LUSID reader — authoring path) -----------------------
-# Used by src/lusid_reader.cpp to parse scene.lusid.json in the adm-author
+# Used by src/parsing/lusid_reader.cpp to parse scene.lusid.json in the adm-author
 # command.  Not used in the ingest/parity path.
 if(NOT TARGET nlohmann_json AND NOT TARGET nlohmann_json::nlohmann_json)
     FetchContent_Declare(
@@ -146,12 +146,12 @@ endif()
 # ---------------------------------------------------------------------------
 add_executable(cult-transcoder
     src/main.cpp
-    src/report.cpp
+    src/reporting/report.cpp
     src/transcoder.cpp
     transcoding/adm/adm_to_lusid.cpp
     src/authoring/adm_author.cpp             # adm-author command (Steps 1-2 functional)
     src/authoring/adm_writer.cpp             # adm-writer abstraction mapping XML + BW64
-    src/lusid_reader.cpp                     # LUSID JSON reader (authoring path)
+    src/parsing/lusid_reader.cpp             # LUSID JSON reader (authoring path)
     src/audio/wav_io.cpp                     # self-contained RIFF WAV reader/writer
     src/audio/normalize_audio.cpp            # 48 kHz float32 normalization coordinator
     src/audio/resampler_r8brain.cpp          # r8brain-backed mono resampling
@@ -193,15 +193,17 @@ add_executable(cult_tests
     tests/test_lfe_mode.cpp                  # Phase 4: LFE mode + profile detection tests
     tests/test_360ra.cpp                     # Phase 6: Sony 360RA conversion tests
     tests/test_adm_author_args.cpp           # adm-author CLI validation tests
+    tests/test_lusid_to_adm_mapping.cpp      # adm-author LUSID -> ADM mapping tests
+    tests/test_adm_author_integration.cpp    # adm-author XML + BW64 integration tests
     tests/parity/run_parity.cpp
 
     # Same source files the main binary uses, so tests exercise real code
-    src/report.cpp
+    src/reporting/report.cpp
     src/transcoder.cpp
     transcoding/adm/adm_to_lusid.cpp
     src/authoring/adm_author.cpp
     src/authoring/adm_writer.cpp
-    src/lusid_reader.cpp
+    src/parsing/lusid_reader.cpp
     src/audio/wav_io.cpp
     src/audio/normalize_audio.cpp
     src/audio/resampler_r8brain.cpp

@@ -15,7 +15,7 @@
 #pragma once
 
 // ---------------------------------------------------------------------------
-// lusid_reader.hpp — minimal LUSID scene reader for authoring
+// parsing/lusid_reader.hpp — minimal LUSID scene reader for authoring
 // ---------------------------------------------------------------------------
 
 #include "lusid_scene.hpp"

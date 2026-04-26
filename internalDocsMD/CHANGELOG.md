@@ -8,6 +8,28 @@ All notable changes to cult_transcoder are documented here. This file is scoped 
 - Scaffolded new source module folders: `src/authoring/`, `src/parsing/`, and `src/reporting/`, each with ownership `README.md`.
 - Updated `README.md` with a source-module layout section and migration status note.
 - Updated `internalDocsMD/DESIGN-DOC-V1-CULT.MD` with explicit module boundary guidance for the new folders.
+- Completed the first automated ADM authoring validation slice:
+  - implemented deterministic ADM XML generation in `src/authoring/adm_writer.cpp`
+  - added `tests/test_lusid_to_adm_mapping.cpp`
+  - added `tests/test_adm_author_integration.cpp`
+  - verified BW64 `axml` metadata matches the authored XML sidecar
+- Validation evidence: `ctest --test-dir build --output-on-failure` passes 70/70 tests, including ingest/parity coverage.
+- Manual Logic Pro Atmos import validation remains pending and must be recorded before calling the authoring path fully accepted.
+- Moved LUSID scene parsing ownership into `src/parsing/`:
+  - `src/parsing/lusid_reader.cpp`
+  - `src/parsing/lusid_reader.hpp`
+- Moved report schema/serialization ownership into `src/reporting/`:
+  - `src/reporting/report.cpp`
+  - `src/reporting/cult_report.hpp`
+- Reduced duplicated CLI helper logic in `src/main.cpp` by sharing argument-value parsing, required-flag validation, atomic report writing, and error printing across `transcode` and `adm-author` without changing the CLI contract.
+- Removed obsolete root-level transitional shims after updating project references:
+  - `src/adm_author.cpp`
+  - `src/adm_writer.cpp`
+  - `src/adm_writer.hpp`
+  - `src/lusid_reader.cpp`
+  - `src/lusid_reader.hpp`
+  - `src/report.cpp`
+  - `src/cult_report.hpp`
 
 ## 2026-03-31
 

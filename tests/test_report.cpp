@@ -24,7 +24,7 @@
 //   - LossLedgerEntry fields are serialised correctly.
 // ---------------------------------------------------------------------------
 
-#include "cult_report.hpp"
+#include "reporting/cult_report.hpp"
 #include "cult_version.hpp"
 
 #include <catch2/catch_test_macros.hpp>

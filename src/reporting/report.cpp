@@ -13,14 +13,14 @@
 // limitations under the License.
 
 // ---------------------------------------------------------------------------
-// report.cpp — Implementation of Report serialisation (cult_report.hpp)
+// reporting/report.cpp — Implementation of Report serialisation
 //
 // Serialises to JSON without any third-party library so Phase 1 has zero
 // external dependencies.  Phase 2 may switch to nlohmann/json; the public
 // API (cult_report.hpp) will not change.
 // ---------------------------------------------------------------------------
 
-#include "cult_report.hpp"
+#include "reporting/cult_report.hpp"
 #include "cult_version.hpp"
 
 #include <fstream>

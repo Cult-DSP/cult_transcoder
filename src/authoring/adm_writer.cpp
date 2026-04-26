@@ -22,8 +22,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <fstream>
 #include <iomanip>
+#include <map>
 #include <sstream>
 #include <vector>
 
@@ -31,12 +33,47 @@ namespace cult {
 
 namespace {
 
-// Format float to fixed decimals easily into string
-std::string to_string_fixed(double val, int precision); // forward declare to suppress error
 std::string to_string_fixed(double val, int precision) {
-    (void)val;
-    (void)precision;
-    return "0.0";
+    std::ostringstream out;
+    out << std::fixed << std::setprecision(precision) << val;
+    return out.str();
+}
+
+struct NodeTimeline {
+    std::string id;
+    std::string type;
+    std::vector<const LusidNode*> nodes;
+    std::vector<double> times;
+};
+
+std::string admSuffix(size_t index) {
+    std::ostringstream out;
+    out << std::setfill('0') << std::setw(4) << (index + 1);
+    return out.str();
+}
+
+std::string admTypeDefinition(const std::string& type) {
+    return type == "audio_object" ? "Objects" : "DirectSpeakers";
+}
+
+std::string admTypeLabel(const std::string& type) {
+    return type == "audio_object" ? "0003" : "0001";
+}
+
+void appendText(pugi::xml_node parent, const char* name, const std::string& value) {
+    parent.append_child(name).text().set(value.c_str());
+}
+
+void appendCoordinate(pugi::xml_node parent, const char* coordinate, double value) {
+    auto node = parent.append_child("position");
+    node.append_attribute("coordinate") = coordinate;
+    node.text().set(to_string_fixed(value, 6).c_str());
+}
+
+std::string saveXmlToString(const pugi::xml_document& doc) {
+    std::ostringstream out;
+    doc.save(out, "  ", pugi::format_default, pugi::encoding_utf8);
+    return out.str();
 }
 
 } // namespace
@@ -91,17 +128,63 @@ std::vector<std::string> AdmWriter::sortNodeIds(const std::vector<std::string>& 
 }
 
 std::string AdmWriter::generateAdmXml(const LusidScene& scene, const std::vector<WavFileInfo>& monoWavs, uint32_t targetSampleRate, uint64_t expectedFrames, uint32_t& outChannelCount, uint32_t& outObjectCount) {
-    (void)scene;
     (void)monoWavs;
-    (void)targetSampleRate;
-    (void)expectedFrames;
-    (void)outChannelCount;
-    (void)outObjectCount;
-    (void)to_string_fixed;
+
+    std::vector<std::string> ids;
+    std::map<std::string, NodeTimeline> timelines;
+    for (const auto& frame : scene.frames) {
+        for (const auto& node : frame.nodes) {
+            if (node.type != "direct_speaker" && node.type != "audio_object" && node.type != "LFE") {
+                continue;
+            }
+            auto& timeline = timelines[node.id];
+            if (timeline.id.empty()) {
+                timeline.id = node.id;
+                timeline.type = node.type;
+                ids.push_back(node.id);
+            }
+            timeline.nodes.push_back(&node);
+            timeline.times.push_back(frame.time);
+        }
+    }
+
+    for (auto& entry : timelines) {
+        auto& timeline = entry.second;
+        std::vector<size_t> order(timeline.nodes.size());
+        for (size_t i = 0; i < order.size(); ++i) {
+            order[i] = i;
+        }
+        std::sort(order.begin(), order.end(), [&](size_t a, size_t b) {
+            return timeline.times[a] < timeline.times[b];
+        });
+
+        std::vector<const LusidNode*> sortedNodes;
+        std::vector<double> sortedTimes;
+        sortedNodes.reserve(order.size());
+        sortedTimes.reserve(order.size());
+        for (const auto index : order) {
+            sortedNodes.push_back(timeline.nodes[index]);
+            sortedTimes.push_back(timeline.times[index]);
+        }
+        timeline.nodes = sortedNodes;
+        timeline.times = sortedTimes;
+    }
+
+    const auto sortedIds = sortNodeIds(ids);
+    outChannelCount = static_cast<uint32_t>(sortedIds.size());
+    outObjectCount = 0;
+
+    const double totalDuration = static_cast<double>(expectedFrames) / static_cast<double>(targetSampleRate);
+
     pugi::xml_document doc;
+    auto decl = doc.append_child(pugi::node_declaration);
+    decl.append_attribute("version") = "1.0";
+    decl.append_attribute("encoding") = "UTF-8";
 
     auto root = doc.append_child("ebuCoreMain");
+    root.append_attribute("xmlns") = "urn:ebu:metadata-schema:ebuCore_2014";
     root.append_attribute("xmlns:dc") = "http://purl.org/dc/elements/1.1/";
+    root.append_attribute("version") = "1.10";
 
     auto coreMetadata = root.append_child("coreMetadata");
     auto format = coreMetadata.append_child("format");
@@ -112,14 +195,105 @@ std::string AdmWriter::generateAdmXml(const LusidScene& scene, const std::vector
     auto programme = admFormat.append_child("audioProgramme");
     programme.append_attribute("audioProgrammeID") = "APR_1001";
     programme.append_attribute("audioProgrammeName") = "CULT Authoring Programme";
+    programme.append_attribute("start") = formatAdmTime(0.0, targetSampleRate).c_str();
+    programme.append_attribute("duration") = formatAdmTime(totalDuration, targetSampleRate).c_str();
 
     auto content = admFormat.append_child("audioContent");
     content.append_attribute("audioContentID") = "ACO_1001";
     content.append_attribute("audioContentName") = "CULT Authoring Content";
     programme.append_child("audioContentIDRef").text().set("ACO_1001");
-    // TODO complete mapping ...
 
-    return "";
+    for (size_t i = 0; i < sortedIds.size(); ++i) {
+        const std::string& id = sortedIds[i];
+        const auto timelineIt = timelines.find(id);
+        if (timelineIt == timelines.end()) {
+            continue;
+        }
+
+        const auto& timeline = timelineIt->second;
+        const bool isObject = timeline.type == "audio_object";
+        if (isObject) {
+            ++outObjectCount;
+        }
+
+        const std::string suffix = admSuffix(i);
+        const std::string audioObjectId = "AO_1" + suffix;
+        const std::string packId = "AP_1" + suffix;
+        const std::string channelId = "AC_1" + suffix;
+        const std::string streamId = "AS_1" + suffix;
+        const std::string trackFormatId = "AT_1" + suffix;
+        const std::string trackUid = "ATU_1" + suffix;
+        const std::string typeDefinition = admTypeDefinition(timeline.type);
+        const std::string typeLabel = admTypeLabel(timeline.type);
+
+        auto audioObject = admFormat.append_child("audioObject");
+        audioObject.append_attribute("audioObjectID") = audioObjectId.c_str();
+        audioObject.append_attribute("audioObjectName") = id.c_str();
+        audioObject.append_attribute("start") = formatAdmTime(0.0, targetSampleRate).c_str();
+        audioObject.append_attribute("duration") = formatAdmTime(totalDuration, targetSampleRate).c_str();
+        appendText(audioObject, "audioPackFormatIDRef", packId);
+        appendText(audioObject, "audioTrackUIDRef", trackUid);
+        content.append_child("audioObjectIDRef").text().set(audioObjectId.c_str());
+
+        auto pack = admFormat.append_child("audioPackFormat");
+        pack.append_attribute("audioPackFormatID") = packId.c_str();
+        pack.append_attribute("audioPackFormatName") = id.c_str();
+        pack.append_attribute("typeLabel") = typeLabel.c_str();
+        pack.append_attribute("typeDefinition") = typeDefinition.c_str();
+        appendText(pack, "audioChannelFormatIDRef", channelId);
+
+        auto channel = admFormat.append_child("audioChannelFormat");
+        channel.append_attribute("audioChannelFormatID") = channelId.c_str();
+        channel.append_attribute("audioChannelFormatName") = id.c_str();
+        channel.append_attribute("typeLabel") = typeLabel.c_str();
+        channel.append_attribute("typeDefinition") = typeDefinition.c_str();
+
+        for (size_t b = 0; b < timeline.nodes.size(); ++b) {
+            const auto* node = timeline.nodes[b];
+            const double start = timeline.times[b];
+            const double next = (b + 1 < timeline.times.size()) ? timeline.times[b + 1] : totalDuration;
+            const double duration = std::max(0.0, next - start);
+
+            auto block = channel.append_child("audioBlockFormat");
+            block.append_attribute("audioBlockFormatID") = ("AB_" + suffix + "_" + admSuffix(b)).c_str();
+            block.append_attribute("rtime") = formatAdmTime(start, targetSampleRate).c_str();
+            block.append_attribute("duration") = formatAdmTime(duration, targetSampleRate).c_str();
+            if (isObject) {
+                block.append_attribute("cartesian") = "1";
+            }
+
+            if (node->hasCart) {
+                appendCoordinate(block, "X", node->cart[0]);
+                appendCoordinate(block, "Y", node->cart[1]);
+                appendCoordinate(block, "Z", node->cart[2]);
+            } else if (timeline.type == "LFE") {
+                appendText(block, "speakerLabel", "LFE");
+            }
+        }
+
+        auto stream = admFormat.append_child("audioStreamFormat");
+        stream.append_attribute("audioStreamFormatID") = streamId.c_str();
+        stream.append_attribute("audioStreamFormatName") = id.c_str();
+        stream.append_attribute("formatLabel") = "0001";
+        stream.append_attribute("formatDefinition") = "PCM";
+        appendText(stream, "audioChannelFormatIDRef", channelId);
+        appendText(stream, "audioPackFormatIDRef", packId);
+        appendText(stream, "audioTrackFormatIDRef", trackFormatId);
+
+        auto trackFormat = admFormat.append_child("audioTrackFormat");
+        trackFormat.append_attribute("audioTrackFormatID") = trackFormatId.c_str();
+        trackFormat.append_attribute("audioTrackFormatName") = id.c_str();
+        trackFormat.append_attribute("formatLabel") = "0001";
+        trackFormat.append_attribute("formatDefinition") = "PCM";
+        appendText(trackFormat, "audioStreamFormatIDRef", streamId);
+
+        auto trackUidNode = admFormat.append_child("audioTrackUID");
+        trackUidNode.append_attribute("UID") = trackUid.c_str();
+        appendText(trackUidNode, "audioTrackFormatIDRef", trackFormatId);
+        appendText(trackUidNode, "audioPackFormatIDRef", packId);
+    }
+
+    return saveXmlToString(doc);
 }
 
 AdmWriterResult AdmWriter::writeAdmBw64(

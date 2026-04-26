@@ -36,10 +36,11 @@
 // ---------------------------------------------------------------------------
 
 #include "cult_transcoder.hpp"
-#include "cult_report.hpp"
+#include "reporting/cult_report.hpp"
 #include "cult_version.hpp"
 #include "adm_to_lusid.hpp"  // LfeMode
 
+#include <cstdlib>
 #include <filesystem>
 #include <iostream>
 #include <string>
@@ -56,6 +57,12 @@ static void printUsage(const std::string& progName);
 static std::string defaultReportPath(const std::string& outPath);
 static std::string defaultAuthorReportPath(const std::string& outWavPath,
                                            const std::string& outXmlPath);
+static std::string nextArg(const std::vector<std::string>& argv,
+                           size_t& index,
+                           const std::string& name);
+static bool requireFlag(const std::string& val, const std::string& name);
+static void writeAtomicReport(const cult::Report& report, const std::string& reportPath);
+static void printErrors(const cult::Report& report);
 
 // ---------------------------------------------------------------------------
 // main()
@@ -105,23 +112,14 @@ static int cmdTranscode(const std::vector<std::string>& argv) {
     for (size_t i = 2; i < argv.size(); ++i) {
         const std::string& flag = argv[i];
 
-        auto nextArg = [&](const std::string& name) -> std::string {
-            if (i + 1 >= argv.size()) {
-                std::cerr << "[cult-transcoder] ERROR: " << name
-                          << " requires an argument\n";
-                std::exit(2);
-            }
-            return argv[++i];
-        };
-
-        if      (flag == "--in")           req.inPath      = nextArg("--in");
-        else if (flag == "--in-format")    req.inFormat    = nextArg("--in-format");
-        else if (flag == "--out")          req.outPath     = nextArg("--out");
-        else if (flag == "--out-format")   req.outFormat   = nextArg("--out-format");
-        else if (flag == "--report")       req.reportPath  = nextArg("--report");
+        if      (flag == "--in")           req.inPath      = nextArg(argv, i, "--in");
+        else if (flag == "--in-format")    req.inFormat    = nextArg(argv, i, "--in-format");
+        else if (flag == "--out")          req.outPath     = nextArg(argv, i, "--out");
+        else if (flag == "--out-format")   req.outFormat   = nextArg(argv, i, "--out-format");
+        else if (flag == "--report")       req.reportPath  = nextArg(argv, i, "--report");
         else if (flag == "--stdout-report") req.stdoutReport = true;
         else if (flag == "--lfe-mode") {
-            const std::string val = nextArg("--lfe-mode");
+            const std::string val = nextArg(argv, i, "--lfe-mode");
             if (val == "hardcoded") {
                 req.lfeMode = cult::LfeMode::Hardcoded;
             } else if (val == "speaker-label") {
@@ -141,16 +139,10 @@ static int cmdTranscode(const std::vector<std::string>& argv) {
 
     // --- Validate required flags ---
     bool argError = false;
-    auto requireFlag = [&](const std::string& val, const std::string& name) {
-        if (val.empty()) {
-            std::cerr << "[cult-transcoder] ERROR: missing required flag: " << name << "\n";
-            argError = true;
-        }
-    };
-    requireFlag(req.inPath,    "--in");
-    requireFlag(req.inFormat,  "--in-format");
-    requireFlag(req.outPath,   "--out");
-    requireFlag(req.outFormat, "--out-format");
+    argError = requireFlag(req.inPath,    "--in") || argError;
+    argError = requireFlag(req.inFormat,  "--in-format") || argError;
+    argError = requireFlag(req.outPath,   "--out") || argError;
+    argError = requireFlag(req.outFormat, "--out-format") || argError;
 
     if (argError) {
         printUsage(argv[0]);
@@ -189,18 +181,7 @@ static int cmdTranscode(const std::vector<std::string>& argv) {
     // Phase 1: there is no LUSID output yet, so only the report file is
     // written atomically.  Phase 2 will add the temp→rename for the LUSID
     // output file.
-    const std::string reportTmp = req.reportPath + ".tmp";
-
-    bool reportWritten = result.report.writeTo(reportTmp);
-    if (reportWritten) {
-        // Atomic rename: if rename fails, leave the .tmp for diagnosis
-        std::error_code ec;
-        fs::rename(reportTmp, req.reportPath, ec);
-        if (ec) {
-            std::cerr << "[cult-transcoder] WARNING: could not rename report: "
-                      << ec.message() << "\n";
-        }
-    }
+    writeAtomicReport(result.report, req.reportPath);
 
     if (req.stdoutReport) {
         result.report.printToStdout();
@@ -208,10 +189,9 @@ static int cmdTranscode(const std::vector<std::string>& argv) {
 
     if (!result.success) {
         // Print errors to stderr as required by §2
-        for (const auto& e : result.report.errors) {
-            std::cerr << "[cult-transcoder] ERROR: " << e << "\n";
-        }
+        printErrors(result.report);
         // Remove any partial temp files (none in Phase 1, but be explicit)
+        const std::string reportTmp = req.reportPath + ".tmp";
         if (fs::exists(reportTmp)) fs::remove(reportTmp);
         return 1;
     }
@@ -229,21 +209,12 @@ static int cmdAdmAuthor(const std::vector<std::string>& argv) {
     for (size_t i = 2; i < argv.size(); ++i) {
         const std::string& flag = argv[i];
 
-        auto nextArg = [&](const std::string& name) -> std::string {
-            if (i + 1 >= argv.size()) {
-                std::cerr << "[cult-transcoder] ERROR: " << name
-                          << " requires an argument\n";
-                std::exit(2);
-            }
-            return argv[++i];
-        };
-
-        if      (flag == "--lusid")         req.lusidPath    = nextArg("--lusid");
-        else if (flag == "--wav-dir")       req.wavDir       = nextArg("--wav-dir");
-        else if (flag == "--lusid-package") req.lusidPackage = nextArg("--lusid-package");
-        else if (flag == "--out-xml")       req.outXmlPath   = nextArg("--out-xml");
-        else if (flag == "--out-wav")       req.outWavPath   = nextArg("--out-wav");
-        else if (flag == "--report")        req.reportPath   = nextArg("--report");
+        if      (flag == "--lusid")         req.lusidPath    = nextArg(argv, i, "--lusid");
+        else if (flag == "--wav-dir")       req.wavDir       = nextArg(argv, i, "--wav-dir");
+        else if (flag == "--lusid-package") req.lusidPackage = nextArg(argv, i, "--lusid-package");
+        else if (flag == "--out-xml")       req.outXmlPath   = nextArg(argv, i, "--out-xml");
+        else if (flag == "--out-wav")       req.outWavPath   = nextArg(argv, i, "--out-wav");
+        else if (flag == "--report")        req.reportPath   = nextArg(argv, i, "--report");
         else if (flag == "--stdout-report") req.stdoutReport = true;
         else {
             std::cerr << "[cult-transcoder] ERROR: unknown flag: " << flag << "\n";
@@ -254,20 +225,14 @@ static int cmdAdmAuthor(const std::vector<std::string>& argv) {
 
     // --- Validate required flags ---
     bool argError = false;
-    auto requireFlag = [&](const std::string& val, const std::string& name) {
-        if (val.empty()) {
-            std::cerr << "[cult-transcoder] ERROR: missing required flag: " << name << "\n";
-            argError = true;
-        }
-    };
 
     const bool hasPackage = !req.lusidPackage.empty();
     if (!hasPackage) {
-        requireFlag(req.lusidPath, "--lusid");
-        requireFlag(req.wavDir, "--wav-dir");
+        argError = requireFlag(req.lusidPath, "--lusid") || argError;
+        argError = requireFlag(req.wavDir, "--wav-dir") || argError;
     }
-    requireFlag(req.outXmlPath, "--out-xml");
-    requireFlag(req.outWavPath, "--out-wav");
+    argError = requireFlag(req.outXmlPath, "--out-xml") || argError;
+    argError = requireFlag(req.outWavPath, "--out-wav") || argError;
 
     if (argError) {
         printUsage(argv[0]);
@@ -300,25 +265,15 @@ static int cmdAdmAuthor(const std::vector<std::string>& argv) {
     cult::AdmAuthorResult result = cult::admAuthor(req);
 
     // --- Atomic report write ---
-    const std::string reportTmp = req.reportPath + ".tmp";
-    bool reportWritten = result.report.writeTo(reportTmp);
-    if (reportWritten) {
-        std::error_code ec;
-        fs::rename(reportTmp, req.reportPath, ec);
-        if (ec) {
-            std::cerr << "[cult-transcoder] WARNING: could not rename report: "
-                      << ec.message() << "\n";
-        }
-    }
+    writeAtomicReport(result.report, req.reportPath);
 
     if (req.stdoutReport) {
         result.report.printToStdout();
     }
 
     if (!result.success) {
-        for (const auto& e : result.report.errors) {
-            std::cerr << "[cult-transcoder] ERROR: " << e << "\n";
-        }
+        printErrors(result.report);
+        const std::string reportTmp = req.reportPath + ".tmp";
         if (fs::exists(reportTmp)) fs::remove(reportTmp);
         return 1;
     }
@@ -342,6 +297,44 @@ static std::string defaultAuthorReportPath(const std::string& outWavPath,
     return "cult-transcoder.report.json";
 }
 
+static std::string nextArg(const std::vector<std::string>& argv,
+                           size_t& index,
+                           const std::string& name) {
+    if (index + 1 >= argv.size()) {
+        std::cerr << "[cult-transcoder] ERROR: " << name
+                  << " requires an argument\n";
+        std::exit(2);
+    }
+    return argv[++index];
+}
+
+static bool requireFlag(const std::string& val, const std::string& name) {
+    if (val.empty()) {
+        std::cerr << "[cult-transcoder] ERROR: missing required flag: " << name << "\n";
+        return true;
+    }
+    return false;
+}
+
+static void writeAtomicReport(const cult::Report& report, const std::string& reportPath) {
+    const std::string reportTmp = reportPath + ".tmp";
+    bool reportWritten = report.writeTo(reportTmp);
+    if (reportWritten) {
+        std::error_code ec;
+        fs::rename(reportTmp, reportPath, ec);
+        if (ec) {
+            std::cerr << "[cult-transcoder] WARNING: could not rename report: "
+                      << ec.message() << "\n";
+        }
+    }
+}
+
+static void printErrors(const cult::Report& report) {
+    for (const auto& e : report.errors) {
+        std::cerr << "[cult-transcoder] ERROR: " << e << "\n";
+    }
+}
+
 static void printUsage(const std::string& progName) {
     std::cerr <<
         "Usage: " << progName << " transcode\n"
@@ -352,6 +345,16 @@ static void printUsage(const std::string& progName) {
         "           [--report <path>]   report path (default: <out>.report.json)\n"
         "           [--stdout-report]   also print report to stdout\n"
         "           [--lfe-mode <val>]  LFE detection: hardcoded (default) | speaker-label\n"
+        "\n"
+        "       " << progName << " adm-author\n"
+        "           --lusid <scene.lusid.json> --wav-dir <path>\n"
+        "           --out-xml <export.adm.xml> --out-wav <export.adm.wav>\n"
+        "           [--report <path>] [--stdout-report]\n"
+        "\n"
+        "       " << progName << " adm-author\n"
+        "           --lusid-package <path>\n"
+        "           --out-xml <export.adm.xml> --out-wav <export.adm.wav>\n"
+        "           [--report <path>] [--stdout-report]\n"
         "\n"
         "       " << progName << " --version\n"
         "       " << progName << " --help\n";

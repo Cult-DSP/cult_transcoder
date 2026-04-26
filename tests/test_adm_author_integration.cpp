@@ -1,0 +1,147 @@
+// Copyright 2026 Cult-DSP
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// ---------------------------------------------------------------------------
+// test_adm_author_integration.cpp - End-to-end adm-author tests
+// ---------------------------------------------------------------------------
+
+#include "cult_transcoder.hpp"
+#include "audio/wav_io.hpp"
+
+#include <bw64/bw64.hpp>
+#include <catch2/catch_test_macros.hpp>
+#include <pugixml.hpp>
+
+#include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <vector>
+
+namespace fs = std::filesystem;
+
+namespace {
+
+struct TempDir {
+    fs::path path;
+    TempDir() {
+        static uint32_t counter = 0;
+        path = fs::temp_directory_path() / ("cult_adm_author_integration_" + std::to_string(++counter));
+        fs::create_directories(path);
+    }
+    ~TempDir() {
+        std::error_code ec;
+        fs::remove_all(path, ec);
+    }
+};
+
+void writeTextFile(const fs::path& path, const std::string& text) {
+    std::ofstream f(path);
+    REQUIRE(f.is_open());
+    f << text;
+}
+
+void writeFloatWav(const fs::path& path, float value) {
+    std::vector<float> samples(480, value);
+    std::string error;
+    REQUIRE(cult::writeFloat32MonoWav(path.string(), 48000, samples, error));
+}
+
+std::string readTextFile(const fs::path& path) {
+    std::ifstream f(path);
+    REQUIRE(f.is_open());
+    std::ostringstream out;
+    out << f.rdbuf();
+    return out.str();
+}
+
+} // namespace
+
+TEST_CASE("admAuthor writes ADM XML and BW64 with matching embedded axml",
+          "[adm-author][integration]") {
+    TempDir temp;
+
+    const fs::path scenePath = temp.path / "scene.lusid.json";
+    writeTextFile(scenePath, R"JSON({
+  "version": "0.5",
+  "timeUnit": "seconds",
+  "duration": 0.01,
+  "frames": [
+    {
+      "time": 0.0,
+      "nodes": [
+        {"id": "1.1", "type": "direct_speaker", "cart": [-1.0, 0.0, 0.0]},
+        {"id": "4.1", "type": "LFE"},
+        {"id": "11.1", "type": "audio_object", "cart": [0.0, 0.0, 0.0]}
+      ]
+    },
+    {
+      "time": 0.005,
+      "nodes": [
+        {"id": "11.1", "type": "audio_object", "cart": [0.5, 0.0, 0.25]}
+      ]
+    }
+  ]
+})JSON");
+
+    writeFloatWav(temp.path / "1.1.wav", 0.1f);
+    writeFloatWav(temp.path / "LFE.wav", 0.2f);
+    writeFloatWav(temp.path / "11.1.wav", 0.3f);
+
+    const fs::path outXml = temp.path / "export.adm.xml";
+    const fs::path outWav = temp.path / "export.adm.wav";
+    const fs::path report = temp.path / "export.report.json";
+
+    cult::AdmAuthorRequest req;
+    req.lusidPath = scenePath.string();
+    req.wavDir = temp.path.string();
+    req.outXmlPath = outXml.string();
+    req.outWavPath = outWav.string();
+    req.reportPath = report.string();
+
+    auto result = cult::admAuthor(req);
+    INFO(result.report.toJson());
+    REQUIRE(result.success);
+    REQUIRE(result.report.status == "pass");
+    REQUIRE(result.report.summary.durationSec == 0.01);
+    REQUIRE(result.report.summary.sampleRate == 48000);
+    REQUIRE(result.report.summary.timeUnit == "seconds");
+    REQUIRE(result.report.summary.numFrames == 2);
+    REQUIRE(result.report.summary.countsByNodeType["direct_speaker"] == 1);
+    REQUIRE(result.report.summary.countsByNodeType["LFE"] == 1);
+    REQUIRE(result.report.summary.countsByNodeType["audio_object"] == 1);
+    REQUIRE(result.report.hasAuthoringValidation);
+    REQUIRE(result.report.authoringValidation.expectedFrames == 480);
+    REQUIRE(result.report.authoringValidation.files.size() == 3);
+
+    REQUIRE(fs::exists(outXml));
+    REQUIRE(fs::exists(outWav));
+
+    const std::string xml = readTextFile(outXml);
+    REQUIRE(xml.find("<audioFormatExtended") != std::string::npos);
+    REQUIRE(xml.find("audioObjectName=\"11.1\"") != std::string::npos);
+    REQUIRE(xml.find("audioChannelFormatName=\"4.1\"") != std::string::npos);
+
+    pugi::xml_document doc;
+    REQUIRE(doc.load_file(outXml.string().c_str()));
+
+    auto bw64File = bw64::readFile(outWav.string());
+    REQUIRE(bw64File->formatChunk());
+    REQUIRE(bw64File->formatChunk()->channelCount() == 3);
+    REQUIRE(bw64File->formatChunk()->sampleRate() == 48000);
+    REQUIRE(bw64File->formatChunk()->bitsPerSample() == 24);
+    REQUIRE(bw64File->axmlChunk());
+    REQUIRE(bw64File->axmlChunk()->data() == xml);
+}

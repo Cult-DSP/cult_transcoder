@@ -21,7 +21,7 @@
 // ---------------------------------------------------------------------------
 
 #include "cult_transcoder.hpp"
-#include "lusid_reader.hpp"
+#include "parsing/lusid_reader.hpp"
 #include "audio/normalize_audio.hpp"
 #include "audio/wav_io.hpp"
 #include "adm_writer.hpp"
@@ -29,6 +29,7 @@
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
+#include <map>
 #include <vector>
 
 namespace fs = std::filesystem;
@@ -64,6 +65,23 @@ std::vector<std::string> collectNodeIds(const LusidScene& scene) {
     std::sort(ids.begin(), ids.end());
     ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
     return ids;
+}
+
+std::map<std::string, int> countUniqueSupportedNodeTypes(const LusidScene& scene) {
+    std::map<std::string, std::string> typeById;
+    for (const auto& frame : scene.frames) {
+        for (const auto& node : frame.nodes) {
+            if (node.type == "direct_speaker" || node.type == "audio_object" || node.type == "LFE") {
+                typeById.emplace(node.id, node.type);
+            }
+        }
+    }
+
+    std::map<std::string, int> counts;
+    for (const auto& entry : typeById) {
+        counts[entry.second] += 1;
+    }
+    return counts;
 }
 
 } // namespace
@@ -229,6 +247,12 @@ AdmAuthorResult admAuthor(const AdmAuthorRequest& req) {
         report.status = "fail";
         return result;
     }
+
+    report.summary.durationSec = static_cast<double>(expectedFrames) / static_cast<double>(targetSampleRate);
+    report.summary.sampleRate = static_cast<int>(targetSampleRate);
+    report.summary.timeUnit = "seconds";
+    report.summary.numFrames = static_cast<int>(sceneResult.scene.frames.size());
+    report.summary.countsByNodeType = countUniqueSupportedNodeTypes(sceneResult.scene);
 
     // Prepare normalized wav info
     std::vector<WavFileInfo> normWavInfos;

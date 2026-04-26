@@ -15,7 +15,7 @@
 #pragma once
 
 // ---------------------------------------------------------------------------
-// cult_report.hpp — Report data model and serialisation for CULT Transcoder
+// reporting/cult_report.hpp — Report data model and serialisation for CULT Transcoder
 //
 // Implements Report Schema v0.1 (AGENTS §7).
 //

@@ -26,7 +26,7 @@
 //          call-site for the CLI.
 // ---------------------------------------------------------------------------
 
-#include "cult_report.hpp"
+#include "reporting/cult_report.hpp"
 #include "adm_to_lusid.hpp"  // LfeMode enum
 
 #include <string>

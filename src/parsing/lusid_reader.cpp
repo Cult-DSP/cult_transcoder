@@ -13,10 +13,10 @@
 // limitations under the License.
 
 // ---------------------------------------------------------------------------
-// lusid_reader.cpp — minimal LUSID scene reader for authoring
+// parsing/lusid_reader.cpp — minimal LUSID scene reader for authoring
 // ---------------------------------------------------------------------------
 
-#include "lusid_reader.hpp"
+#include "parsing/lusid_reader.hpp"
 
 #include <nlohmann/json.hpp>
 

@@ -22,4 +22,4 @@ Completed in this slice:
 - `src/adm_writer.cpp` → `src/authoring/adm_writer.cpp`
 - `src/adm_writer.hpp` → `src/authoring/adm_writer.hpp`
 
-Transitional compatibility shims remain at old paths under `src/` and should be removed in a follow-up cleanup once all references are confirmed migrated.
+The previous root-level transitional shims have been removed. New code should include authoring headers through `authoring/...`.

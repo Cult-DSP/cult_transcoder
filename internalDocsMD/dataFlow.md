@@ -22,7 +22,7 @@ flowchart LR
 	I --> J
 
 	J --> K[Write scene.lusid.json\n(src/transcoder.cpp)]
-	J --> L[Build report (status/warnings/losses)\n(src/report.cpp)]
+	J --> L[Build report (status/warnings/losses)\n(src/reporting/report.cpp)]
 
 	K --> M[Output: LUSID Scene JSON]
 	L --> N[Output: report.json\n(and optional --stdout-report)]

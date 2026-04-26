@@ -51,12 +51,12 @@ Pinned framing:
 
 ## 3. Current Repo Reality (Do Not Ignore)
 
-Observed today:
+Observed 2026-04-26:
 
-- CLI currently supports only `adm_xml -> lusid_json`.
+- CLI supports `adm_xml`/`adm_wav -> lusid_json` through `transcode` and LUSID -> ADM/BW64 through `adm-author`.
 - Existing parity depends on pugixml traversal matching the Python oracle.
-- `libadm` is not part of the current parity-critical path.
-- No verified LUSID → ADM export path currently exists in the repo.
+- `libadm` is not part of the current parity-critical path; authoring XML generation is owned by CULT and written through pugixml.
+- The first automated LUSID -> ADM/BW64 path is implemented in `src/authoring/` and covered by mapping/integration tests.
 
 Implication:
 
@@ -309,6 +309,14 @@ Add authoring-specific summary fields as needed, such as:
 - wav file count resolved
 - authoring warnings / approximations
 
+Current implementation:
+
+- `summary.durationSec` is derived from normalized audio frame count at 48 kHz.
+- `summary.sampleRate` is the authoring target sample rate (`48000`).
+- `summary.timeUnit` remains `"seconds"`.
+- `summary.numFrames` is the number of LUSID frames in the scene.
+- `summary.countsByNodeType` records unique supported node IDs by LUSID node type.
+
 Validation and normalization reporting:
 
 - resampling must be reported explicitly (source rate, target rate, file list)
@@ -336,6 +344,12 @@ Required minimum test coverage:
 - verify authoring subset constraints
 - verify deterministic output structure across repeated runs
 
+Status 2026-04-26:
+
+- `tests/test_lusid_to_adm_mapping.cpp` verifies deterministic bed/LFE/object ordering, object counts, direct-speaker/object channel typing, LFE placement, and step-hold `audioBlockFormat` timing.
+- `tests/test_adm_author_integration.cpp` verifies `admAuthor()` emits sidecar ADM XML and BW64, and that the BW64 `axml` chunk exactly matches the XML sidecar.
+- `ctest --test-dir build --output-on-failure` passes 70/70 tests, including existing ingest/parity tests.
+
 ### Manual validation
 
 Import `export.adm.wav` into Logic Pro Atmos and verify:
@@ -347,6 +361,8 @@ Import `export.adm.wav` into Logic Pro Atmos and verify:
 - no obvious import rejection due to malformed metadata or unsupported structure
 
 Manual validation status must be stated explicitly in the PR.
+
+Status 2026-04-26: pending. No Logic Pro Atmos import validation was performed in this automated test slice.
 
 ## 9. Risks and Open Items
 
@@ -372,7 +388,6 @@ Manual validation status must be stated explicitly in the PR.
 - exact supported motion subset for first pass
 - exact WAV duration policy
 - exact sample-rate policy
-- exact default report path for `adm-author`
 - exact deterministic ADM ID policy
 
 ## 10. Deliverables
@@ -382,6 +397,6 @@ Manual validation status must be stated explicitly in the PR.
 - explicit mapping-policy documentation committed
 - authored ADM XML writer integrated
 - authored BW64 packager integrated
-- tests covering validation, mapping, and integration
+- tests covering validation, mapping, and integration added
 - updated docs reflecting the new export-side contract
-- explicit statement of Logic Pro Atmos validation status
+- explicit statement of Logic Pro Atmos validation status: pending as of 2026-04-26

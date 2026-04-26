@@ -81,7 +81,10 @@ To reduce duplication and make ownership explicit, source is being organized int
 Current state:
 
 - These folders are scaffolded with module `README.md` files.
-- Functional code moves are tracked in `internalDocsMD/AGENTS-CULT.md` under the refactor task list.
+- `src/authoring/` owns `adm-author` orchestration and ADM/BW64 writing.
+- `src/parsing/` owns the LUSID scene reader (`src/parsing/lusid_reader.*`).
+- `src/reporting/` owns report schema/serialization (`src/reporting/cult_report.hpp`, `src/reporting/report.cpp`).
+- Remaining functional code moves are tracked in `internalDocsMD/AGENTS-CULT.md` under the refactor task list.
 - Ingest/parity-critical behavior must remain unchanged while module moves are in progress.
 
 ## License

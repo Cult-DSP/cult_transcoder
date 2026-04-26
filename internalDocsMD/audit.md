@@ -1,6 +1,6 @@
 # cult_transcoder — SpatialSeed Usage Audit
 
-**Date:** 2026-04-15  
+**Date:** 2026-04-26  
 **Scope:** which submodule code is actively called by SpatialSeed, which is planned, and which is not used.
 
 ---
@@ -10,9 +10,9 @@
 | Category | Verdict |
 |---|---|
 | `cult-transcoder transcode` binary (ADM XML → LUSID JSON) | **NOT called** by SpatialSeed today |
-| `cult-transcoder adm-author` binary (LUSID → ADM export) | **NOT called** — planned replacement for `adm_bw64.py` |
+| `cult-transcoder adm-author` binary (LUSID → ADM export) | **Built/tested, NOT called by SpatialSeed yet** — planned replacement for `adm_bw64.py` |
 | `src/adm_to_lusid.cpp` (ingest/parity path) | **NOT called** by SpatialSeed directly |
-| `src/adm_author.cpp` + audio stack | **NOT called** — Steps 3–6 needed before it can be wired in |
+| `src/authoring/adm_author.cpp` + audio stack | **Built/tested, NOT called by SpatialSeed yet** |
 | Python `adm_bw64.py` (Stage 9B) | **Active** — currently owns ADM XML + WAV interleaving |
 | LUSID Python oracle (`LUSID/src/xml_etree_parser.py`) | **NOT called** by SpatialSeed pipeline — only used by parity tests inside cult_transcoder |
 
@@ -43,7 +43,7 @@ SpatialSeed's pipeline (`src/pipeline.py`) is entirely Python. It **does not inv
 ## 2. What Is Planned to Use cult_transcoder
 
 ### `cult-transcoder adm-author` → replaces `src/export/adm_bw64.py`
-When Steps 3–6 of the adm-author path are complete, SpatialSeed's Stage 9B should be replaced with a subprocess call to:
+After Logic Pro Atmos manual validation, SpatialSeed's Stage 9B should be replaced with a subprocess call to:
 ```
 cult_transcoder/build/cult-transcoder adm-author \
   --lusid-package <lusid_package_dir> \
@@ -54,10 +54,9 @@ cult_transcoder/build/cult-transcoder adm-author \
 The Python `adm_bw64.py` would then be retired or kept only as a fallback.
 
 **What is still needed before this wiring can happen:**
-- Step 3: LUSID → ADM mapping layer (new file, path TBD — planned)
-- Step 4: ADM XML + BW64 output with embedded `axml`/`chna`
-- Step 5: Report schema extension for authoring
-- Step 6: Integration tests
+- Manual Logic Pro Atmos import validation of representative `export.adm.wav` files.
+- SpatialSeed pipeline call-site update and error/report surfacing.
+- Follow-up decision on whether `chna` metadata is required for the target import path; the current automated integration test verifies embedded `axml`.
 
 ### `cult-transcoder transcode` (ADM XML → LUSID JSON)
 Not currently part of the SpatialSeed pipeline. SpatialSeed generates LUSID from scratch (Python pipeline); it does not ingest ADM XML. This path serves parity testing and future use cases (e.g. importing an existing ADM mix for re-spatialisation), but has no wiring in `src/pipeline.py`.
@@ -69,8 +68,8 @@ Not currently part of the SpatialSeed pipeline. SpatialSeed generates LUSID from
 ### ~~`transcoding/adm/adm_to_lusid.cpp`~~, ~~`transcoding/lusid/lusid_validate.cpp`~~, ~~`transcoding/lusid/lusid_writer.cpp`~~
 **Deleted 2026-04-15.** All three were copyright-header-only skeletons, never compiled, never called by either project. `transcoding/lusid/` directory removed entirely.
 
-### `src/lusid_reader.cpp`, `src/audio/wav_io.cpp`, `src/audio/normalize_audio.cpp`, `src/audio/resampler_r8brain.cpp`
-Compiled and functional but not yet reachable from the CLI — `admAuthor()` returns `"not implemented yet"` before any of this logic matters to SpatialSeed. These are internally exercised through `test_adm_author_args.cpp` validation tests only.
+### `src/authoring/`, `src/parsing/lusid_reader.cpp`, `src/reporting/`, `src/audio/wav_io.cpp`, `src/audio/normalize_audio.cpp`, `src/audio/resampler_r8brain.cpp`
+Compiled, reachable through the `adm-author` CLI/API, and covered by automated validation/mapping/integration tests. They are not yet called by SpatialSeed's Python pipeline.
 
 ### LUSID Python oracle (`LUSID/src/xml_etree_parser.py`)
 Only used inside cult_transcoder's parity test suite (`tests/parity/`). SpatialSeed's pipeline has no import of `LUSID.src.xml_etree_parser`.
@@ -81,9 +80,9 @@ Only used inside cult_transcoder's parity test suite (`tests/parity/`). SpatialS
 
 | Item | Location | Status |
 |---|---|---|
-| ADM XML generation | `src/export/adm_bw64.py` (Python) + planned in `adm-author` (C++) | Duplicate — Python version is active, C++ is the target |
-| WAV interleaving | `src/export/adm_bw64.py` via `soundfile` | Will move to C++ in Step 4 |
-| BW64 embedding (`axml`/`chna`) | Not implemented anywhere — Python only writes sidecar XML | Gap — required for Logic Pro Atmos import |
+| ADM XML generation | `src/export/adm_bw64.py` (Python) + `src/authoring/adm_writer.cpp` (C++) | Duplicate — Python version is active in SpatialSeed, C++ is the target |
+| WAV interleaving | `src/export/adm_bw64.py` via `soundfile` + `src/authoring/adm_writer.cpp` via `libbw64` | Duplicate until SpatialSeed is rewired |
+| BW64 embedding (`axml`/`chna`) | C++ authoring path embeds `axml`; Python only writes sidecar XML | `chna` target requirement still open |
 | `containsAudio.json` | Still generated by `lusid_package.py` | AGENTS-CULT §4 marks it deprecated; not yet removed from pipeline |
 
 ---
@@ -95,3 +94,4 @@ Only used inside cult_transcoder's parity test suite (`tests/parity/`). SpatialS
 - [ ] Pass `--report` path through and surface errors in the pipeline logger
 - [ ] Remove `soundfile` dependency from `adm_bw64.py` once interleaving moves to C++
 - [ ] Update `internalDocsMD/agents.md` Stage 9 description to reflect the new wiring
+- [ ] Record Logic Pro Atmos import validation results before enabling by default

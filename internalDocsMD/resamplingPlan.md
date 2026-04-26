@@ -534,8 +534,8 @@ third_party/r8brain-free-src/
 CMakeLists.txt
 include/cult_transcoder.hpp
 src/main.cpp
-src/report.cpp
-src/adm_author/...   # once authoring files exist
+src/reporting/report.cpp
+src/authoring/adm_author.cpp
 internalDocsMD/AGENTS-CULT.md
 internalDocsMD/...   # any coupled docs required by contract changes
 ```
