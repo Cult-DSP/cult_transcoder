@@ -2,6 +2,13 @@
 
 All notable changes to cult_transcoder are documented here. This file is scoped to this submodule only.
 
+## 2026-04-26
+
+- Added a pinned DRY + module re-organization task list to `internalDocsMD/AGENTS-CULT.md`, with required markdown update targets per task.
+- Scaffolded new source module folders: `src/authoring/`, `src/parsing/`, and `src/reporting/`, each with ownership `README.md`.
+- Updated `README.md` with a source-module layout section and migration status note.
+- Updated `internalDocsMD/DESIGN-DOC-V1-CULT.MD` with explicit module boundary guidance for the new folders.
+
 ## 2026-03-31
 
 - Documented export-side ADM authoring policies (resampling, duration validation, ordering, motion policy).

@@ -70,6 +70,20 @@ current export-side ADM authoring plan.
 - `internalDocsMD/DEV-PLAN-CULT.md` — phased development plan
 - `internalDocsMD/DESIGN-DOC-V1-CULT.MD` — design reference
 
+## Source module layout (April 2026 scaffolding)
+
+To reduce duplication and make ownership explicit, source is being organized into module folders:
+
+- `src/authoring/` — LUSID → ADM export (`adm-author`) ownership.
+- `src/parsing/` — scene/file parsing ownership.
+- `src/reporting/` — report construction + write-policy ownership.
+
+Current state:
+
+- These folders are scaffolded with module `README.md` files.
+- Functional code moves are tracked in `internalDocsMD/AGENTS-CULT.md` under the refactor task list.
+- Ingest/parity-critical behavior must remain unchanged while module moves are in progress.
+
 ## License
 
 Apache-2.0 © Cult-DSP

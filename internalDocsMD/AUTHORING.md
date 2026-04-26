@@ -2,6 +2,19 @@
 
 This document formally captures the design decisions for the `adm-author` pipeline (Steps 3 and 4) which handles LUSID → ADM export mapping and writing to a `.wav` BW64 container. It follows the execution-safe, contract-first design set throughout CULT.
 
+## Implementation Entry Points (April 2026 module move)
+
+Authoring code now lives under `src/authoring/`.
+
+- Entrypoint orchestration: `src/authoring/adm_author.cpp`
+- Mapping + BW64 writer implementation: `src/authoring/adm_writer.cpp`
+- Writer interface: `src/authoring/adm_writer.hpp`
+
+Notes:
+
+- This move is structural only; behavior and validation semantics remain unchanged.
+- Ingest/parity-critical `adm_xml -> lusid_json` paths are intentionally untouched.
+
 ## 1. ADM ID Generation Strategy (ITU-R BS.2076)
 - Generating canonical ADM XML inherently demands an explicit hierarchical identifier scheme (`AC_...`, `AT_...`, `AP_...`).
 - We will strictly follow the standard `ITU-R BS.2076` hex mapping.

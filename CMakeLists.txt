@@ -149,8 +149,8 @@ add_executable(cult-transcoder
     src/report.cpp
     src/transcoder.cpp
     transcoding/adm/adm_to_lusid.cpp
-    src/adm_author.cpp                       # adm-author command (Steps 1-2 functional)
-    src/adm_writer.cpp                       # adm-writer abstraction mapping XML + BW64
+    src/authoring/adm_author.cpp             # adm-author command (Steps 1-2 functional)
+    src/authoring/adm_writer.cpp             # adm-writer abstraction mapping XML + BW64
     src/lusid_reader.cpp                     # LUSID JSON reader (authoring path)
     src/audio/wav_io.cpp                     # self-contained RIFF WAV reader/writer
     src/audio/normalize_audio.cpp            # 48 kHz float32 normalization coordinator
@@ -199,8 +199,8 @@ add_executable(cult_tests
     src/report.cpp
     src/transcoder.cpp
     transcoding/adm/adm_to_lusid.cpp
-    src/adm_author.cpp
-    src/adm_writer.cpp
+    src/authoring/adm_author.cpp
+    src/authoring/adm_writer.cpp
     src/lusid_reader.cpp
     src/audio/wav_io.cpp
     src/audio/normalize_audio.cpp

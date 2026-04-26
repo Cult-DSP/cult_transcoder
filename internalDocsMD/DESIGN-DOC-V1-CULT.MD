@@ -22,6 +22,20 @@ These decisions are part of the execution contract for CULT Transcoder in the Sp
 - **LFE behavior**: Phase 2 matches the current hardcoded behavior; improvements are added later behind flags without changing defaults.
 - **`containsAudio.json`**: Phase 2 removes/comments-out the pipeline’s dependence on it; reintroduction is a later, explicitly planned phase.
 
+### Source Module Boundaries (April 2026, Scaffolding Introduced)
+
+To improve DRY structure and maintenance safety, source ownership is being split into three explicit module folders:
+
+- `src/authoring/` — export-side authoring orchestration, mapping, and ADM/BW64 emission.
+- `src/parsing/` — LUSID and related parsing adapters with stable semantics.
+- `src/reporting/` — report payload construction and write policy (including fail-report behavior).
+
+Boundary rules:
+
+- Ingest/parity-critical `adm_xml -> lusid_json` behavior remains frozen during moves.
+- Module moves are behavior-preserving refactors unless explicitly documented otherwise.
+- Every structural move requires same-PR updates to AGENTS + README + relevant internal docs.
+
 ## Background: Immersive Audio Standards and Models
 
 ### MPEG-H 3D Audio (ISO/IEC 23008-3)

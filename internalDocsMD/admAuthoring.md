@@ -267,9 +267,15 @@ This model should own:
 - deterministic IDs
 - mapping-loss bookkeeping
 
-Do not let `libadm` become the implicit mapping policy. 
+Do not let `libadm` become the implicit mapping policy.
 
-*(We fully isolated this in `src/adm_writer.cpp` with deterministic ordering rules and exact IDs.)*
+_(We fully isolated this in `src/authoring/adm_writer.cpp` with deterministic ordering rules and exact IDs.)_
+
+Module location note (April 2026 re-org slice):
+
+- `adm-author` entrypoint implementation: `src/authoring/adm_author.cpp`
+- authoring writer/mapping implementation: `src/authoring/adm_writer.cpp`
+- authoring writer interface: `src/authoring/adm_writer.hpp`
 
 ### Step 7: Write authored ADM XML (IMPLEMENTED)
 

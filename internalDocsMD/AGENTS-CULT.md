@@ -60,6 +60,68 @@ Status update (April 2026): Steps 1-5 natively implemented. `adm-author` pipelin
 - Integration test that emits ADM XML + BW64 with embedded metadata.
 - Ensure no regressions in existing parity tests.
 
+### Refactor Task List — DRY + Module Re-Organization (April 2026)
+
+This list is now pinned for the next cleanup pass. Each task must include a matching markdown/doc update in the same PR.
+
+Execution order is mandatory: complete in sequence and keep ingest/parity behavior unchanged.
+
+1. Create source submodule layout (scaffolding only)
+
+- Add folders: `src/authoring/`, `src/parsing/`, `src/reporting/`.
+- Add `README.md` in each folder describing ownership and non-goals.
+- **Required doc update in same PR:**
+  - `README.md` (top-level source tree section)
+  - `internalDocsMD/DESIGN-DOC-V1-CULT.MD` (module boundaries)
+
+2. Move authoring implementation behind `src/authoring/`
+
+- Move/split `src/adm_author.cpp`, `src/adm_writer.cpp`, `src/adm_writer.hpp` into `src/authoring/` with minimal behavior change.
+- Keep deterministic ordering + current validation semantics exactly as implemented.
+- **Required doc update in same PR:**
+  - `internalDocsMD/admAuthoring.md` (paths and stage boundaries)
+  - `internalDocsMD/AUTHORING.md` (entrypoints and responsibilities)
+
+3. Move LUSID scene parsing behind `src/parsing/`
+
+- Move/split `src/lusid_reader.cpp`, `src/lusid_reader.hpp` into `src/parsing/`.
+- Keep parser behavior stable; no schema/semantic changes.
+- **Required doc update in same PR:**
+  - `internalDocsMD/design-reference-CULT.md` (parser ownership and interfaces)
+  - `README.md` (file map)
+
+4. Move report construction/writing behind `src/reporting/`
+
+- Move/split `src/report.cpp`, `src/cult_report.hpp` into `src/reporting/` (or adapters that preserve external includes during transition).
+- Centralize fail-report write behavior and temp+rename policy.
+- **Required doc update in same PR:**
+  - `internalDocsMD/CHANGELOG.md` (migration note + compatibility)
+  - `README.md` (reporting module location)
+
+5. Remove duplication in CLI and pipeline orchestration
+
+- Extract shared arg parsing/default-report-path logic used by both `transcode` and `adm-author`.
+- Keep CLI contract and error text stable unless intentionally changed.
+- **Required doc update in same PR:**
+  - `internalDocsMD/AGENTS-CULT.md` (CLI contract section, if changed)
+  - `README.md` (usage/help examples)
+
+6. Test and regression gate for each re-org slice
+
+- Run focused authoring tests + full existing ingest/parity tests for every refactor slice.
+- No merge if parity tests regress.
+- **Required doc update in same PR:**
+  - `internalDocsMD/audit.md` (what was moved, evidence of non-regression)
+  - `internalDocsMD/CHANGELOG.md` (test/status note)
+
+7. Finish pending Step 6 validation after structure stabilization
+
+- Complete `tests/test_lusid_to_adm_mapping.cpp` and `tests/test_adm_author_integration.cpp`.
+- Perform manual Logic Pro Atmos import validation and capture notes.
+- **Required doc update in same PR:**
+  - `internalDocsMD/admAuthoring.md` (validation outcomes)
+  - `internalDocsMD/CHANGELOG.md` (feature-complete test milestone)
+
 Repo placement: `spatialroot/cult-transcoder/` (git submodule, already wired).  
 Invocation: CLI-first. Spatial Root calls `spatialroot/cult-transcoder/build/cult-transcoder` (macOS/Linux) or the `.bat` wrapper on Windows (see §9).  
 Build: CMake. C++17. Cross-platform (macOS + Windows required; Linux later).  
