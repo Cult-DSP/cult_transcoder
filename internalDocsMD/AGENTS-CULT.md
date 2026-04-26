@@ -16,7 +16,7 @@ Scope and constraints:
 - Use `libadm` and `libbw64` only for export-side authoring.
 - LUSID is canonical. Authoring is layered on top and must preserve deterministic ordering.
 - Resampling policy: normalize mono WAVs to 48 kHz float32 in the authoring path only.
-- Duration policy: use normalized frame count as canonical; fail on mismatches.
+- Duration policy: use normalized frame count as canonical; tolerate only one trailing-frame mismatch by authoring to the shortest normalized length and reporting the truncation.
 - `containsAudio.json` is deprecated; resolve WAVs by deterministic id-to-filename mapping.
 
 Step-by-step tasks:
@@ -29,9 +29,9 @@ Step-by-step tasks:
 
 2. Implement post-normalization validation
 
-- Validate strict equal frame counts across normalized WAVs.
-- If `scene.lusid.json` includes `duration`, validate against audio-derived duration.
-- On mismatch, fail authoring and report expected vs actual counts per file.
+- Validate normalized WAV frame counts. Exact matches pass; a one-frame spread is accepted by ignoring the final sample from longer files and recording a warning/loss-ledger entry; larger mismatches fail.
+- If `scene.lusid.json` includes `duration`, validate against audio-derived duration after any one-frame tail normalization.
+- On larger mismatch, fail authoring and report expected vs actual counts per file.
 
 Status update (2026-04-26): Steps 1-6 are covered by automated tests. `adm-author` validates inputs, normalizes WAVs, builds deterministic ADM XML via `AdmWriter` using `pugixml`, and writes interwoven 24-bit BW64 with `libbw64` plus embedded `axml`. `test_adm_author_args.cpp`, `test_lusid_to_adm_mapping.cpp`, and `test_adm_author_integration.cpp` cover CLI/API validation, mapping, sidecar XML, and embedded metadata. Manual Logic Pro Atmos import validation remains pending.
 
@@ -384,7 +384,7 @@ Authoring path input rules (v1):
 
 - `containsAudio.json` is deprecated; resolve WAVs by deterministic id-to-filename mapping
 - normalize only non-48 kHz mono WAVs to 48 kHz float32 (resampling reported explicitly)
-- validate strict equal frame counts after normalization; fail on mismatch
+- validate normalized frame counts after normalization; tolerate only a one-frame EOF spread by using the shortest length and reporting the truncation
 - if scene duration metadata exists, validate against normalized audio duration; fail on mismatch
 
 ---

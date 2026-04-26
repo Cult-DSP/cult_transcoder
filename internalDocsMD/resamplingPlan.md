@@ -178,14 +178,15 @@ Rules:
 
 ### 5.4 Post-normalization validation
 
-After normalization, validate strict equal frame counts across all normalized WAVs.
+After normalization, validate equal frame counts across all normalized WAVs, with a narrow EOF tolerance for legacy package exports.
 
 Rules:
 
 - use normalized frame counts as the authoritative duration source
-- if any normalized frame counts differ, fail authoring
-- do not apply padding, truncation, or tolerance in v1
-- report duration mismatches as hard validation errors (not loss-ledger entries)
+- if normalized frame counts differ by one frame, author to the shortest length and ignore trailing samples from longer files
+- report one-frame tail tolerance as both a warning and a `lossLedger` truncation entry
+- if normalized frame counts differ by more than one frame, fail authoring
+- do not apply padding in v1
 - include per-file expected vs actual frame counts in a structured report section
 
 ### 5.4 Source file safety
@@ -316,17 +317,18 @@ Use normalized WAV frame count as the true duration basis for packaging and obje
 
 If `scene.lusid.json` carries duration metadata, validate it against the resolved normalized audio duration and fail if it disagrees materially. This keeps export timing grounded in the actual audio essence.
 
-### 9.2 Strict frame-count policy
+### 9.2 Frame-count policy
 
-After normalization, all input files must have the same final frame count.
+After normalization, input files should have the same final frame count. Legacy package exporters may produce a one-frame end-of-file spread between channel groups, so authoring accepts that single-frame case without padding.
 
 Policy:
 
-- no implicit tolerance
+- tolerate only a one-frame spread
 - no automatic padding
-- no automatic truncation
+- ignore only trailing samples beyond the shortest normalized file
+- report tolerated truncation in `warnings[]`, `lossLedger[]`, and `authoringValidation.files[]`
 - compare integer frame counts, not floating-point seconds
-- fail authoring if the normalized frame counts differ
+- fail authoring if normalized frame counts differ by more than one frame
 
 ### 9.3 Resampling scope and frame agreement
 
@@ -487,7 +489,8 @@ See Section 13.
 
 - fail on unreadable file
 - fail on missing file
-- fail on post-normalization frame-count mismatch
+- pass with a warning on a one-frame post-normalization EOF mismatch
+- fail on post-normalization frame-count mismatches larger than one frame
 - fail when scene-declared duration disagrees with audio-derived duration
 
 ### 13.3 Integration tests
@@ -506,7 +509,8 @@ These are explicitly out of scope for the first pass:
 
 - multichannel resampling
 - automatic fold-down
-- automatic padding or truncation
+- automatic padding
+- truncation beyond the one-frame EOF tolerance
 - user-selectable resampler quality presets
 - optional FFT backend switching
 - real-time streaming resampling inside Spatial Root
@@ -542,6 +546,6 @@ internalDocsMD/...   # any coupled docs required by contract changes
 
 ## 16. Final recommendation
 
-Implement `r8brain-free-src` as a **private, vendored, header-only resampling backend** behind a thin CULT wrapper. Use it only in the new `adm-author` path to normalize supported mono WAV inputs to **48 kHz float32 temp files**, validate strict equal frame counts after normalization, and preserve the current report/failure discipline.
+Implement `r8brain-free-src` as a **private, vendored, header-only resampling backend** behind a thin CULT wrapper. Use it only in the new `adm-author` path to normalize supported mono WAV inputs to **48 kHz float32 temp files**, validate frame counts after normalization with only the documented one-frame EOF tolerance, and preserve the current report/failure discipline.
 
 That gives CULT a practical authoring-side normalization stage without broadening the transcoder into a general audio-processing framework or disturbing the existing parity-critical ingest contract. fileciteturn11file8 fileciteturn11file3

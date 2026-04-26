@@ -165,6 +165,8 @@ std::string Report::toJson() const {
             o << "\n" << ind(3) << "{\n";
             o << ind(4) << "\"path\": " << jsonStr(f.path) << ",\n";
             o << ind(4) << "\"frames\": " << f.frames << ",\n";
+            o << ind(4) << "\"framesUsed\": " << f.framesUsed << ",\n";
+            o << ind(4) << "\"truncatedToExpected\": " << (f.truncatedToExpected ? "true" : "false") << ",\n";
             o << ind(4) << "\"ok\": " << (f.ok ? "true" : "false") << "\n";
             o << ind(3) << "}";
             if (i + 1 < authoringValidation.files.size()) o << ",";

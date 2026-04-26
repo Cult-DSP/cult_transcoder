@@ -83,10 +83,10 @@ Unless explicitly expanded later, the first implementation should require:
 - mono WAV assets for authored sources
 - normalized audio format for authoring: mono, 48 kHz, float32
 - explicit resampling for non-48 kHz mono WAVs (see resampling plan)
-- consistent duration by strict equal frame counts after normalization
+- consistent duration by normalized frame counts after applying the one-frame EOF tolerance
 - explicit failure on missing assets or unsupported asset layouts
 
-Resampling, padding, truncation, or interleaved-channel splitting must not occur silently. Resampling is allowed only via the dedicated authoring normalization stage and must be reported explicitly.
+Resampling, padding, truncation, or interleaved-channel splitting must not occur silently. Resampling is allowed only via the dedicated authoring normalization stage and must be reported explicitly. The only permitted truncation is ignoring one trailing sample from longer normalized WAVs, and that must be reported as a warning plus a loss-ledger entry.
 
 ### containsAudio usage
 
@@ -251,7 +251,8 @@ Additional v1 rules:
 - normalize audio to mono 48 kHz float32 before duration validation
 - use normalized frame counts as the authoritative duration source
 - if `scene.lusid.json` includes `duration`, validate it against the normalized audio duration; fail on mismatch
-- do not tolerate mismatched frame counts across normalized WAVs
+- tolerate only a one-frame spread across normalized WAVs by using the shortest length and ignoring trailing samples from longer files
+- fail larger normalized frame-count mismatches
 
 Fail early with report output.
 
@@ -320,7 +321,8 @@ Current implementation:
 Validation and normalization reporting:
 
 - resampling must be reported explicitly (source rate, target rate, file list)
-- post-normalization duration mismatches are hard errors in `errors[]`
+- post-normalization frame-count mismatches larger than one frame are hard errors in `errors[]`
+- one trailing-frame mismatches are warnings; affected files set `truncatedToExpected: true` and `framesUsed` to the authored frame count
 - include per-file expected vs actual frame counts in a structured report section
 
 ### Step 10: Add tests (PENDING)

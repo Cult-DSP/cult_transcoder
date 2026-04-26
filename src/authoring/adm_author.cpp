@@ -29,6 +29,7 @@
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
+#include <limits>
 #include <map>
 #include <vector>
 
@@ -218,19 +219,53 @@ AdmAuthorResult admAuthor(const AdmAuthorRequest& req) {
     report.authoringResample = normalized.files;
 
     report.hasAuthoringValidation = true;
-    uint64_t expectedFrames = normalized.files.front().normalizedFrameCount;
+    uint64_t minFrames = std::numeric_limits<uint64_t>::max();
+    uint64_t maxFrames = 0;
+    for (const auto& n : normalized.files) {
+        minFrames = std::min(minFrames, n.normalizedFrameCount);
+        maxFrames = std::max(maxFrames, n.normalizedFrameCount);
+    }
+
+    uint64_t expectedFrames = minFrames;
     bool frameMismatch = false;
+    bool toleratedTailMismatch = false;
+    if (maxFrames != minFrames) {
+        frameMismatch = true;
+        toleratedTailMismatch = (maxFrames - minFrames) <= 1;
+    }
+
     for (const auto& n : normalized.files) {
         AuthoringValidationFile vf;
         vf.path = n.normalizedPath;
         vf.frames = n.normalizedFrameCount;
-        vf.ok = (n.normalizedFrameCount == expectedFrames);
-        if (!vf.ok) frameMismatch = true;
+        vf.framesUsed = std::min(n.normalizedFrameCount, expectedFrames);
+        vf.truncatedToExpected = n.normalizedFrameCount > expectedFrames;
+        vf.ok = (n.normalizedFrameCount == expectedFrames) ||
+                (toleratedTailMismatch && vf.truncatedToExpected);
         report.authoringValidation.files.push_back(vf);
     }
     report.authoringValidation.expectedFrames = expectedFrames;
 
-    if (frameMismatch) {
+    if (frameMismatch && toleratedTailMismatch) {
+        report.warnings.push_back(
+            "adm-author: normalized WAV frame counts differ by one frame; authoring uses the shortest length and ignores trailing samples");
+
+        LossLedgerEntry loss;
+        loss.kind = "truncated";
+        loss.field = "authoringValidation.files";
+        loss.reason = "One trailing sample ignored from longer normalized WAV files to tolerate end-of-file frame-count drift.";
+        for (const auto& f : report.authoringValidation.files) {
+            if (f.truncatedToExpected) {
+                ++loss.count;
+                if (loss.examples.size() < 3) {
+                    loss.examples.push_back(f.path);
+                }
+            }
+        }
+        if (loss.count > 0) {
+            report.lossLedger.push_back(loss);
+        }
+    } else if (frameMismatch) {
         report.errors.push_back("adm-author: normalized WAV frame counts do not match");
     }
 

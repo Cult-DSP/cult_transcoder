@@ -73,6 +73,8 @@ struct ReportSummary {
 struct AuthoringValidationFile {
     std::string path;
     uint64_t    frames = 0;
+    uint64_t    framesUsed = 0;
+    bool        truncatedToExpected = false;
     bool        ok = false;
 };
 

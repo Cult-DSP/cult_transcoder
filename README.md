@@ -44,6 +44,8 @@ cult-transcoder adm-author \
   [--report <path>] [--stdout-report]
 ```
 
+`adm-author` normalizes mono stems to 48 kHz and uses the normalized audio length as the ADM duration. A one-frame end-of-file mismatch is tolerated by authoring to the shortest stem length and ignoring the trailing sample from longer stems; larger frame-count mismatches fail with per-file details in the report.
+
 Exit codes: `0` success · `1` transcode failure · `2` arg/usage error.  
 A JSON report is always written next to the output file (or at `--report`).
 

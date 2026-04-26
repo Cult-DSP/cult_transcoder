@@ -53,8 +53,8 @@ void writeTextFile(const fs::path& path, const std::string& text) {
     f << text;
 }
 
-void writeFloatWav(const fs::path& path, float value) {
-    std::vector<float> samples(480, value);
+void writeFloatWav(const fs::path& path, float value, size_t frameCount = 480) {
+    std::vector<float> samples(frameCount, value);
     std::string error;
     REQUIRE(cult::writeFloat32MonoWav(path.string(), 48000, samples, error));
 }
@@ -125,6 +125,11 @@ TEST_CASE("admAuthor writes ADM XML and BW64 with matching embedded axml",
     REQUIRE(result.report.hasAuthoringValidation);
     REQUIRE(result.report.authoringValidation.expectedFrames == 480);
     REQUIRE(result.report.authoringValidation.files.size() == 3);
+    for (const auto& f : result.report.authoringValidation.files) {
+        REQUIRE(f.framesUsed == 480);
+        REQUIRE_FALSE(f.truncatedToExpected);
+        REQUIRE(f.ok);
+    }
 
     REQUIRE(fs::exists(outXml));
     REQUIRE(fs::exists(outWav));
@@ -144,4 +149,62 @@ TEST_CASE("admAuthor writes ADM XML and BW64 with matching embedded axml",
     REQUIRE(bw64File->formatChunk()->bitsPerSample() == 24);
     REQUIRE(bw64File->axmlChunk());
     REQUIRE(bw64File->axmlChunk()->data() == xml);
+}
+
+TEST_CASE("admAuthor tolerates one trailing sample mismatch by truncating to shortest length",
+          "[adm-author][integration]") {
+    TempDir temp;
+
+    const fs::path scenePath = temp.path / "scene.lusid.json";
+    writeTextFile(scenePath, R"JSON({
+  "version": "0.5",
+  "timeUnit": "seconds",
+  "duration": 0.01,
+  "frames": [
+    {
+      "time": 0.0,
+      "nodes": [
+        {"id": "1.1", "type": "direct_speaker", "cart": [-1.0, 0.0, 0.0]},
+        {"id": "11.1", "type": "audio_object", "cart": [0.0, 0.0, 0.0]}
+      ]
+    }
+  ]
+})JSON");
+
+    writeFloatWav(temp.path / "1.1.wav", 0.1f, 480);
+    writeFloatWav(temp.path / "11.1.wav", 0.3f, 481);
+
+    const fs::path outXml = temp.path / "export.adm.xml";
+    const fs::path outWav = temp.path / "export.adm.wav";
+
+    cult::AdmAuthorRequest req;
+    req.lusidPath = scenePath.string();
+    req.wavDir = temp.path.string();
+    req.outXmlPath = outXml.string();
+    req.outWavPath = outWav.string();
+
+    auto result = cult::admAuthor(req);
+    INFO(result.report.toJson());
+    REQUIRE(result.success);
+    REQUIRE(result.report.status == "pass");
+    REQUIRE(result.report.authoringValidation.expectedFrames == 480);
+    REQUIRE(result.report.warnings.size() == 1);
+    REQUIRE(result.report.lossLedger.size() == 1);
+    REQUIRE(result.report.lossLedger.front().kind == "truncated");
+    REQUIRE(result.report.lossLedger.front().count == 1);
+
+    bool sawTruncated = false;
+    for (const auto& f : result.report.authoringValidation.files) {
+        REQUIRE(f.ok);
+        REQUIRE(f.framesUsed == 480);
+        if (f.frames == 481) {
+            sawTruncated = true;
+            REQUIRE(f.truncatedToExpected);
+        }
+    }
+    REQUIRE(sawTruncated);
+
+    auto bw64File = bw64::readFile(outWav.string());
+    REQUIRE(bw64File->formatChunk());
+    REQUIRE(bw64File->formatChunk()->channelCount() == 2);
 }
