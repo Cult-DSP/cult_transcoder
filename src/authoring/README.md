@@ -7,6 +7,8 @@ Owner: ADM authoring/export path (`adm-author`) only.
 - LUSID-to-ADM authoring orchestration.
 - Deterministic authoring ordering policy.
 - ADM XML + BW64 output generation.
+- BW64 `axml` embedding and `chna` track-to-ADM binding.
+- ADM block timing clamped to the audio-derived authoring duration.
 - Authoring-side audio normalization/validation integration.
 
 ## Non-goals

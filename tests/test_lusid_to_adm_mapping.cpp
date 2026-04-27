@@ -124,6 +124,12 @@ TEST_CASE("AdmWriter maps beds before objects with deterministic IDs and motion 
             makeNode("11.1", "audio_object", 0.25, 0.5, 0.75),
         }
     });
+    scene.frames.push_back(cult::LusidFrame{
+        0.011,
+        {
+            makeNode("11.1", "audio_object", 1.0, 1.0, 1.0),
+        }
+    });
 
     cult::AdmWriter writer;
     const fs::path outXml = temp.path / "out.adm.xml";
@@ -143,6 +149,8 @@ TEST_CASE("AdmWriter maps beds before objects with deterministic IDs and motion 
     REQUIRE(std::string(audioObjects[1].attribute("audioObjectName").value()) == "2.1");
     REQUIRE(std::string(audioObjects[2].attribute("audioObjectName").value()) == "4.1");
     REQUIRE(std::string(audioObjects[3].attribute("audioObjectName").value()) == "11.1");
+    REQUIRE(std::string(audioObjects[0].attribute("audioObjectID").value()) == "AO_1001");
+    REQUIRE(std::string(audioObjects[3].attribute("audioObjectID").value()) == "AO_1004");
 
     const auto channels = childrenByName(doc, "audioChannelFormat");
     REQUIRE(channels.size() == 4);
@@ -172,12 +180,15 @@ TEST_CASE("AdmWriter maps beds before objects with deterministic IDs and motion 
     REQUIRE(objectCount == 1);
     REQUIRE(objectChannel);
     REQUIRE(lfeChannel);
+    REQUIRE(std::string(objectChannel.attribute("audioChannelFormatID").value()) == "AC_00031001");
+    REQUIRE(std::string(lfeChannel.attribute("audioChannelFormatID").value()) == "AC_00010004");
 
     const auto objectBlocks = childrenByName(objectChannel, "audioBlockFormat");
     REQUIRE(objectBlocks.size() == 2);
     REQUIRE(std::string(objectBlocks[0].attribute("rtime").value()) == "00:00:00.00000S48000");
     REQUIRE(std::string(objectBlocks[1].attribute("rtime").value()) == "00:00:00.00500S48000");
     REQUIRE(std::string(objectBlocks[0].attribute("duration").value()) == "00:00:00.00500S48000");
+    REQUIRE(std::string(objectBlocks[1].attribute("duration").value()) == "00:00:00.00500S48000");
 
     const auto lfeLabels = childrenByName(lfeChannel, "speakerLabel");
     REQUIRE(lfeLabels.size() == 1);

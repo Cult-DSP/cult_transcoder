@@ -149,6 +149,24 @@ TEST_CASE("admAuthor writes ADM XML and BW64 with matching embedded axml",
     REQUIRE(bw64File->formatChunk()->bitsPerSample() == 24);
     REQUIRE(bw64File->axmlChunk());
     REQUIRE(bw64File->axmlChunk()->data() == xml);
+    REQUIRE(bw64File->chnaChunk());
+    REQUIRE(bw64File->chnaChunk()->numTracks() == 3);
+    REQUIRE(bw64File->chnaChunk()->numUids() == 3);
+
+    const auto audioIds = bw64File->chnaChunk()->audioIds();
+    REQUIRE(audioIds.size() == 3);
+    REQUIRE(audioIds[0].trackIndex() == 1);
+    REQUIRE(audioIds[0].uid() == "ATU_00000001");
+    REQUIRE(audioIds[0].trackRef() == "AT_00010001_01");
+    REQUIRE(audioIds[0].packRef() == "AP_00010001");
+    REQUIRE(audioIds[1].trackIndex() == 2);
+    REQUIRE(audioIds[1].uid() == "ATU_00000002");
+    REQUIRE(audioIds[1].trackRef() == "AT_00010004_01");
+    REQUIRE(audioIds[1].packRef() == "AP_00010004");
+    REQUIRE(audioIds[2].trackIndex() == 3);
+    REQUIRE(audioIds[2].uid() == "ATU_00000003");
+    REQUIRE(audioIds[2].trackRef() == "AT_00031001_01");
+    REQUIRE(audioIds[2].packRef() == "AP_00031001");
 }
 
 TEST_CASE("admAuthor tolerates one trailing sample mismatch by truncating to shortest length",
@@ -207,4 +225,7 @@ TEST_CASE("admAuthor tolerates one trailing sample mismatch by truncating to sho
     auto bw64File = bw64::readFile(outWav.string());
     REQUIRE(bw64File->formatChunk());
     REQUIRE(bw64File->formatChunk()->channelCount() == 2);
+    REQUIRE(bw64File->chnaChunk());
+    REQUIRE(bw64File->chnaChunk()->numTracks() == 2);
+    REQUIRE(bw64File->chnaChunk()->numUids() == 2);
 }

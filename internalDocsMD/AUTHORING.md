@@ -39,3 +39,43 @@ Notes:
   4.  Interleave these streams into a contiguous float vector `[ch0_samp0, ch1_samp0, ch2_samp0...]`.
   5.  Pass the interleaved vector to `bw64Writer->write()`.
   6.  Finally, embed the constructed `pugixml` document into the `axml` chunk of the file before closing.
+
+## 4. Logic Pro Import Finding (April 2026)
+
+Manual validation with the authored `sourceData/lusid_package` output showed that the generated BW64 was readable by CULT and probeable as audio, but did not open in Logic Pro.
+
+Observed facts:
+
+- The authored file is a valid 78-channel PCM WAV/BW64 payload according to `ffprobe`.
+- CULT can round-trip the embedded `axml` chunk from the authored `.adm.wav`.
+- The authored sidecar XML and embedded `axml` match.
+- The first Logic validation candidate lacked a populated BW64 `chna` chunk.
+- The source package's final metadata frame can land fractionally beyond the audio-derived ADM duration after the one-frame EOF tolerance is applied.
+
+Likely cause:
+
+- `axml` alone is not enough for strict ADM/BW64 consumers. DAWs such as Logic need `chna` entries to bind each PCM track index to the matching ADM `audioTrackUID`, `audioTrackFormatID`, and `audioPackFormatID`.
+- ADM IDs need to be aligned with BS.2076-style ID shapes that fit the fixed-width `chna` fields:
+  - `ATU_00000001`
+  - `AT_00031001_01`
+  - `AP_00031001`
+- ADM block timing must not extend past the programme/audio duration or emit zero-duration tail blocks.
+
+Implemented follow-up:
+
+- `adm_writer.cpp` now generates deterministic BS.2076-compatible ID shapes for pack, channel, stream, track format, and track UID references.
+- The BW64 output now includes a populated `bw64::ChnaChunk` before the data chunk.
+- `audioBlockFormat` timing is clamped to the audio-derived ADM duration and tail blocks at or beyond the duration are skipped.
+- Integration tests verify `chna.numTracks`, `chna.numUids`, and representative `AudioId` mappings.
+
+Superseded validation candidate, before timing clamp:
+
+- `build/authoring_validation/lusid_package_logic_chna.adm.wav`
+- `build/authoring_validation/lusid_package_logic_chna.adm.xml`
+- `build/authoring_validation/lusid_package_logic_chna.adm.report.json`
+
+Current validation candidate:
+
+- `build/authoring_validation/lusid_package_logic_chna_clamped.adm.wav`
+- `build/authoring_validation/lusid_package_logic_chna_clamped.adm.xml`
+- `build/authoring_validation/lusid_package_logic_chna_clamped.adm.report.json`

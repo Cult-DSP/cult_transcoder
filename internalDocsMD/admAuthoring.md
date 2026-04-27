@@ -202,7 +202,7 @@ Examples of authoring-side losses that must be surfaced:
 - asset mismatches requiring rejection or approximation
 - profile-driven reductions or omissions
 
-Validation errors (missing WAVs, unsupported formats, normalization failure, post-normalization duration mismatch) are hard failures and must appear in `errors[]`, not `lossLedger`.
+Validation errors (missing WAVs, unsupported formats, normalization failure, post-normalization frame-count mismatches larger than one frame, and scene-duration disagreement) are hard failures and must appear in `errors[]`, not `lossLedger`. The one permitted EOF truncation is reported as both a warning and a loss-ledger entry.
 
 ## 7. Implementation Steps
 

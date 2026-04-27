@@ -46,9 +46,27 @@ struct NodeTimeline {
     std::vector<double> times;
 };
 
-std::string admSuffix(size_t index) {
+struct AdmIds {
+    std::string audioObjectId;
+    std::string packId;
+    std::string channelId;
+    std::string streamId;
+    std::string trackFormatId;
+    std::string trackUid;
+    std::string elementValue;
+    std::string typeDescriptor;
+};
+
+std::string decimalPadded(size_t value, size_t width) {
     std::ostringstream out;
-    out << std::setfill('0') << std::setw(4) << (index + 1);
+    out << std::setfill('0') << std::setw(static_cast<int>(width)) << value;
+    return out.str();
+}
+
+std::string hexPadded(uint32_t value, size_t width) {
+    std::ostringstream out;
+    out << std::nouppercase << std::hex << std::setfill('0')
+        << std::setw(static_cast<int>(width)) << value;
     return out.str();
 }
 
@@ -58,6 +76,40 @@ std::string admTypeDefinition(const std::string& type) {
 
 std::string admTypeLabel(const std::string& type) {
     return type == "audio_object" ? "0003" : "0001";
+}
+
+uint32_t directSpeakerElementValue(const std::string& id, size_t sortedIndex) {
+    const auto dot = id.find('.');
+    if (dot != std::string::npos) {
+        try {
+            const int parsed = std::stoi(id.substr(0, dot));
+            if (parsed > 0) {
+                return static_cast<uint32_t>(parsed);
+            }
+        } catch (...) {
+        }
+    }
+    return static_cast<uint32_t>(sortedIndex + 1);
+}
+
+AdmIds makeAdmIds(size_t sortedIndex, size_t objectIndex, const std::string& id, const std::string& type) {
+    const bool isObject = type == "audio_object";
+    const std::string typeDescriptor = admTypeLabel(type);
+    const uint32_t elementValue = isObject
+        ? static_cast<uint32_t>(0x1001 + objectIndex)
+        : directSpeakerElementValue(id, sortedIndex);
+    const std::string value = hexPadded(elementValue, 4);
+
+    AdmIds ids;
+    ids.typeDescriptor = typeDescriptor;
+    ids.elementValue = value;
+    ids.audioObjectId = "AO_" + hexPadded(static_cast<uint32_t>(0x1001 + sortedIndex), 4);
+    ids.packId = "AP_" + typeDescriptor + value;
+    ids.channelId = "AC_" + typeDescriptor + value;
+    ids.streamId = "AS_" + typeDescriptor + value;
+    ids.trackFormatId = "AT_" + typeDescriptor + value + "_01";
+    ids.trackUid = "ATU_" + decimalPadded(sortedIndex + 1, 8);
+    return ids;
 }
 
 void appendText(pugi::xml_node parent, const char* name, const std::string& value) {
@@ -212,38 +264,33 @@ std::string AdmWriter::generateAdmXml(const LusidScene& scene, const std::vector
 
         const auto& timeline = timelineIt->second;
         const bool isObject = timeline.type == "audio_object";
+        const size_t objectIndex = outObjectCount;
         if (isObject) {
             ++outObjectCount;
         }
 
-        const std::string suffix = admSuffix(i);
-        const std::string audioObjectId = "AO_1" + suffix;
-        const std::string packId = "AP_1" + suffix;
-        const std::string channelId = "AC_1" + suffix;
-        const std::string streamId = "AS_1" + suffix;
-        const std::string trackFormatId = "AT_1" + suffix;
-        const std::string trackUid = "ATU_1" + suffix;
+        const AdmIds ids = makeAdmIds(i, objectIndex, id, timeline.type);
         const std::string typeDefinition = admTypeDefinition(timeline.type);
         const std::string typeLabel = admTypeLabel(timeline.type);
 
         auto audioObject = admFormat.append_child("audioObject");
-        audioObject.append_attribute("audioObjectID") = audioObjectId.c_str();
+        audioObject.append_attribute("audioObjectID") = ids.audioObjectId.c_str();
         audioObject.append_attribute("audioObjectName") = id.c_str();
         audioObject.append_attribute("start") = formatAdmTime(0.0, targetSampleRate).c_str();
         audioObject.append_attribute("duration") = formatAdmTime(totalDuration, targetSampleRate).c_str();
-        appendText(audioObject, "audioPackFormatIDRef", packId);
-        appendText(audioObject, "audioTrackUIDRef", trackUid);
-        content.append_child("audioObjectIDRef").text().set(audioObjectId.c_str());
+        appendText(audioObject, "audioPackFormatIDRef", ids.packId);
+        appendText(audioObject, "audioTrackUIDRef", ids.trackUid);
+        content.append_child("audioObjectIDRef").text().set(ids.audioObjectId.c_str());
 
         auto pack = admFormat.append_child("audioPackFormat");
-        pack.append_attribute("audioPackFormatID") = packId.c_str();
+        pack.append_attribute("audioPackFormatID") = ids.packId.c_str();
         pack.append_attribute("audioPackFormatName") = id.c_str();
         pack.append_attribute("typeLabel") = typeLabel.c_str();
         pack.append_attribute("typeDefinition") = typeDefinition.c_str();
-        appendText(pack, "audioChannelFormatIDRef", channelId);
+        appendText(pack, "audioChannelFormatIDRef", ids.channelId);
 
         auto channel = admFormat.append_child("audioChannelFormat");
-        channel.append_attribute("audioChannelFormatID") = channelId.c_str();
+        channel.append_attribute("audioChannelFormatID") = ids.channelId.c_str();
         channel.append_attribute("audioChannelFormatName") = id.c_str();
         channel.append_attribute("typeLabel") = typeLabel.c_str();
         channel.append_attribute("typeDefinition") = typeDefinition.c_str();
@@ -251,11 +298,19 @@ std::string AdmWriter::generateAdmXml(const LusidScene& scene, const std::vector
         for (size_t b = 0; b < timeline.nodes.size(); ++b) {
             const auto* node = timeline.nodes[b];
             const double start = timeline.times[b];
-            const double next = (b + 1 < timeline.times.size()) ? timeline.times[b + 1] : totalDuration;
+            if (start >= totalDuration) {
+                continue;
+            }
+            const double nextRaw = (b + 1 < timeline.times.size()) ? timeline.times[b + 1] : totalDuration;
+            const double next = std::min(nextRaw, totalDuration);
             const double duration = std::max(0.0, next - start);
+            if (duration <= 0.0) {
+                continue;
+            }
 
             auto block = channel.append_child("audioBlockFormat");
-            block.append_attribute("audioBlockFormatID") = ("AB_" + suffix + "_" + admSuffix(b)).c_str();
+            block.append_attribute("audioBlockFormatID") =
+                ("AB_" + ids.typeDescriptor + ids.elementValue + "_" + decimalPadded(b + 1, 8)).c_str();
             block.append_attribute("rtime") = formatAdmTime(start, targetSampleRate).c_str();
             block.append_attribute("duration") = formatAdmTime(duration, targetSampleRate).c_str();
             if (isObject) {
@@ -272,25 +327,25 @@ std::string AdmWriter::generateAdmXml(const LusidScene& scene, const std::vector
         }
 
         auto stream = admFormat.append_child("audioStreamFormat");
-        stream.append_attribute("audioStreamFormatID") = streamId.c_str();
+        stream.append_attribute("audioStreamFormatID") = ids.streamId.c_str();
         stream.append_attribute("audioStreamFormatName") = id.c_str();
         stream.append_attribute("formatLabel") = "0001";
         stream.append_attribute("formatDefinition") = "PCM";
-        appendText(stream, "audioChannelFormatIDRef", channelId);
-        appendText(stream, "audioPackFormatIDRef", packId);
-        appendText(stream, "audioTrackFormatIDRef", trackFormatId);
+        appendText(stream, "audioChannelFormatIDRef", ids.channelId);
+        appendText(stream, "audioPackFormatIDRef", ids.packId);
+        appendText(stream, "audioTrackFormatIDRef", ids.trackFormatId);
 
         auto trackFormat = admFormat.append_child("audioTrackFormat");
-        trackFormat.append_attribute("audioTrackFormatID") = trackFormatId.c_str();
+        trackFormat.append_attribute("audioTrackFormatID") = ids.trackFormatId.c_str();
         trackFormat.append_attribute("audioTrackFormatName") = id.c_str();
         trackFormat.append_attribute("formatLabel") = "0001";
         trackFormat.append_attribute("formatDefinition") = "PCM";
-        appendText(trackFormat, "audioStreamFormatIDRef", streamId);
+        appendText(trackFormat, "audioStreamFormatIDRef", ids.streamId);
 
         auto trackUidNode = admFormat.append_child("audioTrackUID");
-        trackUidNode.append_attribute("UID") = trackUid.c_str();
-        appendText(trackUidNode, "audioTrackFormatIDRef", trackFormatId);
-        appendText(trackUidNode, "audioPackFormatIDRef", packId);
+        trackUidNode.append_attribute("UID") = ids.trackUid.c_str();
+        appendText(trackUidNode, "audioTrackFormatIDRef", ids.trackFormatId);
+        appendText(trackUidNode, "audioPackFormatIDRef", ids.packId);
     }
 
     return saveXmlToString(doc);
@@ -308,9 +363,14 @@ AdmWriterResult AdmWriter::writeAdmBw64(
 
     // Sort WAVs/Nodes based on their ADM canonical mapping requirements
     std::vector<std::string> ids;
+    std::map<std::string, std::string> typeById;
     for (const auto& frame : scene.frames) {
         for (const auto& node : frame.nodes) {
+            if (node.type != "direct_speaker" && node.type != "audio_object" && node.type != "LFE") {
+                continue;
+            }
             ids.push_back(node.id);
+            typeById.emplace(node.id, node.type);
         }
     }
     std::sort(ids.begin(), ids.end());
@@ -341,7 +401,25 @@ AdmWriterResult AdmWriter::writeAdmBw64(
         return result;
     }
 
+    auto chnaChunk = std::make_shared<bw64::ChnaChunk>();
+    size_t chnaObjectIndex = 0;
+    for (size_t c = 0; c < sortedIds.size(); ++c) {
+        const auto typeIt = typeById.find(sortedIds[c]);
+        if (typeIt == typeById.end()) {
+            result.errorMessage = "Missing node type for ADM channel: " + sortedIds[c];
+            return result;
+        }
+        const size_t objectIndex = typeIt->second == "audio_object" ? chnaObjectIndex++ : 0;
+        const AdmIds idsForChannel = makeAdmIds(c, objectIndex, sortedIds[c], typeIt->second);
+        chnaChunk->addAudioId(bw64::AudioId(
+            static_cast<uint16_t>(c + 1),
+            idsForChannel.trackUid,
+            idsForChannel.trackFormatId,
+            idsForChannel.packId));
+    }
+
     std::vector<std::shared_ptr<bw64::Chunk>> extraChunks;
+    extraChunks.push_back(chnaChunk);
     auto axmlChunk = std::make_shared<bw64::AxmlChunk>(xmlString);
     extraChunks.push_back(axmlChunk);
 
