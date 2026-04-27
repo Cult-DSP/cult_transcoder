@@ -139,6 +139,9 @@ TEST_CASE("admAuthor writes ADM XML and BW64 with matching embedded axml",
     REQUIRE(xml.find("audioObjectName=\"11.1\"") != std::string::npos);
     REQUIRE(xml.find("audioObjectName=\"Master\"") != std::string::npos);
     REQUIRE(xml.find("audioChannelFormatName=\"RoomCentricLFE\"") != std::string::npos);
+    REQUIRE(xml.find("S48000") == std::string::npos);
+    REQUIRE(xml.find("<dialogue mixedContentKind=\"0\">2</dialogue>") != std::string::npos);
+    REQUIRE(xml.find("<jumpPosition interpolationLength=\"0\">1</jumpPosition>") != std::string::npos);
 
     pugi::xml_document doc;
     REQUIRE(doc.load_file(outXml.string().c_str()));

@@ -189,12 +189,37 @@ TEST_CASE("AdmWriter maps beds before objects with deterministic IDs and motion 
 
     const auto objectBlocks = childrenByName(objectChannel, "audioBlockFormat");
     REQUIRE(objectBlocks.size() == 2);
-    REQUIRE(std::string(objectBlocks[0].attribute("rtime").value()) == "00:00:00.00000S48000");
-    REQUIRE(std::string(objectBlocks[1].attribute("rtime").value()) == "00:00:00.00500S48000");
-    REQUIRE(std::string(objectBlocks[0].attribute("duration").value()) == "00:00:00.00500S48000");
-    REQUIRE(std::string(objectBlocks[1].attribute("duration").value()) == "00:00:00.00500S48000");
+    REQUIRE(std::string(objectBlocks[0].attribute("rtime").value()) == "00:00:00.00000");
+    REQUIRE(std::string(objectBlocks[1].attribute("rtime").value()) == "00:00:00.00500");
+    REQUIRE(std::string(objectBlocks[0].attribute("duration").value()) == "00:00:00.00500");
+    REQUIRE(std::string(objectBlocks[1].attribute("duration").value()) == "00:00:00.00500");
+
+    const auto objectCartesian = childrenByName(objectChannel, "cartesian");
+    REQUIRE(objectCartesian.size() == 2);
+    REQUIRE(std::string(objectCartesian[0].text().get()) == "1");
+
+    const auto jumpPositions = childrenByName(objectChannel, "jumpPosition");
+    REQUIRE(jumpPositions.size() == 2);
+    REQUIRE(std::string(jumpPositions[0].attribute("interpolationLength").value()) == "0");
+    REQUIRE(std::string(jumpPositions[0].text().get()) == "1");
 
     const auto lfeLabels = childrenByName(lfeChannel, "speakerLabel");
     REQUIRE(lfeLabels.size() == 1);
     REQUIRE(std::string(lfeLabels[0].text().get()) == "RC_LFE");
+
+    const auto lfeCartesian = childrenByName(lfeChannel, "cartesian");
+    REQUIRE(lfeCartesian.size() == 1);
+    REQUIRE(std::string(lfeCartesian[0].text().get()) == "1");
+
+    const auto lfePositions = childrenByName(lfeChannel, "position");
+    REQUIRE(lfePositions.size() == 3);
+    REQUIRE(std::string(lfePositions[0].attribute("coordinate").value()) == "X");
+    REQUIRE(std::string(lfePositions[0].text().get()) == "-1");
+    REQUIRE(std::string(lfePositions[2].attribute("coordinate").value()) == "Z");
+    REQUIRE(std::string(lfePositions[2].text().get()) == "-1");
+
+    const auto dialogues = childrenByName(doc, "dialogue");
+    REQUIRE(dialogues.size() == 1);
+    REQUIRE(std::string(dialogues[0].attribute("mixedContentKind").value()) == "0");
+    REQUIRE(std::string(dialogues[0].text().get()) == "2");
 }

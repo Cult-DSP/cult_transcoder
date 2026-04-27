@@ -309,7 +309,41 @@ Additional diagnostic candidates:
 
 These are validation artifacts, not final implementation yet. They are intended to isolate whether Logic is rejecting the pre-data metadata chunk order, the lack of `dbmd`, or both.
 
-### 5.6 Reference Notes
+### 5.6 Logic-Shaped AXML Experiment
+
+Logic result:
+
+- `exported/lusid_package_logic_bedmodel_postdata.wav` did not import.
+- `exported/lusid_package_logic_bedmodel_postdata_dbmd.wav` did not import.
+
+Conclusion:
+
+- The failure is no longer explained by filename, bed-object shape, chunk order, or merely appending the original `dbmd` payload.
+- The remaining lead is stricter Dolby/Logic interpretation of the ADM XML profile inside `axml`.
+
+Observed AXML differences from the original Logic-authored BWF:
+
+- Original time attributes use plain ADM time strings such as `00:00:00.00000`; CULT previously emitted sample-rate suffixed values such as `00:00:00.00000S48000`.
+- Original direct-speaker bed blocks include `speakerLabel`, a `cartesian` element, and room-centric `position` elements. CULT previously emitted only `speakerLabel`.
+- Original object blocks include a `cartesian` element and `jumpPosition interpolationLength="0"` child. CULT previously represented `cartesian` as an attribute and omitted `jumpPosition`.
+- Original `audioContent` ends with `<dialogue mixedContentKind="0">2</dialogue>`. CULT previously omitted this marker.
+- Original AXML groups all `audioObject` elements first, then all packs, then all channels, then streams, track formats, and track UIDs. CULT previously interleaved object, pack, and channel elements per object.
+
+Implemented follow-up:
+
+- `AdmWriter::formatAdmTime()` now emits plain `HH:MM:SS.fffff` time strings for authored ADM XML.
+- Direct-speaker bed blocks now include `cartesian` and room-centric positions matching the original bed layout.
+- Object blocks now emit `cartesian` as a child element and include `<jumpPosition interpolationLength="0">1</jumpPosition>`.
+- `audioContent` now emits the original-style `dialogue` marker.
+- XML generation now groups elements in the Logic-observed order: content refs, audio objects, packs, channels, streams, track formats, track UIDs.
+
+Current validation candidate for this experiment:
+
+- `exported/lusid_package_logic_shaped.wav`
+- `exported/lusid_package_logic_shaped.adm.xml`
+- `exported/lusid_package_logic_shaped.report.json`
+
+### 5.7 Reference Notes
 
 Local references supplied:
 
@@ -331,7 +365,7 @@ Relevant reference conclusions:
 - ID shapes are fixed: `ATU_zzzzzzzz`, `AP_yyyyxxxx`, `AC_yyyyxxxx`, `AS_yyyyxxxx`, and `AT_yyyyxxxx_zz`.
 - Timing should not run past file/object duration, and successive `audioBlockFormat` entries should be chronological and contiguous.
 
-### 5.7 Revised Compatibility Hypotheses
+### 5.8 Revised Compatibility Hypotheses
 
 Highest priority:
 

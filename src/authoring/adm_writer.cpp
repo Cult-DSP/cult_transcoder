@@ -178,6 +178,47 @@ void appendCoordinate(pugi::xml_node parent, const char* coordinate, double valu
     node.text().set(to_string_fixed(value, 6).c_str());
 }
 
+void appendCoordinateText(pugi::xml_node parent, const char* coordinate, const char* value) {
+    auto node = parent.append_child("position");
+    node.append_attribute("coordinate") = coordinate;
+    node.text().set(value);
+}
+
+void appendBedPosition(pugi::xml_node block, int bedIndex) {
+    struct Pos {
+        const char* x;
+        const char* y;
+        const char* z;
+    };
+    static const Pos positions[] = {
+        {"", "", nullptr},
+        {"-1", "1", nullptr},
+        {"1", "1", nullptr},
+        {"0", "1", nullptr},
+        {"-1", "1", "-1"},
+        {"-1", "0", nullptr},
+        {"1", "0", nullptr},
+        {"-1", "-1", nullptr},
+        {"1", "-1", nullptr},
+        {"-1", "0", "1"},
+        {"1", "0", "1"},
+    };
+    if (bedIndex < 1 || bedIndex > 10) {
+        return;
+    }
+    appendCoordinateText(block, "X", positions[bedIndex].x);
+    appendCoordinateText(block, "Y", positions[bedIndex].y);
+    if (positions[bedIndex].z) {
+        appendCoordinateText(block, "Z", positions[bedIndex].z);
+    }
+}
+
+void appendJumpPosition(pugi::xml_node block) {
+    auto jumpPosition = block.append_child("jumpPosition");
+    jumpPosition.append_attribute("interpolationLength") = "0";
+    jumpPosition.text().set("1");
+}
+
 void appendPcmStreamTrackAndUid(
         pugi::xml_node admFormat,
         const AdmIds& ids,
@@ -217,7 +258,8 @@ std::string saveXmlToString(const pugi::xml_document& doc) {
 } // namespace
 
 std::string AdmWriter::formatAdmTime(double timeSeconds, uint32_t sampleRate) const {
-    // Basic format: HH:MM:SS.fffffS<sampleRate>
+    (void)sampleRate;
+    // Basic format: HH:MM:SS.fffff
     uint64_t totalSeconds = static_cast<uint64_t>(timeSeconds);
     uint32_t hours = totalSeconds / 3600;
     uint32_t minutes = (totalSeconds % 3600) / 60;
@@ -231,7 +273,7 @@ std::string AdmWriter::formatAdmTime(double timeSeconds, uint32_t sampleRate) co
         << std::setw(2) << hours << ":"
         << std::setw(2) << minutes << ":"
         << std::setw(2) << seconds << "."
-        << std::setw(5) << fracFrames << "S" << sampleRate;
+        << std::setw(5) << fracFrames;
 
     return out.str();
 }
@@ -357,6 +399,16 @@ std::string AdmWriter::generateAdmXml(const LusidScene& scene, const std::vector
 
     if (!bedIds.empty()) {
         content.append_child("audioObjectIDRef").text().set("AO_1001");
+    }
+    for (size_t objectIndex = 0; objectIndex < objectIds.size(); ++objectIndex) {
+        const size_t trackIndex = bedIds.size() + objectIndex + 1;
+        content.append_child("audioObjectIDRef").text().set(makeObjectIds(objectIndex, trackIndex).audioObjectId.c_str());
+    }
+    auto dialogue = content.append_child("dialogue");
+    dialogue.append_attribute("mixedContentKind") = "0";
+    dialogue.text().set("2");
+
+    if (!bedIds.empty()) {
         auto audioObject = admFormat.append_child("audioObject");
         audioObject.append_attribute("audioObjectID") = "AO_1001";
         audioObject.append_attribute("audioObjectName") = "Master";
@@ -366,7 +418,24 @@ std::string AdmWriter::generateAdmXml(const LusidScene& scene, const std::vector
         for (size_t i = 0; i < bedIds.size(); ++i) {
             appendText(audioObject, "audioTrackUIDRef", trackUidForIndex(i + 1));
         }
+    }
 
+    for (size_t objectIndex = 0; objectIndex < objectIds.size(); ++objectIndex) {
+        const std::string& id = objectIds[objectIndex];
+        const size_t trackIndex = bedIds.size() + objectIndex + 1;
+        const AdmIds ids = makeObjectIds(objectIndex, trackIndex);
+        ++outObjectCount;
+
+        auto audioObject = admFormat.append_child("audioObject");
+        audioObject.append_attribute("audioObjectID") = ids.audioObjectId.c_str();
+        audioObject.append_attribute("audioObjectName") = id.c_str();
+        audioObject.append_attribute("start") = formatAdmTime(0.0, targetSampleRate).c_str();
+        audioObject.append_attribute("duration") = formatAdmTime(totalDuration, targetSampleRate).c_str();
+        appendText(audioObject, "audioPackFormatIDRef", ids.packId);
+        appendText(audioObject, "audioTrackUIDRef", ids.trackUid);
+    }
+
+    if (!bedIds.empty()) {
         auto pack = admFormat.append_child("audioPackFormat");
         pack.append_attribute("audioPackFormatID") = "AP_00011001";
         pack.append_attribute("audioPackFormatName") = "Master";
@@ -378,6 +447,19 @@ std::string AdmWriter::generateAdmXml(const LusidScene& scene, const std::vector
                 appendText(pack, "audioChannelFormatIDRef", "AC_0001" + spec->elementValue);
             }
         }
+    }
+
+    for (size_t objectIndex = 0; objectIndex < objectIds.size(); ++objectIndex) {
+        const std::string& id = objectIds[objectIndex];
+        const size_t trackIndex = bedIds.size() + objectIndex + 1;
+        const AdmIds ids = makeObjectIds(objectIndex, trackIndex);
+
+        auto pack = admFormat.append_child("audioPackFormat");
+        pack.append_attribute("audioPackFormatID") = ids.packId.c_str();
+        pack.append_attribute("audioPackFormatName") = id.c_str();
+        pack.append_attribute("typeLabel") = "0003";
+        pack.append_attribute("typeDefinition") = "Objects";
+        appendText(pack, "audioChannelFormatIDRef", ids.channelId);
     }
 
     for (size_t i = 0; i < bedIds.size(); ++i) {
@@ -395,9 +477,9 @@ std::string AdmWriter::generateAdmXml(const LusidScene& scene, const std::vector
         auto block = channel.append_child("audioBlockFormat");
         block.append_attribute("audioBlockFormatID") =
             ("AB_0001" + spec->elementValue + "_00000001").c_str();
-        block.append_attribute("rtime") = formatAdmTime(0.0, targetSampleRate).c_str();
-        block.append_attribute("duration") = formatAdmTime(totalDuration, targetSampleRate).c_str();
         appendText(block, "speakerLabel", spec->speakerLabel);
+        appendText(block, "cartesian", "1");
+        appendBedPosition(block, spec->index);
     }
 
     for (size_t objectIndex = 0; objectIndex < objectIds.size(); ++objectIndex) {
@@ -410,23 +492,6 @@ std::string AdmWriter::generateAdmXml(const LusidScene& scene, const std::vector
         const auto& timeline = timelineIt->second;
         const size_t trackIndex = bedIds.size() + objectIndex + 1;
         const AdmIds ids = makeObjectIds(objectIndex, trackIndex);
-        ++outObjectCount;
-
-        content.append_child("audioObjectIDRef").text().set(ids.audioObjectId.c_str());
-        auto audioObject = admFormat.append_child("audioObject");
-        audioObject.append_attribute("audioObjectID") = ids.audioObjectId.c_str();
-        audioObject.append_attribute("audioObjectName") = id.c_str();
-        audioObject.append_attribute("start") = formatAdmTime(0.0, targetSampleRate).c_str();
-        audioObject.append_attribute("duration") = formatAdmTime(totalDuration, targetSampleRate).c_str();
-        appendText(audioObject, "audioPackFormatIDRef", ids.packId);
-        appendText(audioObject, "audioTrackUIDRef", ids.trackUid);
-
-        auto pack = admFormat.append_child("audioPackFormat");
-        pack.append_attribute("audioPackFormatID") = ids.packId.c_str();
-        pack.append_attribute("audioPackFormatName") = id.c_str();
-        pack.append_attribute("typeLabel") = "0003";
-        pack.append_attribute("typeDefinition") = "Objects";
-        appendText(pack, "audioChannelFormatIDRef", ids.channelId);
 
         auto channel = admFormat.append_child("audioChannelFormat");
         channel.append_attribute("audioChannelFormatID") = ids.channelId.c_str();
@@ -452,13 +517,14 @@ std::string AdmWriter::generateAdmXml(const LusidScene& scene, const std::vector
                 ("AB_" + ids.typeDescriptor + ids.elementValue + "_" + blockOrdinal(b + 1)).c_str();
             block.append_attribute("rtime") = formatAdmTime(start, targetSampleRate).c_str();
             block.append_attribute("duration") = formatAdmTime(duration, targetSampleRate).c_str();
-            block.append_attribute("cartesian") = "1";
+            appendText(block, "cartesian", "1");
 
             if (node->hasCart) {
                 appendCoordinate(block, "X", node->cart[0]);
                 appendCoordinate(block, "Y", node->cart[1]);
                 appendCoordinate(block, "Z", node->cart[2]);
             }
+            appendJumpPosition(block);
         }
     }
 
