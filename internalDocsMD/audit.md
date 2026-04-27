@@ -76,13 +76,13 @@ After Logic Pro Atmos manual validation, SpatialSeed's Stage 9B should be replac
 cult_transcoder/build/cult-transcoder adm-author \
   --lusid-package <lusid_package_dir> \
   --out-xml export.adm.xml \
-  --out-wav export.adm.wav \
+  --out-wav export.wav \
   --report export.adm.report.json
 ```
 The Python `adm_bw64.py` would then be retired or kept only as a fallback.
 
 **What is still needed before this wiring can happen:**
-- Manual Logic Pro Atmos import validation of representative `export.adm.wav` files.
+- Manual Logic Pro Atmos import validation of representative `export.wav` files.
 - SpatialSeed pipeline call-site update and error/report surfacing.
 - Re-test the fresh `chna` + timing-clamped authored BW64 in Logic Pro before enabling by default.
 

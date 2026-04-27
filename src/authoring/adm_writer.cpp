@@ -26,6 +26,7 @@
 #include <fstream>
 #include <iomanip>
 #include <map>
+#include <optional>
 #include <sstream>
 #include <vector>
 
@@ -57,58 +58,113 @@ struct AdmIds {
     std::string typeDescriptor;
 };
 
-std::string decimalPadded(size_t value, size_t width) {
-    std::ostringstream out;
-    out << std::setfill('0') << std::setw(static_cast<int>(width)) << value;
-    return out.str();
-}
-
 std::string hexPadded(uint32_t value, size_t width) {
     std::ostringstream out;
-    out << std::nouppercase << std::hex << std::setfill('0')
+    out << std::uppercase << std::hex << std::setfill('0')
         << std::setw(static_cast<int>(width)) << value;
     return out.str();
 }
 
-std::string admTypeDefinition(const std::string& type) {
-    return type == "audio_object" ? "Objects" : "DirectSpeakers";
+std::string blockOrdinal(size_t value) {
+    std::ostringstream out;
+    out << std::setfill('0') << std::setw(8) << value;
+    return out.str();
 }
 
-std::string admTypeLabel(const std::string& type) {
-    return type == "audio_object" ? "0003" : "0001";
-}
-
-uint32_t directSpeakerElementValue(const std::string& id, size_t sortedIndex) {
+int bedIndexFromId(const std::string& id) {
     const auto dot = id.find('.');
     if (dot != std::string::npos) {
         try {
             const int parsed = std::stoi(id.substr(0, dot));
-            if (parsed > 0) {
-                return static_cast<uint32_t>(parsed);
+            if (parsed > 0 && parsed <= 10 && id.substr(dot) == ".1") {
+                return parsed;
             }
         } catch (...) {
         }
     }
-    return static_cast<uint32_t>(sortedIndex + 1);
+    return 0;
 }
 
-AdmIds makeAdmIds(size_t sortedIndex, size_t objectIndex, const std::string& id, const std::string& type) {
-    const bool isObject = type == "audio_object";
-    const std::string typeDescriptor = admTypeLabel(type);
-    const uint32_t elementValue = isObject
-        ? static_cast<uint32_t>(0x1001 + objectIndex)
-        : directSpeakerElementValue(id, sortedIndex);
-    const std::string value = hexPadded(elementValue, 4);
+struct BedChannelSpec {
+    int index;
+    std::string id;
+    std::string elementValue;
+    std::string channelName;
+    std::string speakerLabel;
+};
+
+std::optional<BedChannelSpec> bedSpecForId(const std::string& id) {
+    const int index = bedIndexFromId(id);
+    if (index == 0) {
+        return std::nullopt;
+    }
+
+    static const char* names[] = {
+        "",
+        "RoomCentricLeft",
+        "RoomCentricRight",
+        "RoomCentricCenter",
+        "RoomCentricLFE",
+        "RoomCentricLeftSideSurround",
+        "RoomCentricRightSideSurround",
+        "RoomCentricLeftRearSurround",
+        "RoomCentricRightRearSurround",
+        "RoomCentricLeftTopSurround",
+        "RoomCentricRightTopSurround",
+    };
+    static const char* labels[] = {
+        "",
+        "RC_L",
+        "RC_R",
+        "RC_C",
+        "RC_LFE",
+        "RC_Lss",
+        "RC_Rss",
+        "RC_Lrs",
+        "RC_Rrs",
+        "RC_Lts",
+        "RC_Rts",
+    };
+
+    BedChannelSpec spec;
+    spec.index = index;
+    spec.id = id;
+    spec.elementValue = hexPadded(static_cast<uint32_t>(0x1000 + index), 4);
+    spec.channelName = names[index];
+    spec.speakerLabel = labels[index];
+    return spec;
+}
+
+std::string trackUidForIndex(size_t trackIndex) {
+    return "ATU_" + hexPadded(static_cast<uint32_t>(trackIndex), 8);
+}
+
+AdmIds makeBedIds(const BedChannelSpec& spec, size_t trackIndex) {
+    AdmIds ids;
+    ids.typeDescriptor = "0001";
+    ids.elementValue = spec.elementValue;
+    ids.audioObjectId = "AO_1001";
+    ids.packId = "AP_00011001";
+    ids.channelId = "AC_0001" + spec.elementValue;
+    ids.streamId = "AS_0001" + spec.elementValue;
+    ids.trackFormatId = "AT_0001" + spec.elementValue + "_01";
+    ids.trackUid = trackUidForIndex(trackIndex);
+    return ids;
+}
+
+AdmIds makeObjectIds(size_t objectOrdinal, size_t trackIndex) {
+    const std::string objectValue = hexPadded(static_cast<uint32_t>(0x1002 + objectOrdinal), 4);
+    const std::string trackValue = hexPadded(static_cast<uint32_t>(0x1000 + trackIndex), 4);
 
     AdmIds ids;
-    ids.typeDescriptor = typeDescriptor;
-    ids.elementValue = value;
-    ids.audioObjectId = "AO_" + hexPadded(static_cast<uint32_t>(0x1001 + sortedIndex), 4);
-    ids.packId = "AP_" + typeDescriptor + value;
-    ids.channelId = "AC_" + typeDescriptor + value;
-    ids.streamId = "AS_" + typeDescriptor + value;
-    ids.trackFormatId = "AT_" + typeDescriptor + value + "_01";
-    ids.trackUid = "ATU_" + decimalPadded(sortedIndex + 1, 8);
+    ids.typeDescriptor = "0003";
+    ids.elementValue = trackValue;
+    ids.audioObjectId = "AO_" + hexPadded(static_cast<uint32_t>(0x100B + objectOrdinal), 4);
+    ids.packId = "AP_0003" + objectValue;
+    ids.channelId = "AC_0003" + trackValue;
+    ids.streamId = "AS_0003" + trackValue;
+    ids.trackFormatId = "AT_0003" + trackValue + "_01";
+    ids.trackUid = trackUidForIndex(trackIndex);
     return ids;
 }
 
@@ -120,6 +176,36 @@ void appendCoordinate(pugi::xml_node parent, const char* coordinate, double valu
     auto node = parent.append_child("position");
     node.append_attribute("coordinate") = coordinate;
     node.text().set(to_string_fixed(value, 6).c_str());
+}
+
+void appendPcmStreamTrackAndUid(
+        pugi::xml_node admFormat,
+        const AdmIds& ids,
+        const std::string& name,
+        uint32_t targetSampleRate
+) {
+    auto stream = admFormat.append_child("audioStreamFormat");
+    stream.append_attribute("audioStreamFormatID") = ids.streamId.c_str();
+    stream.append_attribute("audioStreamFormatName") = ("PCM_" + name).c_str();
+    stream.append_attribute("formatLabel") = "0001";
+    stream.append_attribute("formatDefinition") = "PCM";
+    appendText(stream, "audioChannelFormatIDRef", ids.channelId);
+    appendText(stream, "audioPackFormatIDRef", ids.packId);
+    appendText(stream, "audioTrackFormatIDRef", ids.trackFormatId);
+
+    auto trackFormat = admFormat.append_child("audioTrackFormat");
+    trackFormat.append_attribute("audioTrackFormatID") = ids.trackFormatId.c_str();
+    trackFormat.append_attribute("audioTrackFormatName") = ("PCM_" + name).c_str();
+    trackFormat.append_attribute("formatLabel") = "0001";
+    trackFormat.append_attribute("formatDefinition") = "PCM";
+    appendText(trackFormat, "audioStreamFormatIDRef", ids.streamId);
+
+    auto trackUidNode = admFormat.append_child("audioTrackUID");
+    trackUidNode.append_attribute("UID") = ids.trackUid.c_str();
+    trackUidNode.append_attribute("sampleRate") = std::to_string(targetSampleRate).c_str();
+    trackUidNode.append_attribute("bitDepth") = "24";
+    appendText(trackUidNode, "audioTrackFormatIDRef", ids.trackFormatId);
+    appendText(trackUidNode, "audioPackFormatIDRef", ids.packId);
 }
 
 std::string saveXmlToString(const pugi::xml_document& doc) {
@@ -226,6 +312,20 @@ std::string AdmWriter::generateAdmXml(const LusidScene& scene, const std::vector
     outChannelCount = static_cast<uint32_t>(sortedIds.size());
     outObjectCount = 0;
 
+    std::vector<std::string> bedIds;
+    std::vector<std::string> objectIds;
+    for (const auto& id : sortedIds) {
+        const auto timelineIt = timelines.find(id);
+        if (timelineIt == timelines.end()) {
+            continue;
+        }
+        if (timelineIt->second.type == "audio_object") {
+            objectIds.push_back(id);
+        } else if (bedSpecForId(id)) {
+            bedIds.push_back(id);
+        }
+    }
+
     const double totalDuration = static_cast<double>(expectedFrames) / static_cast<double>(targetSampleRate);
 
     pugi::xml_document doc;
@@ -255,24 +355,64 @@ std::string AdmWriter::generateAdmXml(const LusidScene& scene, const std::vector
     content.append_attribute("audioContentName") = "CULT Authoring Content";
     programme.append_child("audioContentIDRef").text().set("ACO_1001");
 
-    for (size_t i = 0; i < sortedIds.size(); ++i) {
-        const std::string& id = sortedIds[i];
+    if (!bedIds.empty()) {
+        content.append_child("audioObjectIDRef").text().set("AO_1001");
+        auto audioObject = admFormat.append_child("audioObject");
+        audioObject.append_attribute("audioObjectID") = "AO_1001";
+        audioObject.append_attribute("audioObjectName") = "Master";
+        audioObject.append_attribute("start") = formatAdmTime(0.0, targetSampleRate).c_str();
+        audioObject.append_attribute("duration") = formatAdmTime(totalDuration, targetSampleRate).c_str();
+        appendText(audioObject, "audioPackFormatIDRef", "AP_00011001");
+        for (size_t i = 0; i < bedIds.size(); ++i) {
+            appendText(audioObject, "audioTrackUIDRef", trackUidForIndex(i + 1));
+        }
+
+        auto pack = admFormat.append_child("audioPackFormat");
+        pack.append_attribute("audioPackFormatID") = "AP_00011001";
+        pack.append_attribute("audioPackFormatName") = "Master";
+        pack.append_attribute("typeLabel") = "0001";
+        pack.append_attribute("typeDefinition") = "DirectSpeakers";
+        for (const auto& id : bedIds) {
+            const auto spec = bedSpecForId(id);
+            if (spec) {
+                appendText(pack, "audioChannelFormatIDRef", "AC_0001" + spec->elementValue);
+            }
+        }
+    }
+
+    for (size_t i = 0; i < bedIds.size(); ++i) {
+        const auto spec = bedSpecForId(bedIds[i]);
+        if (!spec) {
+            continue;
+        }
+        const AdmIds ids = makeBedIds(*spec, i + 1);
+        auto channel = admFormat.append_child("audioChannelFormat");
+        channel.append_attribute("audioChannelFormatID") = ids.channelId.c_str();
+        channel.append_attribute("audioChannelFormatName") = spec->channelName.c_str();
+        channel.append_attribute("typeLabel") = "0001";
+        channel.append_attribute("typeDefinition") = "DirectSpeakers";
+
+        auto block = channel.append_child("audioBlockFormat");
+        block.append_attribute("audioBlockFormatID") =
+            ("AB_0001" + spec->elementValue + "_00000001").c_str();
+        block.append_attribute("rtime") = formatAdmTime(0.0, targetSampleRate).c_str();
+        block.append_attribute("duration") = formatAdmTime(totalDuration, targetSampleRate).c_str();
+        appendText(block, "speakerLabel", spec->speakerLabel);
+    }
+
+    for (size_t objectIndex = 0; objectIndex < objectIds.size(); ++objectIndex) {
+        const std::string& id = objectIds[objectIndex];
         const auto timelineIt = timelines.find(id);
         if (timelineIt == timelines.end()) {
             continue;
         }
 
         const auto& timeline = timelineIt->second;
-        const bool isObject = timeline.type == "audio_object";
-        const size_t objectIndex = outObjectCount;
-        if (isObject) {
-            ++outObjectCount;
-        }
+        const size_t trackIndex = bedIds.size() + objectIndex + 1;
+        const AdmIds ids = makeObjectIds(objectIndex, trackIndex);
+        ++outObjectCount;
 
-        const AdmIds ids = makeAdmIds(i, objectIndex, id, timeline.type);
-        const std::string typeDefinition = admTypeDefinition(timeline.type);
-        const std::string typeLabel = admTypeLabel(timeline.type);
-
+        content.append_child("audioObjectIDRef").text().set(ids.audioObjectId.c_str());
         auto audioObject = admFormat.append_child("audioObject");
         audioObject.append_attribute("audioObjectID") = ids.audioObjectId.c_str();
         audioObject.append_attribute("audioObjectName") = id.c_str();
@@ -280,20 +420,19 @@ std::string AdmWriter::generateAdmXml(const LusidScene& scene, const std::vector
         audioObject.append_attribute("duration") = formatAdmTime(totalDuration, targetSampleRate).c_str();
         appendText(audioObject, "audioPackFormatIDRef", ids.packId);
         appendText(audioObject, "audioTrackUIDRef", ids.trackUid);
-        content.append_child("audioObjectIDRef").text().set(ids.audioObjectId.c_str());
 
         auto pack = admFormat.append_child("audioPackFormat");
         pack.append_attribute("audioPackFormatID") = ids.packId.c_str();
         pack.append_attribute("audioPackFormatName") = id.c_str();
-        pack.append_attribute("typeLabel") = typeLabel.c_str();
-        pack.append_attribute("typeDefinition") = typeDefinition.c_str();
+        pack.append_attribute("typeLabel") = "0003";
+        pack.append_attribute("typeDefinition") = "Objects";
         appendText(pack, "audioChannelFormatIDRef", ids.channelId);
 
         auto channel = admFormat.append_child("audioChannelFormat");
         channel.append_attribute("audioChannelFormatID") = ids.channelId.c_str();
         channel.append_attribute("audioChannelFormatName") = id.c_str();
-        channel.append_attribute("typeLabel") = typeLabel.c_str();
-        channel.append_attribute("typeDefinition") = typeDefinition.c_str();
+        channel.append_attribute("typeLabel") = "0003";
+        channel.append_attribute("typeDefinition") = "Objects";
 
         for (size_t b = 0; b < timeline.nodes.size(); ++b) {
             const auto* node = timeline.nodes[b];
@@ -310,42 +449,29 @@ std::string AdmWriter::generateAdmXml(const LusidScene& scene, const std::vector
 
             auto block = channel.append_child("audioBlockFormat");
             block.append_attribute("audioBlockFormatID") =
-                ("AB_" + ids.typeDescriptor + ids.elementValue + "_" + decimalPadded(b + 1, 8)).c_str();
+                ("AB_" + ids.typeDescriptor + ids.elementValue + "_" + blockOrdinal(b + 1)).c_str();
             block.append_attribute("rtime") = formatAdmTime(start, targetSampleRate).c_str();
             block.append_attribute("duration") = formatAdmTime(duration, targetSampleRate).c_str();
-            if (isObject) {
-                block.append_attribute("cartesian") = "1";
-            }
+            block.append_attribute("cartesian") = "1";
 
             if (node->hasCart) {
                 appendCoordinate(block, "X", node->cart[0]);
                 appendCoordinate(block, "Y", node->cart[1]);
                 appendCoordinate(block, "Z", node->cart[2]);
-            } else if (timeline.type == "LFE") {
-                appendText(block, "speakerLabel", "LFE");
             }
         }
+    }
 
-        auto stream = admFormat.append_child("audioStreamFormat");
-        stream.append_attribute("audioStreamFormatID") = ids.streamId.c_str();
-        stream.append_attribute("audioStreamFormatName") = id.c_str();
-        stream.append_attribute("formatLabel") = "0001";
-        stream.append_attribute("formatDefinition") = "PCM";
-        appendText(stream, "audioChannelFormatIDRef", ids.channelId);
-        appendText(stream, "audioPackFormatIDRef", ids.packId);
-        appendText(stream, "audioTrackFormatIDRef", ids.trackFormatId);
+    for (size_t i = 0; i < bedIds.size(); ++i) {
+        const auto spec = bedSpecForId(bedIds[i]);
+        if (spec) {
+            appendPcmStreamTrackAndUid(admFormat, makeBedIds(*spec, i + 1), spec->channelName, targetSampleRate);
+        }
+    }
 
-        auto trackFormat = admFormat.append_child("audioTrackFormat");
-        trackFormat.append_attribute("audioTrackFormatID") = ids.trackFormatId.c_str();
-        trackFormat.append_attribute("audioTrackFormatName") = id.c_str();
-        trackFormat.append_attribute("formatLabel") = "0001";
-        trackFormat.append_attribute("formatDefinition") = "PCM";
-        appendText(trackFormat, "audioStreamFormatIDRef", ids.streamId);
-
-        auto trackUidNode = admFormat.append_child("audioTrackUID");
-        trackUidNode.append_attribute("UID") = ids.trackUid.c_str();
-        appendText(trackUidNode, "audioTrackFormatIDRef", ids.trackFormatId);
-        appendText(trackUidNode, "audioPackFormatIDRef", ids.packId);
+    for (size_t objectIndex = 0; objectIndex < objectIds.size(); ++objectIndex) {
+        const size_t trackIndex = bedIds.size() + objectIndex + 1;
+        appendPcmStreamTrackAndUid(admFormat, makeObjectIds(objectIndex, trackIndex), objectIds[objectIndex], targetSampleRate);
     }
 
     return saveXmlToString(doc);
@@ -402,17 +528,40 @@ AdmWriterResult AdmWriter::writeAdmBw64(
     }
 
     auto chnaChunk = std::make_shared<bw64::ChnaChunk>();
-    size_t chnaObjectIndex = 0;
+    std::vector<std::string> objectIds;
+    for (const auto& id : sortedIds) {
+        const auto typeIt = typeById.find(id);
+        if (typeIt == typeById.end()) {
+            result.errorMessage = "Missing node type for ADM channel: " + id;
+            return result;
+        }
+        if (typeIt->second == "audio_object") {
+            objectIds.push_back(id);
+        }
+    }
+
     for (size_t c = 0; c < sortedIds.size(); ++c) {
         const auto typeIt = typeById.find(sortedIds[c]);
         if (typeIt == typeById.end()) {
             result.errorMessage = "Missing node type for ADM channel: " + sortedIds[c];
             return result;
         }
-        const size_t objectIndex = typeIt->second == "audio_object" ? chnaObjectIndex++ : 0;
-        const AdmIds idsForChannel = makeAdmIds(c, objectIndex, sortedIds[c], typeIt->second);
+        const size_t trackIndex = c + 1;
+        AdmIds idsForChannel;
+        if (typeIt->second == "audio_object") {
+            const auto objectIt = std::find(objectIds.begin(), objectIds.end(), sortedIds[c]);
+            const size_t objectIndex = static_cast<size_t>(std::distance(objectIds.begin(), objectIt));
+            idsForChannel = makeObjectIds(objectIndex, trackIndex);
+        } else {
+            const auto spec = bedSpecForId(sortedIds[c]);
+            if (!spec) {
+                result.errorMessage = "Unsupported bed channel for ADM channel: " + sortedIds[c];
+                return result;
+            }
+            idsForChannel = makeBedIds(*spec, trackIndex);
+        }
         chnaChunk->addAudioId(bw64::AudioId(
-            static_cast<uint16_t>(c + 1),
+            static_cast<uint16_t>(trackIndex),
             idsForChannel.trackUid,
             idsForChannel.trackFormatId,
             idsForChannel.packId));

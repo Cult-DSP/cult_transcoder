@@ -101,7 +101,7 @@ TEST_CASE("admAuthor writes ADM XML and BW64 with matching embedded axml",
     writeFloatWav(temp.path / "11.1.wav", 0.3f);
 
     const fs::path outXml = temp.path / "export.adm.xml";
-    const fs::path outWav = temp.path / "export.adm.wav";
+    const fs::path outWav = temp.path / "export.wav";
     const fs::path report = temp.path / "export.report.json";
 
     cult::AdmAuthorRequest req;
@@ -137,7 +137,8 @@ TEST_CASE("admAuthor writes ADM XML and BW64 with matching embedded axml",
     const std::string xml = readTextFile(outXml);
     REQUIRE(xml.find("<audioFormatExtended") != std::string::npos);
     REQUIRE(xml.find("audioObjectName=\"11.1\"") != std::string::npos);
-    REQUIRE(xml.find("audioChannelFormatName=\"4.1\"") != std::string::npos);
+    REQUIRE(xml.find("audioObjectName=\"Master\"") != std::string::npos);
+    REQUIRE(xml.find("audioChannelFormatName=\"RoomCentricLFE\"") != std::string::npos);
 
     pugi::xml_document doc;
     REQUIRE(doc.load_file(outXml.string().c_str()));
@@ -157,16 +158,16 @@ TEST_CASE("admAuthor writes ADM XML and BW64 with matching embedded axml",
     REQUIRE(audioIds.size() == 3);
     REQUIRE(audioIds[0].trackIndex() == 1);
     REQUIRE(audioIds[0].uid() == "ATU_00000001");
-    REQUIRE(audioIds[0].trackRef() == "AT_00010001_01");
-    REQUIRE(audioIds[0].packRef() == "AP_00010001");
+    REQUIRE(audioIds[0].trackRef() == "AT_00011001_01");
+    REQUIRE(audioIds[0].packRef() == "AP_00011001");
     REQUIRE(audioIds[1].trackIndex() == 2);
     REQUIRE(audioIds[1].uid() == "ATU_00000002");
-    REQUIRE(audioIds[1].trackRef() == "AT_00010004_01");
-    REQUIRE(audioIds[1].packRef() == "AP_00010004");
+    REQUIRE(audioIds[1].trackRef() == "AT_00011004_01");
+    REQUIRE(audioIds[1].packRef() == "AP_00011001");
     REQUIRE(audioIds[2].trackIndex() == 3);
     REQUIRE(audioIds[2].uid() == "ATU_00000003");
-    REQUIRE(audioIds[2].trackRef() == "AT_00031001_01");
-    REQUIRE(audioIds[2].packRef() == "AP_00031001");
+    REQUIRE(audioIds[2].trackRef() == "AT_00031003_01");
+    REQUIRE(audioIds[2].packRef() == "AP_00031002");
 }
 
 TEST_CASE("admAuthor tolerates one trailing sample mismatch by truncating to shortest length",
@@ -193,7 +194,7 @@ TEST_CASE("admAuthor tolerates one trailing sample mismatch by truncating to sho
     writeFloatWav(temp.path / "11.1.wav", 0.3f, 481);
 
     const fs::path outXml = temp.path / "export.adm.xml";
-    const fs::path outWav = temp.path / "export.adm.wav";
+    const fs::path outWav = temp.path / "export.wav";
 
     cult::AdmAuthorRequest req;
     req.lusidPath = scenePath.string();

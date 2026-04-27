@@ -10,7 +10,7 @@ This plan supersedes the earlier rough agent plan by explicitly treating LUSID â
 Implement LUSID â†’ authored ADM in `cult_transcoder` (C++), producing:
 
 - `export.adm.xml`
-- `export.adm.wav` (BW64 with embedded ADM metadata)
+- `export.wav` (ADM BWF/BW64 WAV with embedded ADM metadata)
 - report JSON
 
 The practical first-pass acceptance target is successful import into Logic Pro Atmos.
@@ -95,7 +95,7 @@ Resampling, padding, truncation, or interleaved-channel splitting must not occur
 ### Outputs
 
 - `export.adm.xml`
-- `export.adm.wav`
+- `export.wav`
 - report JSON
 
 ### Atomicity
@@ -111,14 +111,14 @@ cult-transcoder adm-author \
   --lusid <scene.lusid.json> \
   --wav-dir <path> \
   --out-xml <export.adm.xml> \
-  --out-wav <export.adm.wav> \
+  --out-wav <export.wav> \
   [--report <path>] [--stdout-report]
 
 # Alternate input:
 cult-transcoder adm-author \
   --lusid-package <path> \
   --out-xml <export.adm.xml> \
-  --out-wav <export.adm.wav> \
+  --out-wav <export.wav> \
   [--report <path>] [--stdout-report]
 ```
 
@@ -354,7 +354,7 @@ Status 2026-04-26:
 
 ### Manual validation
 
-Import `export.adm.wav` into Logic Pro Atmos and verify:
+Import `export.wav` into Logic Pro Atmos and verify:
 
 - bed channels are recognized correctly
 - objects appear correctly

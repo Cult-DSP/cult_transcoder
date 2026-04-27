@@ -33,14 +33,14 @@ cult-transcoder adm-author \
   --lusid <scene.lusid.json> \
   --wav-dir <path> \
   --out-xml <export.adm.xml> \
-  --out-wav <export.adm.wav> \
+  --out-wav <export.wav> \
   [--report <path>] [--stdout-report]
 
 # alternate input
 cult-transcoder adm-author \
   --lusid-package <path> \
   --out-xml <export.adm.xml> \
-  --out-wav <export.adm.wav> \
+  --out-wav <export.wav> \
   [--report <path>] [--stdout-report]
 ```
 

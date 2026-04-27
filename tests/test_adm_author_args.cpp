@@ -94,7 +94,7 @@ TEST_CASE("admAuthor: rejects mixed package and explicit inputs", "[adm-author][
     req.lusidPath = "/tmp/scene.lusid.json";
     req.wavDir = "/tmp/wavs";
     req.outXmlPath = "/tmp/out.adm.xml";
-    req.outWavPath = "/tmp/out.adm.wav";
+    req.outWavPath = "/tmp/out.wav";
     req.reportPath = "/tmp/out.report.json";
 
     auto result = cult::admAuthor(req);
@@ -141,7 +141,7 @@ TEST_CASE("admAuthor: validates required scene + wav files", "[adm-author][valid
     req.lusidPath = scenePath.string();
     req.wavDir = wavDir.string();
     req.outXmlPath = (temp.path / "out.adm.xml").string();
-    req.outWavPath = (temp.path / "out.adm.wav").string();
+    req.outWavPath = (temp.path / "out.wav").string();
     req.reportPath = (temp.path / "out.report.json").string();
 
     auto result = cult::admAuthor(req);

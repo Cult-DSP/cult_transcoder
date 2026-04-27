@@ -353,7 +353,7 @@ cult-transcoder adm-author \
   --lusid <scene.lusid.json> \
   --wav-dir <path> \
   --out-xml <export.adm.xml> \
-  --out-wav <export.adm.wav> \
+  --out-wav <export.wav> \
   [--report <path>] \
   [--stdout-report]
 
@@ -361,7 +361,7 @@ cult-transcoder adm-author \
 cult-transcoder adm-author \
   --lusid-package <path> \
   --out-xml <export.adm.xml> \
-  --out-wav <export.adm.wav> \
+  --out-wav <export.wav> \
   [--report <path>] \
   [--stdout-report]
 ```
@@ -377,7 +377,7 @@ Atomic output behavior:
 - non-zero: failure; final output must not exist; report should exist best-effort; stderr must explain.
 - Report is written via temp + rename.
 - Existing LUSID output remains non-atomic until separately fixed.
-- `adm-author` outputs (`export.adm.xml`, `export.adm.wav`) must be written via temp + rename from day one.
+- `adm-author` outputs (`export.adm.xml`, `export.wav`) must be written via temp + rename from day one.
 
 Atomic output rule (non-negotiable):
 Authoring path input rules (v1):
@@ -565,7 +565,7 @@ Must support both:
 ### First-pass output contract
 
 - `export.adm.xml`
-- `export.adm.wav`
+- `export.wav`
 - report JSON
 
 ### First-pass target

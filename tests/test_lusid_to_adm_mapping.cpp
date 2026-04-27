@@ -133,7 +133,7 @@ TEST_CASE("AdmWriter maps beds before objects with deterministic IDs and motion 
 
     cult::AdmWriter writer;
     const fs::path outXml = temp.path / "out.adm.xml";
-    const fs::path outWav = temp.path / "out.adm.wav";
+    const fs::path outWav = temp.path / "out.wav";
     auto result = writer.writeAdmBw64(outXml.string(), outWav.string(), scene, wavs, 48000, 480);
 
     REQUIRE(result.success);
@@ -144,13 +144,17 @@ TEST_CASE("AdmWriter maps beds before objects with deterministic IDs and motion 
     REQUIRE(doc.load_file(outXml.string().c_str()));
 
     const auto audioObjects = childrenByName(doc, "audioObject");
-    REQUIRE(audioObjects.size() == 4);
-    REQUIRE(std::string(audioObjects[0].attribute("audioObjectName").value()) == "1.1");
-    REQUIRE(std::string(audioObjects[1].attribute("audioObjectName").value()) == "2.1");
-    REQUIRE(std::string(audioObjects[2].attribute("audioObjectName").value()) == "4.1");
-    REQUIRE(std::string(audioObjects[3].attribute("audioObjectName").value()) == "11.1");
+    REQUIRE(audioObjects.size() == 2);
+    REQUIRE(std::string(audioObjects[0].attribute("audioObjectName").value()) == "Master");
+    REQUIRE(std::string(audioObjects[1].attribute("audioObjectName").value()) == "11.1");
     REQUIRE(std::string(audioObjects[0].attribute("audioObjectID").value()) == "AO_1001");
-    REQUIRE(std::string(audioObjects[3].attribute("audioObjectID").value()) == "AO_1004");
+    REQUIRE(std::string(audioObjects[1].attribute("audioObjectID").value()) == "AO_100B");
+
+    const auto bedTrackRefs = childrenByName(audioObjects[0], "audioTrackUIDRef");
+    REQUIRE(bedTrackRefs.size() == 3);
+    REQUIRE(std::string(bedTrackRefs[0].text().get()) == "ATU_00000001");
+    REQUIRE(std::string(bedTrackRefs[1].text().get()) == "ATU_00000002");
+    REQUIRE(std::string(bedTrackRefs[2].text().get()) == "ATU_00000003");
 
     const auto channels = childrenByName(doc, "audioChannelFormat");
     REQUIRE(channels.size() == 4);
@@ -171,7 +175,7 @@ TEST_CASE("AdmWriter maps beds before objects with deterministic IDs and motion 
         if (name == "11.1") {
             objectChannel = channel;
         }
-        if (name == "4.1") {
+        if (name == "RoomCentricLFE") {
             lfeChannel = channel;
         }
     }
@@ -180,8 +184,8 @@ TEST_CASE("AdmWriter maps beds before objects with deterministic IDs and motion 
     REQUIRE(objectCount == 1);
     REQUIRE(objectChannel);
     REQUIRE(lfeChannel);
-    REQUIRE(std::string(objectChannel.attribute("audioChannelFormatID").value()) == "AC_00031001");
-    REQUIRE(std::string(lfeChannel.attribute("audioChannelFormatID").value()) == "AC_00010004");
+    REQUIRE(std::string(objectChannel.attribute("audioChannelFormatID").value()) == "AC_00031004");
+    REQUIRE(std::string(lfeChannel.attribute("audioChannelFormatID").value()) == "AC_00011004");
 
     const auto objectBlocks = childrenByName(objectChannel, "audioBlockFormat");
     REQUIRE(objectBlocks.size() == 2);
@@ -192,5 +196,5 @@ TEST_CASE("AdmWriter maps beds before objects with deterministic IDs and motion 
 
     const auto lfeLabels = childrenByName(lfeChannel, "speakerLabel");
     REQUIRE(lfeLabels.size() == 1);
-    REQUIRE(std::string(lfeLabels[0].text().get()) == "LFE");
+    REQUIRE(std::string(lfeLabels[0].text().get()) == "RC_LFE");
 }
