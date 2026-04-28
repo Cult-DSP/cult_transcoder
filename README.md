@@ -1,4 +1,4 @@
-# cult_transcoder
+# cult_transcoder v0.9
 
 C++17 CLI tool that transcodes ADM XML/WAV to LUSID Scene JSON, authors LUSID packages back to ADM BWF/WAV, and can package ADM BWF/WAV source material into self-contained LUSID packages.  
 Submodule of [spatialroot](https://github.com/Cult-DSP/spatialroot), branch `devel`.
