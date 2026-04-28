@@ -1,6 +1,5 @@
 # now
 
-- time compativility
 - tackle memory and streaming tasks
 - clean up api and cli - and its documentation
 - do some testing

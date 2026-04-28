@@ -14,6 +14,7 @@
 
 #include "cult_transcoder.hpp"
 #include "audio/wav_io.hpp"
+#include "transcoding/adm/adm_to_lusid.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -134,6 +135,14 @@ TEST_CASE("packageAdmWav creates a self-contained LUSID package from authored AD
 
     const std::string order = readTextFile(packageDir / "channel_order.txt");
     REQUIRE(order == "1.1\n2.1\n3.1\n4.1\n5.1\n");
+
+    const std::string packageSceneJson = readTextFile(packageDir / "scene.lusid.json");
+    REQUIRE(packageSceneJson.find("\"version\": \"1.0\"") != std::string::npos);
+    REQUIRE(packageSceneJson.find("\"timeUnit\": \"seconds\"") != std::string::npos);
+    REQUIRE(packageSceneJson.find("\"sampleRate\": 48000") != std::string::npos);
+    REQUIRE(packageSceneJson.find("\"frames\": [") != std::string::npos);
+    const std::string packageReportJson = readTextFile(packageDir / "scene_report.json");
+    REQUIRE(packageReportJson == packageResult.report.toJson());
 
     cult::WavFileInfo stemInfo;
     std::string error;

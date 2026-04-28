@@ -31,6 +31,7 @@
 
 #include "lusid_scene.hpp"
 
+#include <iosfwd>
 #include <map>
 #include <string>
 #include <vector>
@@ -91,9 +92,16 @@ ConversionResult convertAdmDocumentToLusid(pugi::xml_document& doc,
 
 /// Serialize a LusidScene to a JSON string.
 /// Output is stable, pretty-printed LUSID Scene JSON.
+/// Compatibility wrapper: delegates to writeLusidSceneJson() via an
+/// std::ostringstream.
 std::string lusidSceneToJson(const LusidScene& scene);
 
+/// Stream a LusidScene as stable, pretty-printed LUSID Scene JSON.
+void writeLusidSceneJson(std::ostream& out, const LusidScene& scene);
+
 /// Write a LusidScene to a file.  Returns true on success.
+/// File-writing API: delegates to writeLusidSceneJson() on the destination
+/// std::ofstream.
 bool writeLusidScene(const LusidScene& scene, const std::string& outPath);
 
 } // namespace cult

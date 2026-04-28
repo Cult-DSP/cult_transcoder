@@ -29,13 +29,26 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <filesystem>
+#include <fstream>
+#include <sstream>
 #include <string>
+
+namespace fs = std::filesystem;
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 static bool contains(const std::string& haystack, const std::string& needle) {
     return haystack.find(needle) != std::string::npos;
+}
+
+static std::string readFile(const fs::path& path) {
+    std::ifstream f(path);
+    REQUIRE(f.is_open());
+    std::ostringstream out;
+    out << f.rdbuf();
+    return out.str();
 }
 
 // ---------------------------------------------------------------------------
@@ -171,4 +184,34 @@ TEST_CASE("JSON escaping handles special characters", "[report][escaping]") {
     // Verify the string is present and escaped
     REQUIRE(contains(json, "\\\"quotes\\\""));
     REQUIRE(contains(json, "\\\\backslash"));
+}
+
+TEST_CASE("Report writeTo matches toJson output", "[report][io]") {
+    const fs::path outPath = fs::temp_directory_path() / "cult_report_write_to.json";
+    fs::remove(outPath);
+
+    cult::Report r;
+    r.status = "success";
+    r.args.inPath = "/tmp/input.xml";
+    r.args.outPath = "/tmp/output.json";
+    r.summary.timeUnit = "seconds";
+    r.warnings.push_back("warning");
+
+    const std::string expected = r.toJson();
+    REQUIRE(r.writeTo(outPath.string()));
+    REQUIRE(readFile(outPath) == expected);
+
+    std::error_code ec;
+    fs::remove(outPath, ec);
+}
+
+TEST_CASE("Report writeJson matches toJson output", "[report][io]") {
+    cult::Report r;
+    r.status = "success";
+    r.args.inPath = "/tmp/input.xml";
+    r.errors.push_back("none");
+
+    std::ostringstream out;
+    r.writeJson(out);
+    REQUIRE(out.str() == r.toJson());
 }

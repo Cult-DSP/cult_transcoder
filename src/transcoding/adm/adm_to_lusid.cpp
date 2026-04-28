@@ -37,6 +37,7 @@
 #include <cstdio>
 #include <cstring>
 #include <fstream>
+#include <ostream>
 #include <map>
 #include <sstream>
 #include <string>
@@ -385,8 +386,7 @@ ConversionResult convertAdmToLusidFromBuffer(const std::string& xmlBuffer,
 // ---------------------------------------------------------------------------
 // lusidSceneToJson — serialize to stable pretty-printed LUSID Scene JSON
 // ---------------------------------------------------------------------------
-std::string lusidSceneToJson(const LusidScene& scene) {
-    std::ostringstream o;
+void writeLusidSceneJson(std::ostream& o, const LusidScene& scene) {
     o << "{\n";
     o << indent(1) << "\"version\": \"" << jsonEscape(scene.version) << "\",\n";
     o << indent(1) << "\"timeUnit\": \"" << jsonEscape(scene.timeUnit) << "\",\n";
@@ -465,6 +465,11 @@ std::string lusidSceneToJson(const LusidScene& scene) {
     }
 
     o << "\n}";
+}
+
+std::string lusidSceneToJson(const LusidScene& scene) {
+    std::ostringstream o;
+    writeLusidSceneJson(o, scene);
     return o.str();
 }
 
@@ -472,10 +477,9 @@ std::string lusidSceneToJson(const LusidScene& scene) {
 // writeLusidScene — write JSON to file
 // ---------------------------------------------------------------------------
 bool writeLusidScene(const LusidScene& scene, const std::string& outPath) {
-    std::string json = lusidSceneToJson(scene);
     std::ofstream f(outPath);
     if (!f.is_open()) return false;
-    f << json;
+    writeLusidSceneJson(f, scene);
     f.close();
     return f.good();
 }

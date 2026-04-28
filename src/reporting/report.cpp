@@ -38,9 +38,7 @@ using reporting_helpers::jsonStr;
 // ---------------------------------------------------------------------------
 // Report::toJson()
 // ---------------------------------------------------------------------------
-std::string Report::toJson() const {
-    std::ostringstream o;
-
+void Report::writeJson(std::ostream& o) const {
     o << "{\n";
 
     // reportVersion
@@ -166,6 +164,11 @@ std::string Report::toJson() const {
     o << (lossLedger.empty() ? "" : "\n" + ind(1)) << "]\n";
 
     o << "}\n";
+}
+
+std::string Report::toJson() const {
+    std::ostringstream o;
+    writeJson(o);
     return o.str();
 }
 
@@ -178,7 +181,7 @@ bool Report::writeTo(const std::string& path) const {
         std::cerr << "[cult-transcoder] ERROR: cannot write report to: " << path << "\n";
         return false;
     }
-    f << toJson();
+    writeJson(f);
     return f.good();
 }
 
@@ -186,7 +189,7 @@ bool Report::writeTo(const std::string& path) const {
 // Report::printToStdout()
 // ---------------------------------------------------------------------------
 void Report::printToStdout() const {
-    std::cout << toJson();
+    writeJson(std::cout);
 }
 
 } // namespace cult

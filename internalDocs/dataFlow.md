@@ -40,9 +40,11 @@ ADM audio tracks.
 ## Memory and Data Transfer Overview
 
 CULT currently uses an in-memory metadata model and chunked audio transfer.
-Metadata is small enough for current workloads to keep as XML DOM, `LusidScene`,
-and JSON text. Audio is treated differently: large sample payloads are streamed
-or processed in fixed-size chunks wherever practical.
+Metadata is small enough for current workloads to keep as XML DOM and
+`LusidScene` objects in memory, while JSON/report file serialization is now
+streamed directly to output streams instead of always materializing a full
+metadata string first. Audio is treated differently: large sample payloads are
+streamed or processed in fixed-size chunks wherever practical.
 
 The major allocation and transfer points are:
 
@@ -55,7 +57,7 @@ The major allocation and transfer points are:
 | Generic object blocks | no full object-block staging vector | each block is converted directly into `timeToNodes` |
 | `timeToNodes` | `std::map<double, std::vector<LusidNode>>` | owns pending LUSID nodes grouped by parsed frame time |
 | `LusidScene` | returned in `ConversionResult` | owns final frames/nodes after moving node vectors out of `timeToNodes` |
-| LUSID JSON output | `std::ostringstream` / `std::string` | full JSON string is materialized before file write |
+| LUSID JSON output | `LusidScene` plus ostream writer | JSON is streamed directly to file/stdout in public write paths; a full string is still available through a compatibility wrapper |
 | Package source audio | file stream plus chunk buffer | decoded in chunks and written to mono stem streams |
 | Authoring normalized audio | temporary normalized WAV files | source stems are normalized to files, then read back for ADM BWF writing |
 | Authored ADM XML | `pugi::xml_document` plus serialized XML string | XML DOM is serialized to a full string for sidecar and BWF `axml` embedding |
@@ -70,12 +72,15 @@ Important lifetime rule:
 Current non-streaming metadata points:
 
 - ADM XML is DOM-parsed before conversion
-- LUSID JSON serialization builds a complete string before writing
 - authored ADM XML is built as a DOM and serialized as a complete string
+- on-demand compatibility helpers may still materialize full metadata strings:
+  - `lusidSceneToJson()`
+  - `Report::toJson()`
 
-These are intentional for the current implementation. Streaming JSON and deeper
-metadata streaming are deferred cleanup topics, not part of the sensitive
-transcoding cleanup already completed.
+These are intentional for the current implementation. The current metadata
+streaming pass covers LUSID JSON file writing and report file/stdout writing,
+while deeper authoring XML streaming remains deferred because the authored XML
+string is still reused for both the sidecar file and BW64 `axml` embedding.
 
 ## Flow 1: ADM XML to LUSID JSON
 
@@ -99,8 +104,8 @@ Actual steps:
    `convertSony360RaToLusid(doc, lfeMode)`.
 5. Otherwise generic ADM dispatch goes to
    `convertAdmDocumentToLusid(doc, lfeMode)` using the same parsed document.
-6. The resulting `LusidScene` is serialized with `lusidSceneToJson()`.
-7. The output JSON is written, and the report records warnings, summary counts,
+6. The resulting `LusidScene` is serialized through the shared JSON formatter.
+7. The output JSON is streamed into the temp file, and the report records warnings, summary counts,
    frame count, sample rate, duration, and node type counts.
 
 Important ownership rule:
@@ -130,7 +135,7 @@ Actual steps:
 3. Profile detection runs on the parsed document.
 4. Sony 360RA dispatch uses `convertSony360RaToLusid(doc, lfeMode)`.
 5. Generic ADM dispatch uses `convertAdmDocumentToLusid(doc, lfeMode)`.
-6. The output LUSID JSON and report are written just like the ADM XML path.
+6. The output LUSID JSON and report are written just like the ADM XML path, using streamed file writes at the final serialization boundary.
 
 The audio samples in the source WAV are not decoded by `transcode`. This command
 converts ADM metadata to LUSID Scene JSON only.
@@ -292,10 +297,10 @@ Actual steps:
 4. Convert ADM metadata to a `LusidScene` using the same parsed document.
 5. Inspect the source WAV container and audio format.
 6. Determine canonical node order from the converted LUSID scene.
-7. Write `scene.lusid.json`.
+7. Write `scene.lusid.json` through the shared JSON stream writer.
 8. Write `channel_order.txt`.
 9. Split interleaved source audio into package-local mono float32 WAV stems.
-10. Write `scene_report.json`.
+10. Write `scene_report.json` through the shared report stream writer.
 11. Rename the temporary package directory into place.
 
 Package channel/stem order is derived from LUSID node IDs:

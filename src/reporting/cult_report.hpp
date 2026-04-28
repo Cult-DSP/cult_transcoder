@@ -38,6 +38,7 @@
 
 #include "audio/resampler.hpp"
 
+#include <iosfwd>
 #include <cstdint>
 #include <map>
 #include <string>
@@ -118,19 +119,28 @@ struct Report {
     // ---------------------------------------------------------------------------
     // Serialise to a JSON string.
     // Suitable for writing to <out>.report.json or printing to stdout.
+    // Compatibility wrapper: delegates to writeJson() via an std::ostringstream.
     // ---------------------------------------------------------------------------
     [[nodiscard]] std::string toJson() const;
+
+    // ---------------------------------------------------------------------------
+    // Stream the report JSON to an output stream.
+    // ---------------------------------------------------------------------------
+    void writeJson(std::ostream& out) const;
 
     // ---------------------------------------------------------------------------
     // Write the report JSON to the given file path.
     // Returns true on success, false if the file could not be written.
     // On error, a message is appended to stderr (not to this report — the report
     // itself may be in a fail state already).
+    // File-writing API: delegates to writeJson() on the destination
+    // std::ofstream.
     // ---------------------------------------------------------------------------
     bool writeTo(const std::string& path) const;
 
     // ---------------------------------------------------------------------------
     // Print the report JSON to stdout (used when --stdout-report is set).
+    // Stdout path: delegates to writeJson() on std::cout.
     // ---------------------------------------------------------------------------
     void printToStdout() const;
 };

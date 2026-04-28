@@ -254,6 +254,26 @@ Historical importance:
 - this resolved the main remaining timing risk without changing parity-critical ingest ordering or package-generation behavior
 - it records that the real issue was authoring precision loss on sample-spaced object-block roundtrip, not LUSID v1 unit normalization or shared ADM helper parsing
 
+### 2026-04-28: Metadata Streaming Phase 1
+
+Implemented:
+
+- added shared ostream-based serializers for LUSID Scene JSON and report JSON
+- kept `lusidSceneToJson()` and `Report::toJson()` as compatibility wrappers over the shared stream-writing logic
+- changed `writeLusidScene()`, `Report::writeTo()`, and report stdout printing to stream directly to their destination streams instead of building a full string first
+- preserved existing JSON shape, field ordering, indentation, escaping, temp+rename behavior, and public API signatures
+- left authored ADM XML materialization unchanged because the XML string is still reused for the sidecar XML file and BW64 `axml` embedding
+
+Validation gate:
+
+- focused report/package/parity compatibility checks passed
+- `ctest --test-dir build --output-on-failure` passed after the change
+
+Historical importance:
+
+- this is the first low-risk metadata streaming pass after the post-v1 cleanup wave
+- it narrows the remaining non-streaming metadata boundary to authored ADM XML and on-demand string compatibility helpers rather than JSON/report file output
+
 ## Resampling History
 
 The original `resamplingPlan.md` captured a narrow and important design boundary that should remain part of project history even after the standalone plan is retired.
