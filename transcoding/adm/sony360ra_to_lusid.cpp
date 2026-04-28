@@ -41,6 +41,7 @@
 // ---------------------------------------------------------------------------
 
 #include "sony360ra_to_lusid.hpp"
+#include "admHelper.hpp"
 #include "adm_to_lusid.hpp"
 
 #include <pugixml.hpp>
@@ -59,68 +60,7 @@ namespace cult {
 // implementation details or colliding with similar helpers in other modules.
 namespace {
 
-// ---------------------------------------------------------------------------
-// Depth-first descendant search (same pattern as adm_to_lusid.cpp)
-// ---------------------------------------------------------------------------
-static pugi::xml_node findDescendant(pugi::xml_node root, const char* name) {
-    pugi::xml_node cur = root.first_child();
-    while (cur) {
-        if (std::strcmp(cur.name(), name) == 0) return cur;
-        if (cur.first_child()) {
-            cur = cur.first_child();
-        } else if (cur.next_sibling()) {
-            cur = cur.next_sibling();
-        } else {
-            while (cur && !cur.next_sibling() && cur != root)
-                cur = cur.parent();
-            if (cur == root || !cur) break;
-            cur = cur.next_sibling();
-        }
-    }
-    return pugi::xml_node();
-}
-
-static std::vector<pugi::xml_node> findAllDescendants(
-    pugi::xml_node root, const char* name)
-{
-    std::vector<pugi::xml_node> result;
-    pugi::xml_node cur = root.first_child();
-    while (cur) {
-        if (std::strcmp(cur.name(), name) == 0) result.push_back(cur);
-        if (cur.first_child()) {
-            cur = cur.first_child();
-        } else if (cur.next_sibling()) {
-            cur = cur.next_sibling();
-        } else {
-            while (cur && !cur.next_sibling() && cur != root)
-                cur = cur.parent();
-            if (cur == root || !cur) break;
-            cur = cur.next_sibling();
-        }
-    }
-    return result;
-}
-
-// ---------------------------------------------------------------------------
-// parseTimecode360Ra()
-//
-// Parses HH:MM:SS.fffffS<sampleRate> → seconds.
-// sscanf with "%d:%d:%lf" stops at the 'S' character, so the sample-rate
-// suffix is discarded automatically. This is identical to the existing
-// parseTimecode() in adm_to_lusid.cpp — duplicated here for self-containment.
-// ---------------------------------------------------------------------------
-static double parseTimecode360Ra(const char* tc) {
-    if (!tc || tc[0] == '\0') return 0.0;
-    int h = 0, m = 0;
-    double s = 0.0;
-#ifdef _MSC_VER
-#pragma warning(suppress: 4996)
-#endif
-    if (std::sscanf(tc, "%d:%d:%lf", &h, &m, &s) == 3) {
-        return h * 3600.0 + m * 60.0 + s;
-    }
-    return 0.0;
-}
+// Shared ADM helpers live in adm_helpers (admHelper.hpp).
 
 // ---------------------------------------------------------------------------
 // polarToCart()
@@ -180,7 +120,7 @@ static pugi::xml_node findAdmRoot(const pugi::xml_document& doc) {
     if (rootName == "audioFormatExtended") return docRoot;
 
     // Case 3: fallback depth-first search
-    return findDescendant(docRoot, "audioFormatExtended");
+    return adm_helpers::findFirstDescendant(docRoot, "audioFormatExtended");
 }
 
 // ---------------------------------------------------------------------------
@@ -203,7 +143,7 @@ static pugi::xml_node findTechnicalNode(const pugi::xml_document& doc) {
     }
 
     // Fallback depth-first
-    return findDescendant(docRoot, "Technical");
+    return adm_helpers::findFirstDescendant(docRoot, "Technical");
 }
 
 // ---------------------------------------------------------------------------
@@ -316,7 +256,7 @@ ConversionResult convertSony360RaToLusid(
         auto dur = technical.child("Duration");
         if (!dur.empty() && dur.text()) {
             durationStr = dur.text().as_string("");
-            durationSec = parseTimecode360Ra(durationStr.c_str());
+            durationSec = adm_helpers::parseTimecodeToSeconds(durationStr.c_str());
         }
     } else {
         result.warnings.push_back(
@@ -330,7 +270,7 @@ ConversionResult convertSony360RaToLusid(
     //    AP_0003XXXX → AC_0003XXXX
     std::map<std::string, std::string> packToChannel;
     {
-        auto packFormats = findAllDescendants(admRoot, "audioPackFormat");
+    auto packFormats = adm_helpers::findAllDescendants(admRoot, "audioPackFormat");
         for (auto& pf : packFormats) {
             // Only type 0003 (Objects) — 360RA leaf packs
             std::string typeLabel = pf.attribute("typeLabel").as_string("");
@@ -348,7 +288,7 @@ ConversionResult convertSony360RaToLusid(
     // ------------------------------------------------------------------
     std::map<std::string, pugi::xml_node> channelMap;
     {
-        auto channelFormats = findAllDescendants(admRoot, "audioChannelFormat");
+    auto channelFormats = adm_helpers::findAllDescendants(admRoot, "audioChannelFormat");
         for (auto& cf : channelFormats) {
             std::string cfID = cf.attribute("audioChannelFormatID").as_string("");
             if (!cfID.empty())
@@ -368,7 +308,7 @@ ConversionResult convertSony360RaToLusid(
     int leafObjectsFound = 0;
     int leafObjectsConverted = 0;
 
-    auto allObjects = findAllDescendants(admRoot, "audioObject");
+    auto allObjects = adm_helpers::findAllDescendants(admRoot, "audioObject");
     for (auto& obj : allObjects) {
         // Skip container objects
         if (isContainerObject(obj)) continue;

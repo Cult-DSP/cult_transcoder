@@ -28,6 +28,7 @@
 // ---------------------------------------------------------------------------
 
 #include "adm_to_lusid.hpp"
+#include "admHelper.hpp"
 
 #include <pugixml.hpp>
 
@@ -52,56 +53,7 @@ namespace {
 // ---------------------------------------------------------------------------
 constexpr bool kLfeHardcoded = true;
 
-// ---------------------------------------------------------------------------
-// Depth-first descendant traversal helper
-// pugixml doesn't have a descendants() range. This collects all descendant
-// nodes matching a given element name in document (encounter) order, which
-// mirrors Python's Element.iter(tag).
-// ---------------------------------------------------------------------------
-std::vector<pugi::xml_node> findAllDescendants(
-    pugi::xml_node root,
-    const char* elementName)
-{
-    std::vector<pugi::xml_node> result;
-    // Use pugixml's find_node with depth-first traversal
-    pugi::xml_node cur = root.first_child();
-    while (cur) {
-        if (std::string(cur.name()) == elementName)
-            result.push_back(cur);
-
-        // Depth-first: go to first child, else next sibling, else backtrack
-        if (cur.first_child()) {
-            cur = cur.first_child();
-        } else if (cur.next_sibling()) {
-            cur = cur.next_sibling();
-        } else {
-            // Backtrack to find the next unvisited sibling of an ancestor
-            while (cur && !cur.next_sibling() && cur != root)
-                cur = cur.parent();
-            if (cur == root || !cur)
-                break;
-            cur = cur.next_sibling();
-        }
-    }
-    return result;
-}
-
-// ---------------------------------------------------------------------------
-// Timecode parsing — mirrors _parse_timecode_to_seconds()
-// ---------------------------------------------------------------------------
-double parseTimecode(const std::string& tc) {
-    if (tc.empty()) return 0.0;
-    // Format: HH:MM:SS.SSSSS
-    int hours = 0, minutes = 0;
-    double seconds = 0.0;
-#ifdef _MSC_VER
-#pragma warning(suppress: 4996)
-#endif
-    if (std::sscanf(tc.c_str(), "%d:%d:%lf", &hours, &minutes, &seconds) == 3) {
-        return hours * 3600.0 + minutes * 60.0 + seconds;
-    }
-    return 0.0;
-}
+// Helper implementations live in adm_helpers (admHelper.hpp).
 
 // ---------------------------------------------------------------------------
 // Position extraction — mirrors _get_position_coords()
@@ -226,7 +178,7 @@ ConversionResult convertAdmDocumentToLusid(pugi::xml_document& doc,
     auto docRoot = doc.document_element();
     // Search descendants (Python uses .//Technical which is a recursive search)
     pugi::xml_node technical;
-    auto techNodes = findAllDescendants(docRoot, "Technical");
+    auto techNodes = adm_helpers::findAllDescendants(docRoot, "Technical");
     if (!techNodes.empty()) {
         technical = techNodes[0];
     }
@@ -244,7 +196,7 @@ ConversionResult convertAdmDocumentToLusid(pugi::xml_document& doc,
     // -- Parse duration --
     double durationSeconds = -1.0;
     if (!durationStr.empty()) {
-        durationSeconds = parseTimecode(durationStr);
+    durationSeconds = adm_helpers::parseTimecodeToSeconds(durationStr);
     }
 
     // -- Metadata --
@@ -277,7 +229,7 @@ ConversionResult convertAdmDocumentToLusid(pugi::xml_document& doc,
     // Iterate all audioChannelFormat elements in document order
     // Python uses ebu_root.iter(_ebu("audioChannelFormat")) which is a
     // recursive descendant search in encounter order.
-    auto channelFormats = findAllDescendants(ebuRoot, "audioChannelFormat");
+    auto channelFormats = adm_helpers::findAllDescendants(ebuRoot, "audioChannelFormat");
     for (auto& channel : channelFormats) {
         std::string typeDef = channel.attribute("typeDefinition").as_string("");
         if (typeDef != "DirectSpeakers") continue;
@@ -370,7 +322,7 @@ ConversionResult convertAdmDocumentToLusid(pugi::xml_document& doc,
         groupCounter++;
 
         for (auto block : channel.children("audioBlockFormat")) {
-            double timeSec = parseTimecode(
+            double timeSec = adm_helpers::parseTimecodeToSeconds(
                 block.attribute("rtime").as_string("00:00:00.00000"));
             auto pos = getPositionCoords(block);
 
