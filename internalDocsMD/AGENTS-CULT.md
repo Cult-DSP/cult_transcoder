@@ -6,6 +6,8 @@
 
 ```
 You are continuing CULT Transcoder adm-author and package-generation work. The export-side `adm-author` pipeline writes Logic-compatible ADM XML plus ADM BWF/WAV via `libbw64`; `exported/lusid_package_logic_shaped.wav` has imported successfully in Logic Pro. A separate `package-adm-wav` command converts ADM BWF/WAV source material into a LUSID package by extracting embedded ADM metadata and splitting interleaved audio into mono float32 stems. All 73/73 current ingest/parity/CLI/authoring/packaging tests pass as of 2026-04-27. Do NOT regress the parity-critical ingest path. Keep authoring compatibility fixes separate from LUSID package generation work.
+
+Documentation rule: whenever you make a major implementation, architecture, milestone, validation, or future-work change, update `internalDocsMD/DEVELOPMENT.md` in the same change set so the historical development record stays current. Whenever a change affects authoring behavior, authoring validation, authoring CLI/API contract, compatibility status, or authoring future work, also update `internalDocsMD/AUTHORING.md` in the same change set.
 ```
 
 Goal: implement the final mapping and integration tests for the new export-side `adm-author` path, and perform strict Logic Pro Atmos manual validation.
@@ -21,7 +23,7 @@ Scope and constraints:
 
 Step-by-step tasks:
 
-1. Implement resampling (per internalDocsMD/resamplingPlan.md)
+1. Implement resampling (historical design now captured in internalDocsMD/DEVELOPMENT.md)
 
 - Vendor r8brain-free-src, wrap in a small internal API.
 - Normalize only non-48 kHz mono inputs to 48 kHz float32.
@@ -82,6 +84,7 @@ Execution order is mandatory: complete in sequence and keep ingest/parity behavi
 - Keep deterministic ordering + current validation semantics exactly as implemented.
 - **Required doc update in same PR:**
   - `internalDocsMD/AUTHORING.md` (paths, stage boundaries, contract snapshot, and entrypoint responsibilities)
+  - `internalDocsMD/DEVELOPMENT.md` (historical reorganization record)
 
 3. Move LUSID scene parsing behind `src/parsing/` — COMPLETE
 
@@ -96,7 +99,7 @@ Execution order is mandatory: complete in sequence and keep ingest/parity behavi
 - Move/split `src/report.cpp`, `src/cult_report.hpp` into `src/reporting/` (or adapters that preserve external includes during transition).
 - Centralize fail-report write behavior and temp+rename policy.
 - **Required doc update in same PR:**
-  - `internalDocsMD/CHANGELOG.md` (migration note + compatibility)
+  - `internalDocsMD/DEVELOPMENT.md` (migration note + compatibility)
   - `README.md` (reporting module location)
 
 5. Remove duplication in CLI and pipeline orchestration — COMPLETE
@@ -115,7 +118,7 @@ Execution order is mandatory: complete in sequence and keep ingest/parity behavi
 - Status 2026-04-27: full test gate passes 73/73 after package-generation integration, including parity, authoring, and packaging tests.
 - **Required doc update in same PR:**
   - `internalDocsMD/audit.md` (what was moved, evidence of non-regression)
-  - `internalDocsMD/CHANGELOG.md` (test/status note)
+  - `internalDocsMD/DEVELOPMENT.md` (test/status note)
 
 7. Finish pending Step 6 validation after structure stabilization — AUTOMATED TESTS COMPLETE, LOGIC VALIDATION PASSED
 
@@ -124,7 +127,7 @@ Execution order is mandatory: complete in sequence and keep ingest/parity behavi
 - Status 2026-04-27: mapping/integration tests are complete; Logic Pro manual import passed for `exported/lusid_package_logic_shaped.wav`.
 - **Required doc update in same PR:**
   - `internalDocsMD/AUTHORING.md` (validation outcomes)
-  - `internalDocsMD/CHANGELOG.md` (feature-complete test milestone)
+  - `internalDocsMD/DEVELOPMENT.md` (feature-complete test milestone)
 
 Repo placement: `spatialroot/cult-transcoder/` (git submodule, already wired).  
 Invocation: CLI-first. Spatial Root calls `spatialroot/cult-transcoder/build/cult-transcoder` (macOS/Linux) or the `.bat` wrapper on Windows (see §9).  
