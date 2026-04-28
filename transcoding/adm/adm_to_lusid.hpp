@@ -35,6 +35,10 @@
 #include <string>
 #include <vector>
 
+namespace pugi {
+class xml_document;
+}
+
 namespace cult {
 
 // ---------------------------------------------------------------------------
@@ -78,6 +82,12 @@ ConversionResult convertAdmToLusid(const std::string& xmlPath,
 /// Semantically identical to convertAdmToLusid(); all parity rules apply.
 ConversionResult convertAdmToLusidFromBuffer(const std::string& xmlBuffer,
                                               LfeMode lfeMode = LfeMode::Hardcoded);
+
+/// Convert an already-parsed ADM XML document.
+/// Internal orchestration path used when profile detection has already loaded
+/// the XML. Callers must keep the document alive for the duration of the call.
+ConversionResult convertAdmDocumentToLusid(pugi::xml_document& doc,
+                                            LfeMode lfeMode = LfeMode::Hardcoded);
 
 /// Serialize a LusidScene to a JSON string.
 /// Output is stable, pretty-printed LUSID Scene JSON.

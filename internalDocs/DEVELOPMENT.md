@@ -167,6 +167,21 @@ Historical importance:
 - this aligns CULT with the SpatialSeed-local schema-only LUSID repo at `LUSID/SCHEMA/lusid_scene_v1.0.schema.json`
 - it preserves the existing CULT responsibilities: source-format conversion, package creation, validation, and ADM authoring stay in CULT rather than moving into LUSID
 
+### 2026-04-28: ADM Transcoding Memory and Organization Cleanup
+
+Implemented:
+
+- removed duplicate XML parsing in the generic ADM transcode path by sharing the already-loaded `pugi::xml_document` between profile detection and generic conversion
+- kept Sony 360RA dispatch behavior on the same parsed document path
+- reduced generic ADM conversion staging by writing object block nodes directly into `timeToNodes` after direct speakers are collected
+- preserved the existing channel-format encounter order, direct-speaker first ordering, object group numbering, frame ordering, LFE behavior, time rounding, reports, and LUSID JSON output shape
+- removed the stale post-implementation planning stub from `adm_profile_resolver.cpp`
+
+Historical importance:
+
+- this lowered memory pressure and removed redundant parse work in the sensitive ingest path without changing the public CLI/API contract
+- it records that future changes to this path should be parity-tested before altering node ordering, frame counts, profile warnings, or time encoding behavior
+
 ## Resampling History
 
 The original `resamplingPlan.md` captured a narrow and important design boundary that should remain part of project history even after the standalone plan is retired.

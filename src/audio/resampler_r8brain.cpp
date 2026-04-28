@@ -26,6 +26,8 @@
 
 namespace cult {
 
+// File-local helpers live in an anonymous namespace to avoid exporting
+// implementation details or colliding with similar helpers in other modules.
 namespace {
 
 uint64_t estimateOutputFrames(uint64_t inputFrames,

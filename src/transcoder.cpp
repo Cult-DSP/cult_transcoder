@@ -39,6 +39,8 @@
 
 namespace cult {
 
+// File-local helpers live in an anonymous namespace to avoid exporting
+// implementation details or colliding with similar helpers in other modules.
 namespace {
 
 // Formats recognised by the CLI contract (§2).
@@ -126,7 +128,7 @@ TranscodeResult transcode(const TranscodeRequest& req) {
         if (profile.profile == AdmProfile::Sony360RA) {
             conversion = convertSony360RaToLusid(doc, req.lfeMode);
         } else {
-            conversion = convertAdmToLusid(req.inPath, req.lfeMode);
+            conversion = convertAdmDocumentToLusid(doc, req.lfeMode);
         }
 
     } else {
@@ -146,7 +148,14 @@ TranscodeResult transcode(const TranscodeRequest& req) {
 
         // Phase 4: profile detection on the extracted XML buffer.
         pugi::xml_document doc;
-        doc.load_string(axmlResult.xmlData.c_str());
+        auto parseRes = doc.load_string(axmlResult.xmlData.c_str());
+        if (!parseRes) {
+            report.errors.push_back(
+                "Failed to parse XML buffer: " + std::string(parseRes.description()) +
+                " at offset " + std::to_string(parseRes.offset));
+            report.status = "fail";
+            return result;
+        }
         ProfileResult profile = resolveAdmProfile(doc);
         for (auto& w : profile.warnings)
             report.warnings.push_back(w);
@@ -155,8 +164,7 @@ TranscodeResult transcode(const TranscodeRequest& req) {
         if (profile.profile == AdmProfile::Sony360RA) {
             conversion = convertSony360RaToLusid(doc, req.lfeMode);
         } else {
-            // Parse directly from the in-memory XML buffer — no disk re-read.
-            conversion = convertAdmToLusidFromBuffer(axmlResult.xmlData, req.lfeMode);
+            conversion = convertAdmDocumentToLusid(doc, req.lfeMode);
         }
     }
 

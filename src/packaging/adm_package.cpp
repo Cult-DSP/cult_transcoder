@@ -37,6 +37,8 @@
 namespace fs = std::filesystem;
 
 namespace cult {
+// File-local helpers live in an anonymous namespace to avoid exporting
+// implementation details or colliding with similar helpers in other modules.
 namespace {
 
 struct WavSourceInfo {

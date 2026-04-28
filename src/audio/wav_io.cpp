@@ -24,6 +24,8 @@
 
 namespace cult {
 
+// File-local helpers live in an anonymous namespace to avoid exporting
+// implementation details or colliding with similar helpers in other modules.
 namespace {
 
 uint32_t readU32(std::ifstream& f) {

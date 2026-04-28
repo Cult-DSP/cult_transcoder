@@ -270,10 +270,18 @@ These decisions are final and must not be changed without a doc-update PR.
 | ADM authoring normalized audio    | mono, 48 kHz, float32 WAV (v1 export path)                                                                                                        |
 | ADM authoring resampling          | allowed only in `adm-author` normalization stage; must be explicit in report                                                                      |
 | ADM authoring duration source     | normalized WAV frame count; scene duration must match or fail                                                                                     |
+| ADM profile/conversion parse ownership | `transcode()` should share one parsed `pugi::xml_document` between profile detection and generic ADM conversion; do not reparse the same path/buffer |
+| Generic ADM object staging        | keep `audioChannelFormat` encounter-order collection, but do not reintroduce full object-block staging unless a tested behavior change requires it |
 | LUSID authoring time normalization | `src/parsing/lusid_reader.cpp` converts accepted v1.0 `timeUnit` values (`seconds`/`s`, `milliseconds`/`ms`, `samples`/`samp`) to internal seconds |
 | Windows binary                    | `build/cult-transcoder.exe` called via `scripts/cult-transcoder.bat` wrapper                                                                      |
 | `.bat` wrapper rule               | Must be committed; every call-site in Spatial Root pipeline must have an inline comment explaining the indirection                                |
 | Fail-report behavior              | On any error (missing file, unsupported format, etc.) the CLI writes a best-effort `status: "fail"` report to the default path and exits non-zero |
+
+Deferred cleanup notes:
+
+- helper duplication in ADM/XML utilities is an intentional follow-up topic
+- streaming JSON output is an intentional follow-up topic
+- do not mix those broader refactors into parity-sensitive ADM conversion changes without explicit scope and fresh tests
 
 ---
 

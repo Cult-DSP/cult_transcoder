@@ -43,6 +43,8 @@
 
 namespace cult {
 
+// File-local helpers live in an anonymous namespace to avoid exporting
+// implementation details or colliding with similar helpers in other modules.
 namespace {
 
 // ---------------------------------------------------------------------------
@@ -198,14 +200,12 @@ std::string indent(int level) {
 } // anonymous namespace
 
 // ---------------------------------------------------------------------------
-// convertAdmToLusid — main entry point
+// convertAdmDocumentToLusid() — shared conversion for an already-loaded ADM XML
+// document. Used by the public file/buffer APIs and by transcode() after ADM
+// profile detection has already parsed the XML.
 // ---------------------------------------------------------------------------
-// ---------------------------------------------------------------------------
-// parseAdmDocument() — internal helper shared by both public entry points.
-// Called after the pugi::xml_document has been loaded (from file or buffer).
-// ---------------------------------------------------------------------------
-static ConversionResult parseAdmDocument(pugi::xml_document& doc,
-                                          LfeMode lfeMode = LfeMode::Hardcoded) {
+ConversionResult convertAdmDocumentToLusid(pugi::xml_document& doc,
+                                            LfeMode lfeMode) {
     ConversionResult result;
 
     // -- Find EBU root --
@@ -303,43 +303,6 @@ static ConversionResult parseAdmDocument(pugi::xml_document& doc,
     }
 
     // =====================================================================
-    // AUDIO OBJECTS → frames with time-varying positions
-    // Mirrors Python: extract_object_positions() + loop
-    // =====================================================================
-    struct ObjectBlock {
-        std::string rtime;
-        double x = 0, y = 0, z = 0;
-    };
-    struct ObjectInfo {
-        std::string name;
-        std::vector<ObjectBlock> blocks;
-    };
-
-    std::vector<ObjectInfo> audioObjects;
-
-    // Reuse the same channelFormats list (already in encounter order)
-    for (auto& channel : channelFormats) {
-        std::string typeDef = channel.attribute("typeDefinition").as_string("");
-        if (typeDef != "Objects") continue;
-
-        ObjectInfo obj;
-        obj.name = channel.attribute("audioChannelFormatName").as_string("Unnamed");
-
-        for (auto block : channel.children("audioBlockFormat")) {
-            ObjectBlock ob;
-            ob.rtime = block.attribute("rtime").as_string("00:00:00.00000");
-            auto pos = getPositionCoords(block);
-            ob.x = pos.x;
-            ob.y = pos.y;
-            ob.z = pos.z;
-            obj.blocks.push_back(ob);
-        }
-
-        if (!obj.blocks.empty())
-            audioObjects.push_back(obj);
-    }
-
-    // =====================================================================
     // BUILD LUSID SCENE — mirrors parse_adm_xml_to_lusid_scene() body
     // =====================================================================
     int groupCounter = 1;
@@ -394,19 +357,29 @@ static ConversionResult parseAdmDocument(pugi::xml_document& doc,
     groupCounter = numDirectSpeakers + 1;
 
     // -- Audio Objects across frames --
-    for (auto& obj : audioObjects) {
+    // Reuse the channelFormats encounter-order list, but write object block
+    // nodes directly instead of staging every block in an intermediate vector.
+    for (auto& channel : channelFormats) {
+        std::string typeDef = channel.attribute("typeDefinition").as_string("");
+        if (typeDef != "Objects") continue;
+
+        auto firstBlock = channel.child("audioBlockFormat");
+        if (firstBlock.empty()) continue;
+
         int objGroup = groupCounter;
         groupCounter++;
 
-        for (auto& block : obj.blocks) {
-            double timeSec = parseTimecode(block.rtime);
+        for (auto block : channel.children("audioBlockFormat")) {
+            double timeSec = parseTimecode(
+                block.attribute("rtime").as_string("00:00:00.00000"));
+            auto pos = getPositionCoords(block);
 
             LusidNode node;
             node.id = std::to_string(objGroup) + ".1";
             node.type = "audio_object";
-            node.cart[0] = block.x;
-            node.cart[1] = block.y;
-            node.cart[2] = block.z;
+            node.cart[0] = pos.x;
+            node.cart[1] = pos.y;
+            node.cart[2] = pos.z;
             node.hasCart = true;
             timeToNodes[timeSec].push_back(node);
         }
@@ -461,7 +434,7 @@ ConversionResult convertAdmToLusid(const std::string& xmlPath, LfeMode lfeMode) 
         return result;
     }
 
-    return parseAdmDocument(doc, lfeMode);
+    return convertAdmDocumentToLusid(doc, lfeMode);
 }
 
 // ---------------------------------------------------------------------------
@@ -469,7 +442,7 @@ ConversionResult convertAdmToLusid(const std::string& xmlPath, LfeMode lfeMode) 
 //
 // Phase 3: used when the XML was extracted from a BW64 WAV in-memory by
 // extractAxmlFromWav(). Avoids a disk write+re-read cycle. All parity rules
-// from AGENTS-CULT §3/§5 apply identically — same parseAdmDocument() call.
+// from AGENTS-CULT §3/§5 apply identically — same document conversion call.
 // ---------------------------------------------------------------------------
 ConversionResult convertAdmToLusidFromBuffer(const std::string& xmlBuffer,
                                               LfeMode lfeMode) {
@@ -484,7 +457,7 @@ ConversionResult convertAdmToLusidFromBuffer(const std::string& xmlBuffer,
         return result;
     }
 
-    return parseAdmDocument(doc, lfeMode);
+    return convertAdmDocumentToLusid(doc, lfeMode);
 }
 
 // ---------------------------------------------------------------------------

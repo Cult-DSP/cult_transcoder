@@ -33,6 +33,8 @@ namespace cult {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+// File-local helpers live in an anonymous namespace to avoid exporting
+// implementation details or colliding with similar helpers in other modules.
 namespace {
 
 // Escape a string for JSON embedding.
