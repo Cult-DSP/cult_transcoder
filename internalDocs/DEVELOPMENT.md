@@ -235,6 +235,25 @@ Historical importance:
 - this closes the remaining low-risk ADM helper duplication called out in the post-v1 cleanup work
 - it keeps parity-sensitive ingest behavior anchored to explicit helper coverage instead of relying only on broader end-to-end tests
 
+### 2026-04-28: Time Compatibility Audit and Narrow Authoring Fix
+
+Implemented:
+
+- audited the three time paths together: LUSID v1 frame-time normalization, authored ADM time serialization, and shared ADM time parsing
+- added coverage for millisecond input normalization, sample-rate-suffixed ADM helper parsing, sample-spaced authored object blocks, and authored ADM roundtrip timing
+- kept `convertSceneTimeToSeconds()` unchanged because the accepted `seconds` / `milliseconds` / `samples` input handling was already correct
+- kept shared ADM ingest parsing unchanged because the existing helper already accepted the fixture and authored wallclock forms under test
+- updated `AdmWriter::formatAdmTime()` to keep plain wallclock ADM timing while extending fractional precision up to 9 digits when sample-spaced object blocks need more than the original 5-decimal shape
+
+Validation gate:
+
+- `ctest --test-dir build --output-on-failure` passed `81/81`
+
+Historical importance:
+
+- this resolved the main remaining timing risk without changing parity-critical ingest ordering or package-generation behavior
+- it records that the real issue was authoring precision loss on sample-spaced object-block roundtrip, not LUSID v1 unit normalization or shared ADM helper parsing
+
 ## Resampling History
 
 The original `resamplingPlan.md` captured a narrow and important design boundary that should remain part of project history even after the standalone plan is retired.

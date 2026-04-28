@@ -46,8 +46,8 @@ struct TempDir {
     }
 };
 
-void writeFloatWav(const fs::path& path, float value) {
-    std::vector<float> samples(480, value);
+void writeFloatWav(const fs::path& path, float value, size_t frameCount = 480) {
+    std::vector<float> samples(frameCount, value);
     std::string error;
     REQUIRE(cult::writeFloat32MonoWav(path.string(), 48000, samples, error));
 }
@@ -222,4 +222,65 @@ TEST_CASE("AdmWriter maps beds before objects with deterministic IDs and motion 
     REQUIRE(dialogues.size() == 1);
     REQUIRE(std::string(dialogues[0].attribute("mixedContentKind").value()) == "0");
     REQUIRE(std::string(dialogues[0].text().get()) == "2");
+}
+
+TEST_CASE("AdmWriter preserves sample-spaced object block boundaries in authored timing",
+          "[adm-author][mapping]") {
+    TempDir temp;
+
+    writeFloatWav(temp.path / "11.1.wav", 0.4f, 3);
+
+    cult::WavFileInfo wavInfo;
+    std::string error;
+    REQUIRE(cult::readWavInfo((temp.path / "11.1.wav").string(), wavInfo, error));
+
+    cult::LusidScene scene;
+    scene.duration = 3.0 / 48000.0;
+    scene.frames.push_back(cult::LusidFrame{
+        0.0,
+        { makeNode("11.1", "audio_object", 0.0, 0.0, 0.0) }
+    });
+    scene.frames.push_back(cult::LusidFrame{
+        1.0 / 48000.0,
+        { makeNode("11.1", "audio_object", 0.5, 0.0, 0.25) }
+    });
+    scene.frames.push_back(cult::LusidFrame{
+        2.0 / 48000.0,
+        { makeNode("11.1", "audio_object", 1.0, 0.0, 0.5) }
+    });
+
+    cult::AdmWriter writer;
+    const fs::path outXml = temp.path / "sample_spaced.adm.xml";
+    const fs::path outWav = temp.path / "sample_spaced.wav";
+    auto result = writer.writeAdmBw64(
+        outXml.string(),
+        outWav.string(),
+        scene,
+        std::vector<cult::WavFileInfo>{wavInfo},
+        48000,
+        3
+    );
+
+    REQUIRE(result.success);
+
+    pugi::xml_document doc;
+    REQUIRE(doc.load_file(outXml.string().c_str()));
+
+    pugi::xml_node objectChannel;
+    for (auto channel : childrenByName(doc, "audioChannelFormat")) {
+        if (std::string(channel.attribute("audioChannelFormatName").value()) == "11.1") {
+            objectChannel = channel;
+            break;
+        }
+    }
+
+    REQUIRE(objectChannel);
+    const auto objectBlocks = childrenByName(objectChannel, "audioBlockFormat");
+    REQUIRE(objectBlocks.size() == 3);
+    REQUIRE(std::string(objectBlocks[0].attribute("rtime").value()) == "00:00:00.00000");
+    REQUIRE(std::string(objectBlocks[1].attribute("rtime").value()) == "00:00:00.000020833");
+    REQUIRE(std::string(objectBlocks[2].attribute("rtime").value()) == "00:00:00.000041667");
+    REQUIRE(std::string(objectBlocks[0].attribute("duration").value()) == "00:00:00.000020833");
+    REQUIRE(std::string(objectBlocks[1].attribute("duration").value()) == "00:00:00.000020833");
+    REQUIRE(std::string(objectBlocks[2].attribute("duration").value()) == "00:00:00.000020833");
 }

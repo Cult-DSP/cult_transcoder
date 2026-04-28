@@ -60,7 +60,8 @@ public:
 private:
     std::string generateAdmXml(const LusidScene& scene, const std::vector<WavFileInfo>& monoWavs, uint32_t targetSampleRate, uint64_t expectedFrames, uint32_t& outChannelCount, uint32_t& outObjectCount);
 
-    // Convert float time to ADM S48000 format
+    // Convert float time to ADM wallclock format, keeping enough fractional
+    // precision for sample-spaced authoring timelines.
     std::string formatAdmTime(double timeSeconds, uint32_t sampleRate) const;
 
     // Sort logic

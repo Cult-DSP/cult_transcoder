@@ -61,6 +61,7 @@ LUSID scene contract:
 - `duration`, when present, is top-level seconds and must match normalized audio duration
 - authoring accepts frame timestamps in `seconds`/`s`, `milliseconds`/`ms`, or `samples`/`samp`; sample timestamps require `sampleRate`
 - authoring converts accepted frame timestamps to seconds before ADM block generation
+- authored ADM timing stays in plain wallclock form and now emits at least 5 fractional digits, extending up to 9 digits when needed to preserve sample-spaced object block timing
 - unsupported metadata child nodes such as `spectral_features` and `agent_state` are ignored by ADM authoring
 
 Current WAV assumptions:
@@ -484,11 +485,24 @@ Observed AXML differences from the original Logic-authored BWF:
 
 Implemented follow-up:
 
-- `AdmWriter::formatAdmTime()` now emits plain `HH:MM:SS.fffff` time strings for authored ADM XML.
+- `AdmWriter::formatAdmTime()` now emits plain `HH:MM:SS.fffff...` wallclock time strings for authored ADM XML, keeping the original 5-digit shape for exact 5-decimal values and extending to 9 fractional digits when sample-spaced object timing needs more precision.
 - Direct-speaker bed blocks now include `cartesian` and room-centric positions matching the original bed layout.
 - Object blocks now emit `cartesian` as a child element and include `<jumpPosition interpolationLength="0">1</jumpPosition>`.
 - `audioContent` now emits the original-style `dialogue` marker.
 - XML generation now groups elements in the Logic-observed order: content refs, audio objects, packs, channels, streams, track formats, track UIDs.
+
+### 5.6.1 Time Compatibility Audit Follow-Up
+
+Audit result:
+
+- LUSID v1 millisecond and sample timestamp inputs were already normalizing correctly through `convertSceneTimeToSeconds()`.
+- Shared ADM time parsing in `adm_helpers::parseTimecodeToSeconds()` already accepted both plain wallclock values and sample-rate-suffixed fixture strings well enough for the current ingest/parity path.
+- The real mismatch was authoring precision: plain 5-decimal output preserved 48 kHz frame ordering, but it lost sample-resolution fidelity on authored object-block roundtrip.
+
+Implemented follow-up:
+
+- `AdmWriter::formatAdmTime()` now keeps plain wallclock ADM timing but extends fractional precision up to 9 digits when needed, while retaining 5-digit output for exact 5-decimal values such as `00:00:00.00500`.
+- Added coverage for millisecond input normalization, sample-spaced authored object blocks, sample-resolution authoring roundtrip, and sample-rate-suffixed ADM helper parsing.
 
 Current validation candidate for this experiment:
 

@@ -484,23 +484,37 @@ std::string saveXmlToString(const pugi::xml_document& doc) {
 } // namespace
 
 std::string AdmWriter::formatAdmTime(double timeSeconds, uint32_t sampleRate) const {
-    (void)sampleRate;
-    // Basic format: HH:MM:SS.fffff
-    uint64_t totalSeconds = static_cast<uint64_t>(timeSeconds);
-    uint32_t hours = totalSeconds / 3600;
-    uint32_t minutes = (totalSeconds % 3600) / 60;
-    uint32_t seconds = totalSeconds % 60;
+    const double clamped = std::max(0.0, timeSeconds);
+    uint64_t totalSeconds = static_cast<uint64_t>(std::floor(clamped));
+    double frac = clamped - static_cast<double>(totalSeconds);
 
-    double frac = timeSeconds - static_cast<double>(totalSeconds);
-    uint32_t fracFrames = static_cast<uint32_t>(std::round(frac * 100000.0));
+    const uint32_t minDigits = 5;
+    const uint32_t maxDigits = (sampleRate > 0) ? 9 : minDigits;
+    const uint32_t scale = static_cast<uint32_t>(std::pow(10.0, static_cast<double>(maxDigits)));
+    uint32_t fracUnits = static_cast<uint32_t>(std::llround(frac * static_cast<double>(scale)));
+    if (fracUnits == scale) {
+        fracUnits = 0;
+        ++totalSeconds;
+    }
+
+    const uint32_t hours = static_cast<uint32_t>(totalSeconds / 3600);
+    const uint32_t minutes = static_cast<uint32_t>((totalSeconds % 3600) / 60);
+    const uint32_t seconds = static_cast<uint32_t>(totalSeconds % 60);
+
+    std::string fracText = std::to_string(fracUnits);
+    if (fracText.size() < maxDigits) {
+        fracText.insert(fracText.begin(), maxDigits - fracText.size(), '0');
+    }
+    while (fracText.size() > minDigits && fracText.back() == '0') {
+        fracText.pop_back();
+    }
 
     std::ostringstream out;
     out << std::setfill('0')
         << std::setw(2) << hours << ":"
         << std::setw(2) << minutes << ":"
         << std::setw(2) << seconds << "."
-        << std::setw(5) << fracFrames;
-
+        << fracText;
     return out.str();
 }
 

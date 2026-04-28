@@ -5,28 +5,30 @@
 ### Context Reset Prompt — Current Repo State
 
 ```
-You are continuing CULT Transcoder work from a post-v1-authoring baseline. The export-side `adm-author` pipeline writes Logic-compatible ADM XML plus ADM BWF/WAV via `libbw64`; `exported/lusid_package_logic_shaped.wav` has imported successfully in Logic Pro. A separate `package-adm-wav` command converts ADM BWF/WAV source material into a LUSID package by extracting embedded ADM metadata and splitting interleaved audio into mono float32 stems. All 74/74 current ingest/parity/CLI/authoring/packaging tests pass as of 2026-04-28. Do NOT regress the parity-critical ingest path. Keep authoring compatibility fixes separate from LUSID package generation work.
+You are continuing CULT Transcoder work from a stable post-v1-authoring baseline. The export-side `adm-author` pipeline writes Logic-compatible ADM XML plus ADM BWF/WAV via `libbw64`; `exported/lusid_package_logic_shaped.wav` has imported successfully in Logic Pro. A separate `package-adm-wav` command converts ADM BWF/WAV source material into a LUSID package by extracting embedded ADM metadata and splitting interleaved audio into mono float32 stems. Recent cleanup work is complete: reporting helpers were deduplicated, ingest code moved under `src/transcoding/`, generic `package-adm-wav` now shares one parsed ADM document instead of reparsing `axml`, shared ADM document-root / `Technical` / timecode helpers are consolidated in `src/transcoding/adm/admHelper.hpp`, and the time-compatibility audit confirmed that the real remaining issue was authoring precision on sample-spaced object blocks, which is now covered by tests and fixed by plain wallclock output that extends up to 9 fractional digits when needed. All 81/81 current ingest/parity/CLI/authoring/packaging/helper tests pass as of 2026-04-28. Do NOT regress the parity-critical ingest path. Keep authoring compatibility fixes separate from LUSID package generation work.
 
-Immediate follow-up issues from the ADM transcoding review:
+Immediate context for the next agent:
 - metadata streaming remains deferred: LUSID JSON output and authored ADM XML are still materialized as complete strings before writing
 - memory-sensitive ingest invariant: generic ADM object blocks should continue flowing directly into `timeToNodes`; do not reintroduce full object-block staging unless a tested behavior change requires it
-- before touching time compatibility, inspect `src/parsing/lusid_reader.cpp::convertSceneTimeToSeconds()`, `src/authoring/adm_writer.cpp::formatAdmTime()`, and generic ADM `audioBlockFormat/@rtime` parsing
+- the recent time-compatibility audit already established the narrow fix boundary: `src/parsing/parsingHelper.hpp::convertSceneTimeToSeconds()` and shared ADM time parsing stayed unchanged, while `src/authoring/adm_writer.cpp::formatAdmTime()` now keeps plain wallclock timing with up to 9 fractional digits when sample-spaced object blocks need extra precision
+- if future timing work is needed, keep it test-led and preserve parity/order semantics unless tests and docs are updated together
 
-
-Documentation rule: whenever you make a major implementation, architecture, milestone, validation, or future-work change, update `internalDocs/DEVELOPMENT.md` in the same change set so the historical development record stays current. Whenever a change affects authoring behavior, authoring validation, authoring CLI/API contract, compatibility status, or authoring future work, also update `internalDocs/AUTHORING.md` in the same change set.
+Documentation rule: whenever you make a major implementation, architecture, milestone, validation, or future-work change, update `internalDocs/DEVELOPMENT.md` in the same change set so the historical development record stays current. Whenever a change affects authoring behavior, authoring validation, authoring CLI/API contract, compatibility status, or authoring future work, also update `internalDocs/AUTHORING.md` in the same change set. Update `internalDocs/dataFlow.md` when the runtime flow or ownership/lifetime story changes.
 
 Canonical docs:
 - `internalDocs/AUTHORING.md` — authoring contract, validation results, compatibility status, and authoring future work
 - `internalDocs/DEVELOPMENT.md` — historical implementation timeline, milestones, refactors, and major feature decisions
+- `internalDocs/dataFlow.md` — runtime data ownership, parsing/serialization flow, and non-streaming boundaries
 - `internalDocs/audit.md` — integration-facing notes for SpatialSeed wiring and non-regression evidence
 
 Current open work:
+- metadata streaming for LUSID JSON output and authored ADM XML remains future work
 - stereo-pair reconstruction from adjacent mono ADM tracks is future work
 - Dolby-approved-master recognition is future work and not a v1 blocker
 - MPEG-H planning exists in docs, but is not the active implementation track unless explicitly requested
 
 Next task focus:
-- prioritize code cleanup, reduction of duplication, doc drift cleanup, naming cleanup, ownership cleanup, and low-risk maintainability improvements before starting new feature work
+- prioritize low-risk follow-up work before coding: preserve the protected ingest/parity path, keep authoring and packaging fixes separate, and prefer small maintainability or consistency fixes with focused tests and matching doc updates
 ```
 
 Goal: keep the repo clean, stable, and maintainable while preserving the working v1 authoring/packaging baseline and the protected ingest/parity path.
@@ -461,6 +463,7 @@ Time compatibility debug rule:
 - If future bugs involve shifted ADM motion, wrong `audioBlockFormat rtime`/`duration`, scene duration mismatches, sample-based timelines, millisecond timelines, or off-by-one-frame timing, inspect `src/parsing/lusid_reader.cpp` first.
 - The key path is `readLusidScene()` -> `convertSceneTimeToSeconds()`, which normalizes LUSID v1.0 frame times into seconds before authoring.
 - Then inspect `src/authoring/adm_writer.cpp`, especially timeline sorting and `formatAdmTime(...)`, because this is where normalized seconds become ADM `rtime` and `duration` attributes.
+- If manual authoring validation in Logic Pro, Dolby tools, or other DAWs regresses after the time-compatibility audit, inspect the recent `AdmWriter::formatAdmTime()` precision change and its new coverage in `tests/test_lusid_to_adm_mapping.cpp` and `tests/test_adm_author_integration.cpp` before changing ingest or packaging code.
 - For package roundtrips, also inspect `src/packaging/adm_package.cpp` only after confirming the LUSID scene times written by `src/transcoding/adm/adm_to_lusid.cpp` are correct.
 
 ---

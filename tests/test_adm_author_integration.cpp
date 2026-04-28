@@ -18,8 +18,10 @@
 
 #include "cult_transcoder.hpp"
 #include "audio/wav_io.hpp"
+#include "transcoding/adm/adm_to_lusid.hpp"
 
 #include <bw64/bw64.hpp>
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <pugixml.hpp>
 
@@ -288,6 +290,120 @@ TEST_CASE("admAuthor accepts LUSID v1 sample timestamps by converting them to se
     const std::string xml = readTextFile(outXml);
     REQUIRE(xml.find("rtime=\"00:00:00.00500\"") != std::string::npos);
     REQUIRE(xml.find("duration=\"00:00:00.00500\"") != std::string::npos);
+}
+
+TEST_CASE("admAuthor accepts LUSID v1 millisecond timestamps by converting them to seconds",
+          "[adm-author][integration]") {
+    TempDir temp;
+
+    const fs::path scenePath = temp.path / "scene_ms.lusid.json";
+    writeTextFile(scenePath, R"JSON({
+  "version": "1.0",
+  "timeUnit": "milliseconds",
+  "duration": 0.01,
+  "frames": [
+    {
+      "time": 0.0,
+      "nodes": [
+        {"id": "11.1", "type": "audio_object", "cart": [0.0, 0.0, 0.0]}
+      ]
+    },
+    {
+      "time": 5.0,
+      "nodes": [
+        {"id": "11.1", "type": "audio_object", "cart": [0.25, 0.5, 0.75]}
+      ]
+    }
+  ]
+})JSON");
+
+    writeFloatWav(temp.path / "11.1.wav", 0.3f);
+
+    const fs::path outXml = temp.path / "export_ms.adm.xml";
+    const fs::path outWav = temp.path / "export_ms.wav";
+
+    cult::AdmAuthorRequest req;
+    req.lusidPath = scenePath.string();
+    req.wavDir = temp.path.string();
+    req.outXmlPath = outXml.string();
+    req.outWavPath = outWav.string();
+
+    auto result = cult::admAuthor(req);
+    INFO(result.report.toJson());
+    REQUIRE(result.success);
+    REQUIRE(result.report.summary.timeUnit == "seconds");
+    REQUIRE(result.report.summary.numFrames == 2);
+
+    const std::string xml = readTextFile(outXml);
+    REQUIRE(xml.find("rtime=\"00:00:00.00500\"") != std::string::npos);
+    REQUIRE(xml.find("duration=\"00:00:00.00500\"") != std::string::npos);
+}
+
+TEST_CASE("admAuthor preserves sample-resolution object timing through authored ADM roundtrip",
+          "[adm-author][integration]") {
+    TempDir temp;
+
+    const fs::path scenePath = temp.path / "scene_samples_roundtrip.lusid.json";
+    writeTextFile(scenePath, R"JSON({
+  "version": "1.0",
+  "timeUnit": "samples",
+  "sampleRate": 48000,
+  "duration": 0.0000625,
+  "frames": [
+    {
+      "time": 0,
+      "nodes": [
+        {"id": "11.1", "type": "audio_object", "cart": [0.0, 0.0, 0.0]}
+      ]
+    },
+    {
+      "time": 1,
+      "nodes": [
+        {"id": "11.1", "type": "audio_object", "cart": [0.25, 0.0, 0.25]}
+      ]
+    },
+    {
+      "time": 2,
+      "nodes": [
+        {"id": "11.1", "type": "audio_object", "cart": [0.5, 0.0, 0.5]}
+      ]
+    }
+  ]
+})JSON");
+
+    writeFloatWav(temp.path / "11.1.wav", 0.3f, 3);
+
+    const fs::path outXml = temp.path / "export_samples_roundtrip.adm.xml";
+    const fs::path outWav = temp.path / "export_samples_roundtrip.wav";
+
+    cult::AdmAuthorRequest req;
+    req.lusidPath = scenePath.string();
+    req.wavDir = temp.path.string();
+    req.outXmlPath = outXml.string();
+    req.outWavPath = outWav.string();
+
+    auto result = cult::admAuthor(req);
+    INFO(result.report.toJson());
+    REQUIRE(result.success);
+
+    const std::string xml = readTextFile(outXml);
+    REQUIRE(xml.find("rtime=\"00:00:00.000020833\"") != std::string::npos);
+    REQUIRE(xml.find("rtime=\"00:00:00.000041667\"") != std::string::npos);
+    REQUIRE(xml.find("duration=\"00:00:00.000020833\"") != std::string::npos);
+
+    const auto roundtrip = cult::convertAdmToLusidFromBuffer(xml);
+    INFO(cult::lusidSceneToJson(roundtrip.scene));
+    REQUIRE(roundtrip.success);
+    REQUIRE(roundtrip.scene.frames.size() == 3);
+    REQUIRE(roundtrip.scene.frames[0].nodes.size() == 1);
+    REQUIRE(roundtrip.scene.frames[1].nodes.size() == 1);
+    REQUIRE(roundtrip.scene.frames[2].nodes.size() == 1);
+    REQUIRE(roundtrip.scene.frames[0].time == Catch::Approx(0.0));
+    REQUIRE(roundtrip.scene.frames[1].time == Catch::Approx(1.0 / 48000.0).margin(1e-6));
+    REQUIRE(roundtrip.scene.frames[2].time == Catch::Approx(2.0 / 48000.0).margin(1e-6));
+    REQUIRE(roundtrip.scene.frames[0].nodes[0].id == "1.1");
+    REQUIRE(roundtrip.scene.frames[1].nodes[0].id == "1.1");
+    REQUIRE(roundtrip.scene.frames[2].nodes[0].id == "1.1");
 }
 
 TEST_CASE("admAuthor can copy an experimental dbmd chunk into authored output",

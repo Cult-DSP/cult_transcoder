@@ -79,6 +79,9 @@ TEST_CASE("ADM helpers find audioFormatExtended and Technical nodes across wrapp
 
 TEST_CASE("ADM helpers parse ADM timecodes to seconds", "[adm_helpers]") {
     CHECK(cult::adm_helpers::parseTimecodeToSeconds("00:00:00.01000") == Catch::Approx(0.01));
+    CHECK(cult::adm_helpers::parseTimecodeToSeconds("00:00:00.01024S48000") == Catch::Approx(0.01024));
+    CHECK(cult::adm_helpers::parseTimecodeToSeconds("00:00:00.000020833") ==
+          Catch::Approx(1.0 / 48000.0).margin(1e-9));
     CHECK(cult::adm_helpers::parseTimecodeToSeconds("01:02:03.50000") == Catch::Approx(3723.5));
     CHECK(cult::adm_helpers::parseTimecodeToSeconds("") == Catch::Approx(0.0));
 }
