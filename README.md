@@ -11,6 +11,18 @@ cmake --build build --parallel
 ./build/cult-transcoder --version
 ```
 
+The binary is not installed onto your shell `PATH` by default. From inside this module, run it as:
+
+```bash
+build/cult-transcoder <command> ...
+```
+
+From the parent `spatialSeed` repo root, run it as:
+
+```bash
+cult_transcoder/build/cult-transcoder <command> ...
+```
+
 ## Run tests
 
 ```bash
@@ -28,7 +40,7 @@ Exit codes: `0` success · `1` processing failure · `2` arg/usage error.
 Convert ADM metadata into LUSID Scene JSON.
 
 ```
-cult-transcoder transcode \
+build/cult-transcoder transcode \
   --in <path> \
   --in-format <adm_xml|adm_wav> \
   --out <scene.lusid.json> \
@@ -40,22 +52,22 @@ cult-transcoder transcode \
 
 Options:
 
-| Option | Required | Description |
-| --- | --- | --- |
-| `--in <path>` | yes | Source ADM XML or ADM WAV/BWF file. |
-| `--in-format <adm_xml|adm_wav>` | yes | Input format. `adm_wav` extracts embedded `axml`. |
-| `--out <path>` | yes | Output `scene.lusid.json`. |
-| `--out-format lusid_json` | yes | Current supported output format. |
-| `--report <path>` | no | Report path. Default: `<out>.report.json`. |
-| `--stdout-report` | no | Also print report JSON to stdout. |
-| `--lfe-mode <hardcoded|speaker-label>` | no | LFE detection mode. Default: `hardcoded`, where the fourth direct speaker is LFE. |
+| Option                    | Required        | Description                                |
+| ------------------------- | --------------- | ------------------------------------------ | --------------------------------------------------------------------------------- |
+| `--in <path>`             | yes             | Source ADM XML or ADM WAV/BWF file.        |
+| `--in-format <adm_xml     | adm_wav>`       | yes                                        | Input format. `adm_wav` extracts embedded `axml`.                                 |
+| `--out <path>`            | yes             | Output `scene.lusid.json`.                 |
+| `--out-format lusid_json` | yes             | Current supported output format.           |
+| `--report <path>`         | no              | Report path. Default: `<out>.report.json`. |
+| `--stdout-report`         | no              | Also print report JSON to stdout.          |
+| `--lfe-mode <hardcoded    | speaker-label>` | no                                         | LFE detection mode. Default: `hardcoded`, where the fourth direct speaker is LFE. |
 
 ### `adm-author`
 
 Author LUSID package material into Logic-compatible ADM BWF/WAV plus sidecar ADM XML.
 
 ```
-cult-transcoder adm-author \
+build/cult-transcoder adm-author \
   --lusid <scene.lusid.json> \
   --wav-dir <path> \
   --out-xml <export.adm.xml> \
@@ -64,7 +76,7 @@ cult-transcoder adm-author \
   [--dbmd-source <source.wav|dbmd.bin>]
 
 # alternate input
-cult-transcoder adm-author \
+build/cult-transcoder adm-author \
   --lusid-package <path> \
   --out-xml <export.adm.xml> \
   --out-wav <export.wav> \
@@ -76,24 +88,24 @@ cult-transcoder adm-author \
 
 Options:
 
-| Option | Required | Description |
-| --- | --- | --- |
-| `--lusid <scene.lusid.json>` | yes, unless `--lusid-package` is used | Explicit LUSID scene file. Must be paired with `--wav-dir`. |
-| `--wav-dir <path>` | yes, unless `--lusid-package` is used | Directory containing mono WAV stems named by node ID, with `4.1` resolved as `LFE.wav`. |
-| `--lusid-package <path>` | yes, unless `--lusid`/`--wav-dir` are used | Package directory containing `scene.lusid.json` and stems. Mutually exclusive with `--lusid`/`--wav-dir`. |
-| `--out-xml <path>` | yes | Authored ADM XML sidecar. |
-| `--out-wav <path>` | yes | Authored ADM BWF/WAV with embedded `axml` and `chna`. |
-| `--report <path>` | no | Report path. Default: `<out-wav>.report.json`, or `<out-xml>.report.json` if no WAV path is available. |
-| `--stdout-report` | no | Also print report JSON to stdout. |
-| `--quiet` | no | Disable stderr progress bars. |
-| `--dbmd-source <source.wav|dbmd.bin>` | no | Experimental Dolby-tool compatibility option. Copies `dbmd` from an existing ADM WAV, or treats a non-WAV file as raw `dbmd` payload. |
+| Option                       | Required                                   | Description                                                                                               |
+| ---------------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `--lusid <scene.lusid.json>` | yes, unless `--lusid-package` is used      | Explicit LUSID scene file. Must be paired with `--wav-dir`.                                               |
+| `--wav-dir <path>`           | yes, unless `--lusid-package` is used      | Directory containing mono WAV stems named by node ID, with `4.1` resolved as `LFE.wav`.                   |
+| `--lusid-package <path>`     | yes, unless `--lusid`/`--wav-dir` are used | Package directory containing `scene.lusid.json` and stems. Mutually exclusive with `--lusid`/`--wav-dir`. |
+| `--out-xml <path>`           | yes                                        | Authored ADM XML sidecar.                                                                                 |
+| `--out-wav <path>`           | yes                                        | Authored ADM BWF/WAV with embedded `axml` and `chna`.                                                     |
+| `--report <path>`            | no                                         | Report path. Default: `<out-wav>.report.json`, or `<out-xml>.report.json` if no WAV path is available.    |
+| `--stdout-report`            | no                                         | Also print report JSON to stdout.                                                                         |
+| `--quiet`                    | no                                         | Disable stderr progress bars.                                                                             |
+| `--dbmd-source <source.wav   | dbmd.bin>`                                 | no                                                                                                        | Experimental Dolby-tool compatibility option. Copies `dbmd` from an existing ADM WAV, or treats a non-WAV file as raw `dbmd` payload. |
 
 ### `package-adm-wav`
 
 Generate a self-contained LUSID package from an existing ADM BWF/WAV source.
 
 ```
-cult-transcoder package-adm-wav \
+build/cult-transcoder package-adm-wav \
   --in <source.wav> \
   --out-package <package-dir> \
   [--report <path>] [--stdout-report] [--quiet] \
@@ -104,14 +116,14 @@ cult-transcoder package-adm-wav \
 
 Options:
 
-| Option | Required | Description |
-| --- | --- | --- |
-| `--in <source.wav>` | yes | Source ADM WAV/BWF with embedded `axml`. |
-| `--out-package <package-dir>` | yes | Destination package directory. Existing package output is replaced after temp output succeeds. |
-| `--report <path>` | no | Report path. Default: `<package-dir>/scene_report.json`. A package-local `scene_report.json` is also written. |
-| `--stdout-report` | no | Also print report JSON to stdout. |
-| `--quiet` | no | Disable stderr progress bars. |
-| `--lfe-mode <hardcoded|speaker-label>` | no | LFE detection mode. Default: `hardcoded`. |
+| Option                        | Required        | Description                                                                                                   |
+| ----------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `--in <source.wav>`           | yes             | Source ADM WAV/BWF with embedded `axml`.                                                                      |
+| `--out-package <package-dir>` | yes             | Destination package directory. Existing package output is replaced after temp output succeeds.                |
+| `--report <path>`             | no              | Report path. Default: `<package-dir>/scene_report.json`. A package-local `scene_report.json` is also written. |
+| `--stdout-report`             | no              | Also print report JSON to stdout.                                                                             |
+| `--quiet`                     | no              | Disable stderr progress bars.                                                                                 |
+| `--lfe-mode <hardcoded        | speaker-label>` | no                                                                                                            | LFE detection mode. Default: `hardcoded`. |
 
 ## Public C++ API
 
@@ -119,28 +131,28 @@ The stable public entry point is [src/cult_transcoder.hpp](src/cult_transcoder.h
 
 Primary calls:
 
-| Function | Request | Result | Purpose |
-| --- | --- | --- | --- |
-| `cult::transcode()` | `TranscodeRequest` | `TranscodeResult` | ADM XML/WAV -> LUSID JSON. |
-| `cult::admAuthor()` | `AdmAuthorRequest` | `AdmAuthorResult` | LUSID package/stems -> ADM XML + ADM BWF/WAV. |
-| `cult::packageAdmWav()` | `PackageAdmWavRequest` | `PackageAdmWavResult` | ADM BWF/WAV -> LUSID package. |
+| Function                | Request                | Result                | Purpose                                       |
+| ----------------------- | ---------------------- | --------------------- | --------------------------------------------- |
+| `cult::transcode()`     | `TranscodeRequest`     | `TranscodeResult`     | ADM XML/WAV -> LUSID JSON.                    |
+| `cult::admAuthor()`     | `AdmAuthorRequest`     | `AdmAuthorResult`     | LUSID package/stems -> ADM XML + ADM BWF/WAV. |
+| `cult::packageAdmWav()` | `PackageAdmWavRequest` | `PackageAdmWavResult` | ADM BWF/WAV -> LUSID package.                 |
 
 Long-running authoring and packaging phases can report progress through `ProgressCallback` in [src/progress.hpp](src/progress.hpp). CLI progress bars render to stderr and never contaminate `--stdout-report`.
 
 Current progress phases:
 
-| Phase | Used by | Meaning |
-| --- | --- | --- |
-| `metadata` | `adm-author`, `package-adm-wav` | Reading/converting scene metadata. |
-| `inspect` | `adm-author` | Checking source stem files. |
-| `normalize` | `adm-author` | Normalizing stems to 48 kHz float32. |
-| `interleave` | `adm-author` | Writing interleaved ADM WAV audio. |
-| `split` | `package-adm-wav` | Splitting interleaved ADM WAV audio into mono stems. |
+| Phase        | Used by                         | Meaning                                              |
+| ------------ | ------------------------------- | ---------------------------------------------------- |
+| `metadata`   | `adm-author`, `package-adm-wav` | Reading/converting scene metadata.                   |
+| `inspect`    | `adm-author`                    | Checking source stem files.                          |
+| `normalize`  | `adm-author`                    | Normalizing stems to 48 kHz float32.                 |
+| `interleave` | `adm-author`                    | Writing interleaved ADM WAV audio.                   |
+| `split`      | `package-adm-wav`               | Splitting interleaved ADM WAV audio into mono stems. |
 
 ## Phase status
 
-| Phase | Description                       | Status      |
-| ----- | --------------------------------- | ----------- |
+| Phase | Description                       | Status   |
+| ----- | --------------------------------- | -------- |
 | 1     | Repo skeleton, CLI, report schema | Complete |
 | 2     | ADM XML -> LUSID JSON             | Complete |
 | 3     | ADM WAV ingestion inside CULT     | Complete |
