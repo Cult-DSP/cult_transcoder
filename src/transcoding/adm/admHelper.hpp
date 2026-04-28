@@ -68,6 +68,62 @@ inline pugi::xml_node findFirstDescendant(pugi::xml_node root, const char* name)
     return pugi::xml_node();
 }
 
+inline pugi::xml_node findEbuRoot(const pugi::xml_document& doc) {
+    auto root = doc.document_element();
+    if (!root) return pugi::xml_node();
+
+    const std::string rootName = root.name();
+    if (rootName == "ebuCoreMain") return root;
+
+    auto axml = root.child("aXML");
+    if (!axml.empty()) {
+        auto ebu = axml.child("ebuCoreMain");
+        if (!ebu.empty()) return ebu;
+    }
+
+    return root.find_node([](pugi::xml_node n) {
+        return std::string(n.name()) == "ebuCoreMain";
+    });
+}
+
+inline pugi::xml_node findAdmRoot(const pugi::xml_document& doc) {
+    auto docRoot = doc.document_element();
+    if (!docRoot) return pugi::xml_node();
+
+    const std::string rootName = docRoot.name();
+    if (rootName == "conformance_point_document") {
+        auto file = docRoot.child("File");
+        if (!file.empty()) {
+            auto axml = file.child("aXML");
+            if (!axml.empty()) {
+                auto fmt = axml.child("format");
+                if (!fmt.empty()) {
+                    auto afe = fmt.child("audioFormatExtended");
+                    if (!afe.empty()) return afe;
+                }
+            }
+        }
+    }
+
+    if (rootName == "audioFormatExtended") return docRoot;
+    return findFirstDescendant(docRoot, "audioFormatExtended");
+}
+
+inline pugi::xml_node findTechnicalNode(const pugi::xml_document& doc) {
+    auto docRoot = doc.document_element();
+    if (!docRoot) return pugi::xml_node();
+
+    if (std::string(docRoot.name()) == "conformance_point_document") {
+        auto file = docRoot.child("File");
+        if (!file.empty()) {
+            auto tech = file.child("Technical");
+            if (!tech.empty()) return tech;
+        }
+    }
+
+    return findFirstDescendant(docRoot, "Technical");
+}
+
 // Timecode parsing — mirrors _parse_timecode_to_seconds().
 inline double parseTimecodeToSeconds(const char* tc) {
     if (!tc || tc[0] == '\0') return 0.0;

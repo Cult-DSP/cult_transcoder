@@ -74,31 +74,6 @@ Vec3 getPositionCoords(pugi::xml_node blockElem) {
 }
 
 // ---------------------------------------------------------------------------
-// Find the ebuCoreMain element — mirrors _find_ebu_root()
-// ---------------------------------------------------------------------------
-pugi::xml_node findEbuRoot(pugi::xml_document& doc) {
-    auto root = doc.document_element();
-
-    // Case 1: root IS ebuCoreMain
-    std::string rootName = root.name();
-    if (rootName == "ebuCoreMain") return root;
-
-    // Case 2: bwfmetaedit wrapper — find <aXML> then ebuCoreMain inside
-    auto axml = root.child("aXML");
-    if (!axml.empty()) {
-        // Try without namespace (pugixml default mode strips ns prefixes)
-        auto ebu = axml.child("ebuCoreMain");
-        if (!ebu.empty()) return ebu;
-    }
-
-    // Fallback: search entire tree
-    auto ebu = root.find_node([](pugi::xml_node n) {
-        return std::string(n.name()) == "ebuCoreMain";
-    });
-    return ebu;
-}
-
-// ---------------------------------------------------------------------------
 // JSON helpers — manual serializer matching Python json.dump(indent=2)
 // ---------------------------------------------------------------------------
 
@@ -161,7 +136,7 @@ ConversionResult convertAdmDocumentToLusid(pugi::xml_document& doc,
     ConversionResult result;
 
     // -- Find EBU root --
-    auto ebuRoot = findEbuRoot(doc);
+    auto ebuRoot = adm_helpers::findEbuRoot(doc);
     if (ebuRoot.empty()) {
         result.warnings.push_back(
             "Could not find ebuCoreMain element in XML — returning empty scene");
@@ -175,13 +150,8 @@ ConversionResult convertAdmDocumentToLusid(pugi::xml_document& doc,
     // Python: extract_global_data(tree) — root.find(".//Technical")
     int sampleRate = 48000;
     std::string durationStr;
-    auto docRoot = doc.document_element();
-    // Search descendants (Python uses .//Technical which is a recursive search)
     pugi::xml_node technical;
-    auto techNodes = adm_helpers::findAllDescendants(docRoot, "Technical");
-    if (!techNodes.empty()) {
-        technical = techNodes[0];
-    }
+    technical = adm_helpers::findTechnicalNode(doc);
     if (!technical.empty()) {
         auto sr = technical.child("SampleRate");
         if (!sr.empty() && sr.text())

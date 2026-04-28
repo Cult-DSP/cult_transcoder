@@ -7,6 +7,7 @@ Owner: ingest-side source-format conversion into LUSID.
 - Own the parity-critical ADM ingest path used by `transcode`.
 - Keep ADM profile detection and profile-specific conversion under subfolders such as `adm/`.
 - Preserve encounter ordering, timing behavior, and other ingest invariants across cleanup work.
+- Keep shared ADM XML traversal, document-root lookup, and timecode helpers in `adm/admHelper.hpp`.
 
 ## Non-goals
 

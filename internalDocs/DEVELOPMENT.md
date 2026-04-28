@@ -201,7 +201,7 @@ Implemented:
 
 - moved the ingest-side `transcoding/adm/` sources into `src/transcoding/adm/`
 - updated all source includes to resolve through `src/`-rooted `transcoding/...` paths instead of a dedicated top-level include directory
-- added `src/transcoding/README.md` to make ingest ownership explicit alongside `authoring`, `parsing`, `reporting`, and `packaging`
+- added `src/transcoding/transcoding.md` to make ingest ownership explicit alongside `authoring`, `parsing`, `reporting`, and `packaging`
 - updated build wiring and internal docs to reflect the new source-tree location
 
 Historical importance:
@@ -221,6 +221,19 @@ Historical importance:
 
 - this aligns `package-adm-wav` metadata handling with the earlier single-parse cleanup already applied to `transcode`
 - it removes redundant parse work in the package-generation path without changing package output shape, stem ordering, or CLI/API behavior
+
+### 2026-04-28: ADM Helper Consolidation
+
+Implemented:
+
+- consolidated shared ADM document-root lookup and `Technical`-section lookup into `src/transcoding/adm/admHelper.hpp`
+- updated both generic ADM and Sony 360RA converters to use the shared helper path instead of keeping parallel local lookup functions
+- added focused helper tests for recursive descendant traversal order, wrapper/root lookup, and ADM timecode parsing
+
+Historical importance:
+
+- this closes the remaining low-risk ADM helper duplication called out in the post-v1 cleanup work
+- it keeps parity-sensitive ingest behavior anchored to explicit helper coverage instead of relying only on broader end-to-end tests
 
 ## Resampling History
 

@@ -475,7 +475,6 @@ These are the fragile parts to preserve:
 
 Deferred follow-ups:
 
-- helper duplication in ADM/XML traversal and time parsing
 - streaming JSON output
 - richer object metadata and gain handling
 - stereo-pair reconstruction in LUSID packages

@@ -8,8 +8,6 @@
 You are continuing CULT Transcoder work from a post-v1-authoring baseline. The export-side `adm-author` pipeline writes Logic-compatible ADM XML plus ADM BWF/WAV via `libbw64`; `exported/lusid_package_logic_shaped.wav` has imported successfully in Logic Pro. A separate `package-adm-wav` command converts ADM BWF/WAV source material into a LUSID package by extracting embedded ADM metadata and splitting interleaved audio into mono float32 stems. All 74/74 current ingest/parity/CLI/authoring/packaging tests pass as of 2026-04-28. Do NOT regress the parity-critical ingest path. Keep authoring compatibility fixes separate from LUSID package generation work.
 
 Immediate follow-up issues from the ADM transcoding review:
-- helper duplication, only remaining section is reporting folder. model based on other folders : `findAllDescendants` / XML traversal helpers and ADM timecode parsing exist in multiple ADM modules and should be consolidated only with focused parity tests
-- generic `package-adm-wav` still reparses extracted `axml` after profile detection through `convertAdmToLusidFromBuffer`; the single parsed-document cleanup currently applies to `transcode`
 - metadata streaming remains deferred: LUSID JSON output and authored ADM XML are still materialized as complete strings before writing
 - memory-sensitive ingest invariant: generic ADM object blocks should continue flowing directly into `timeToNodes`; do not reintroduce full object-block staging unless a tested behavior change requires it
 - before touching time compatibility, inspect `src/parsing/lusid_reader.cpp::convertSceneTimeToSeconds()`, `src/authoring/adm_writer.cpp::formatAdmTime()`, and generic ADM `audioBlockFormat/@rtime` parsing
@@ -287,7 +285,6 @@ These decisions are final and must not be changed without a doc-update PR.
 
 Deferred cleanup notes:
 
-- helper duplication in ADM/XML utilities is an intentional follow-up topic
 - streaming JSON output is an intentional follow-up topic
 - do not mix those broader refactors into parity-sensitive ADM conversion changes without explicit scope and fresh tests
 

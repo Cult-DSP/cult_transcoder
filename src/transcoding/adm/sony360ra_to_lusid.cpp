@@ -86,67 +86,6 @@ static Cart3 polarToCart(double az_deg, double el_deg, double dist) {
 }
 
 // ---------------------------------------------------------------------------
-// findAdmRoot()
-//
-// Navigates to <audioFormatExtended> from whatever root the document has.
-//
-// Supported structures:
-//   1. conformance_point_document/File/aXML/format/audioFormatExtended
-//      (bwfmetaedit export wrapper — the standard 360RA export format)
-//   2. audioFormatExtended directly as document root
-//   3. Depth-first fallback: any <audioFormatExtended> in the document
-// ---------------------------------------------------------------------------
-static pugi::xml_node findAdmRoot(const pugi::xml_document& doc) {
-    auto docRoot = doc.document_element();
-    if (!docRoot) return pugi::xml_node();
-
-    // Case 1: well-known bwfmetaedit wrapper path
-    std::string rootName = docRoot.name();
-    if (rootName == "conformance_point_document") {
-        auto file = docRoot.child("File");
-        if (!file.empty()) {
-            auto axml = file.child("aXML");
-            if (!axml.empty()) {
-                auto fmt = axml.child("format");
-                if (!fmt.empty()) {
-                    auto afe = fmt.child("audioFormatExtended");
-                    if (!afe.empty()) return afe;
-                }
-            }
-        }
-    }
-
-    // Case 2: document root IS audioFormatExtended
-    if (rootName == "audioFormatExtended") return docRoot;
-
-    // Case 3: fallback depth-first search
-    return adm_helpers::findFirstDescendant(docRoot, "audioFormatExtended");
-}
-
-// ---------------------------------------------------------------------------
-// findTechnicalNode()
-//
-// The <Technical> section lives under <File> in the bwfmetaedit wrapper,
-// not inside <audioFormatExtended>. Navigate from document root.
-// ---------------------------------------------------------------------------
-static pugi::xml_node findTechnicalNode(const pugi::xml_document& doc) {
-    auto docRoot = doc.document_element();
-    if (!docRoot) return pugi::xml_node();
-
-    // bwfmetaedit wrapper: conformance_point_document/File/Technical
-    if (std::string(docRoot.name()) == "conformance_point_document") {
-        auto file = docRoot.child("File");
-        if (!file.empty()) {
-            auto tech = file.child("Technical");
-            if (!tech.empty()) return tech;
-        }
-    }
-
-    // Fallback depth-first
-    return adm_helpers::findFirstDescendant(docRoot, "Technical");
-}
-
-// ---------------------------------------------------------------------------
 // isContainerObject()
 //
 // Returns true if this audioObject is a container (has <audioObjectIDRef>
@@ -232,7 +171,7 @@ ConversionResult convertSony360RaToLusid(
     // ------------------------------------------------------------------
     // 2. Navigate to <audioFormatExtended>
     // ------------------------------------------------------------------
-    auto admRoot = findAdmRoot(doc);
+    auto admRoot = adm_helpers::findAdmRoot(doc);
     if (admRoot.empty()) {
         result.errors.push_back(
             "Sony360RA converter: could not find <audioFormatExtended> in document. "
@@ -247,7 +186,7 @@ ConversionResult convertSony360RaToLusid(
     double durationSec = -1.0;
     std::string durationStr;
 
-    auto technical = findTechnicalNode(doc);
+    auto technical = adm_helpers::findTechnicalNode(doc);
     if (!technical.empty()) {
         auto sr = technical.child("SampleRate");
         if (!sr.empty() && sr.text())

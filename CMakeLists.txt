@@ -190,6 +190,7 @@ enable_testing()
 add_executable(cult_tests
     tests/test_report.cpp
     tests/test_cli_args.cpp
+    tests/test_adm_helpers.cpp
     tests/test_lfe_mode.cpp                  # Phase 4: LFE mode + profile detection tests
     tests/test_360ra.cpp                     # Phase 6: Sony 360RA conversion tests
     tests/test_adm_author_args.cpp           # adm-author CLI validation tests
