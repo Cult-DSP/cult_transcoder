@@ -195,6 +195,20 @@ Historical importance:
 - this completed the reporting-side helper cleanup called out in the post-v1 authoring/package follow-up work
 - it keeps module ownership patterns more consistent before the larger `transcoding/` relocation and other low-risk maintainability passes
 
+### 2026-04-28: Transcoding Tree Relocation
+
+Implemented:
+
+- moved the ingest-side `transcoding/adm/` sources into `src/transcoding/adm/`
+- updated all source includes to resolve through `src/`-rooted `transcoding/...` paths instead of a dedicated top-level include directory
+- added `src/transcoding/README.md` to make ingest ownership explicit alongside `authoring`, `parsing`, `reporting`, and `packaging`
+- updated build wiring and internal docs to reflect the new source-tree location
+
+Historical importance:
+
+- this completes the remaining top-level source-tree migration work called out in the post-v1 cleanup plan
+- it reduces path drift between module ownership docs and the actual code layout without changing ingest behavior or public CLI/API contracts
+
 ## Resampling History
 
 The original `resamplingPlan.md` captured a narrow and important design boundary that should remain part of project history even after the standalone plan is retired.

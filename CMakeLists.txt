@@ -110,7 +110,7 @@ if(NOT TARGET nlohmann_json AND NOT TARGET nlohmann_json::nlohmann_json)
 endif()
 
 # --- libbw64 (EBU BW64/RF64 container reader, Apache-2.0, header-only) ---
-# Phase 3+: used by transcoding/adm/adm_reader.cpp to extract the axml chunk
+# Phase 3+: used by src/transcoding/adm/adm_reader.cpp to extract the axml chunk
 # from ADM BW64/WAV files (--in-format adm_wav).
 # Added as a git submodule at thirdparty/libbw64 (not FetchContent) so that
 # cult_transcoder owns the dependency without requiring spatialroot's
@@ -148,7 +148,7 @@ add_executable(cult-transcoder
     src/main.cpp
     src/reporting/report.cpp
     src/transcoder.cpp
-    transcoding/adm/adm_to_lusid.cpp
+    src/transcoding/adm/adm_to_lusid.cpp
     src/authoring/adm_author.cpp             # adm-author command (Steps 1-2 functional)
     src/authoring/adm_writer.cpp             # adm-writer abstraction mapping XML + BW64
     src/parsing/lusid_reader.cpp             # LUSID JSON reader (authoring path)
@@ -156,15 +156,14 @@ add_executable(cult-transcoder
     src/audio/normalize_audio.cpp            # 48 kHz float32 normalization coordinator
     src/audio/resampler_r8brain.cpp          # r8brain-backed mono resampling
     src/packaging/adm_package.cpp            # ADM WAV -> LUSID package generation
-    transcoding/adm/adm_reader.cpp           # Phase 3: BW64 axml extraction (libbw64)
-    transcoding/adm/adm_profile_resolver.cpp # Phase 4: ADM profile detection
-    transcoding/adm/sony360ra_to_lusid.cpp   # Phase 6: Sony 360RA ADM → LUSID
+    src/transcoding/adm/adm_reader.cpp       # Phase 3: BW64 axml extraction (libbw64)
+    src/transcoding/adm/adm_profile_resolver.cpp # Phase 4: ADM profile detection
+    src/transcoding/adm/sony360ra_to_lusid.cpp   # Phase 6: Sony 360RA ADM → LUSID
 )
 
 target_include_directories(cult-transcoder
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${CMAKE_CURRENT_SOURCE_DIR}/transcoding/adm  # adm_reader.hpp (Phase 3)
         ${R8BRAIN_DIR}                               # CDSPResampler.h (adm-author path)
 )
 
@@ -202,7 +201,7 @@ add_executable(cult_tests
     # Same source files the main binary uses, so tests exercise real code
     src/reporting/report.cpp
     src/transcoder.cpp
-    transcoding/adm/adm_to_lusid.cpp
+    src/transcoding/adm/adm_to_lusid.cpp
     src/authoring/adm_author.cpp
     src/authoring/adm_writer.cpp
     src/parsing/lusid_reader.cpp
@@ -210,15 +209,14 @@ add_executable(cult_tests
     src/audio/normalize_audio.cpp
     src/audio/resampler_r8brain.cpp
     src/packaging/adm_package.cpp
-    transcoding/adm/adm_reader.cpp           # Phase 3: needed by transcoder
-    transcoding/adm/adm_profile_resolver.cpp # Phase 4: ADM profile detection
-    transcoding/adm/sony360ra_to_lusid.cpp   # Phase 6: Sony 360RA ADM → LUSID
+    src/transcoding/adm/adm_reader.cpp       # Phase 3: needed by transcoder
+    src/transcoding/adm/adm_profile_resolver.cpp # Phase 4: ADM profile detection
+    src/transcoding/adm/sony360ra_to_lusid.cpp   # Phase 6: Sony 360RA ADM → LUSID
 )
 
 target_include_directories(cult_tests
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${CMAKE_CURRENT_SOURCE_DIR}/transcoding/adm  # adm_reader.hpp (Phase 3)
         ${R8BRAIN_DIR}                               # CDSPResampler.h (adm-author path)
 )
 

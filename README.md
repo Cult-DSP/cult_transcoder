@@ -187,6 +187,7 @@ To reduce duplication and make ownership explicit, source is organized into modu
 - `src/authoring/` — LUSID → ADM export (`adm-author`) ownership.
 - `src/parsing/` — scene/file parsing ownership.
 - `src/reporting/` — report construction + write-policy ownership.
+- `src/transcoding/` — ingest-side source-format conversion ownership.
 
 Current state:
 
@@ -194,6 +195,7 @@ Current state:
 - `src/packaging/` owns ADM BWF/WAV -> LUSID package generation and self-contained stem splitting.
 - `src/parsing/` owns the LUSID scene reader (`src/parsing/lusid_reader.*`).
 - `src/reporting/` owns report schema/serialization (`src/reporting/cult_report.hpp`, `src/reporting/report.cpp`).
+- `src/transcoding/adm/` owns the parity-critical ADM ingest path, profile resolution, and Sony 360RA conversion.
 - Root-level transitional shims from the move have been removed.
 - Ingest/parity-critical behavior remains unchanged across the module re-org.
 

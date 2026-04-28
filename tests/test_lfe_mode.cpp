@@ -31,8 +31,8 @@
 // ---------------------------------------------------------------------------
 
 #include "cult_transcoder.hpp"
-#include "adm_to_lusid.hpp"
-#include "adm_profile_resolver.hpp"
+#include "transcoding/adm/adm_to_lusid.hpp"
+#include "transcoding/adm/adm_profile_resolver.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 #include <pugixml.hpp>

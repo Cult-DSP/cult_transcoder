@@ -48,8 +48,8 @@
 // ---------------------------------------------------------------------------
 
 #include "cult_transcoder.hpp"
-#include "adm_to_lusid.hpp"
-#include "sony360ra_to_lusid.hpp"
+#include "transcoding/adm/adm_to_lusid.hpp"
+#include "transcoding/adm/sony360ra_to_lusid.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>

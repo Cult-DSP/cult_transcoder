@@ -38,7 +38,7 @@
 #include "cult_transcoder.hpp"
 #include "reporting/cult_report.hpp"
 #include "cult_version.hpp"
-#include "adm_to_lusid.hpp"  // LfeMode
+#include "transcoding/adm/adm_to_lusid.hpp"  // LfeMode
 
 #include <chrono>
 #include <cstdlib>

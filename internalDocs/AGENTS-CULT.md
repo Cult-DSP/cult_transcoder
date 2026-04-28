@@ -12,7 +12,6 @@ Immediate follow-up issues from the ADM transcoding review:
 - generic `package-adm-wav` still reparses extracted `axml` after profile detection through `convertAdmToLusidFromBuffer`; the single parsed-document cleanup currently applies to `transcode`
 - metadata streaming remains deferred: LUSID JSON output and authored ADM XML are still materialized as complete strings before writing
 - memory-sensitive ingest invariant: generic ADM object blocks should continue flowing directly into `timeToNodes`; do not reintroduce full object-block staging unless a tested behavior change requires it
-- move transcoding/ into src/transcoding . update cmake and all dependent files 
 - before touching time compatibility, inspect `src/parsing/lusid_reader.cpp::convertSceneTimeToSeconds()`, `src/authoring/adm_writer.cpp::formatAdmTime()`, and generic ADM `audioBlockFormat/@rtime` parsing
 
 
@@ -191,11 +190,11 @@ Observed in the current submodule (no assumptions beyond code/tests in this repo
 
 **Ingest/parity path (complete):**
 
-- ADM XML → LUSID JSON conversion is implemented in `src/adm_to_lusid.cpp`.
+- ADM XML → LUSID JSON conversion is implemented in `src/transcoding/adm/adm_to_lusid.cpp`.
 - CLI supports `adm_xml` and `adm_wav` → `lusid_json` (see `src/main.cpp`, `src/transcoder.cpp`).
 - XML parser is pugixml (FetchContent); libadm is not used in the ingest/parity path.
-- Phase 4 ADM profile resolver + `--lfe-mode` flag: `transcoding/adm/adm_profile_resolver.cpp`.
-- Phase 6 Sony 360RA conversion: `transcoding/adm/sony360ra_to_lusid.cpp`.
+- Phase 4 ADM profile resolver + `--lfe-mode` flag: `src/transcoding/adm/adm_profile_resolver.cpp`.
+- Phase 6 Sony 360RA conversion: `src/transcoding/adm/sony360ra_to_lusid.cpp`.
 - Parity tests exist in `tests/parity`; 65/65 tests passing as of Phase 6A.
 - Report schema v0.1 in `src/reporting/cult_report.hpp` + `src/reporting/report.cpp`.
 - Report written via temp + rename (atomic). LUSID output is non-atomic (known).
@@ -362,19 +361,20 @@ cult_transcoder/
 │       ├── normalize_audio.hpp
 │       ├── resampler_r8brain.cpp       # r8brain-backed mono resampling
 │       └── resampler.hpp
+│   ├── transcoding/
+│   │   ├── README.md
+│   │   └── adm/
+│   │       ├── adm_to_lusid.cpp            # ADM XML → LUSID conversion (core ingest path)
+│   │       ├── adm_to_lusid.hpp
+│   │       ├── adm_reader.cpp              # Phase 3: BW64 axml extraction
+│   │       ├── adm_reader.hpp
+│   │       ├── adm_profile_resolver.cpp    # Phase 4: ADM profile detection
+│   │       ├── adm_profile_resolver.hpp
+│   │       ├── sony360ra_to_lusid.cpp      # Phase 6: Sony 360RA ADM → LUSID
+│   │       └── sony360ra_to_lusid.hpp
 ├── thirdparty/
 │   ├── libbw64/                        # git submodule — EBU BW64 container (Phase 3+)
 │   └── r8brain/                        # git submodule — r8brain resampler (adm-author)
-├── transcoding/
-│   └── adm/
-│       ├── adm_to_lusid.cpp            # ADM XML → LUSID conversion (core ingest path)
-│       ├── adm_to_lusid.hpp
-│       ├── adm_reader.cpp              # Phase 3: BW64 axml extraction
-│       ├── adm_reader.hpp
-│       ├── adm_profile_resolver.cpp    # Phase 4: ADM profile detection
-│       ├── adm_profile_resolver.hpp
-│       ├── sony360ra_to_lusid.cpp      # Phase 6: Sony 360RA ADM → LUSID
-│       └── sony360ra_to_lusid.hpp
 └── tests/
     ├── test_report.cpp
     ├── test_cli_args.cpp
@@ -390,7 +390,7 @@ cult_transcoder/
 
 Notes:
 
-- The `transcoding/` tree may remain partially stubbed until those files are compiled and linked.
+- The `src/transcoding/` tree owns the parity-critical ingest implementation and should stay separate from authoring and packaging changes.
 - The authoring path must remain cleanly separated from the existing parity-critical ingest path.
 
 ---
@@ -464,7 +464,7 @@ Time compatibility debug rule:
 - If future bugs involve shifted ADM motion, wrong `audioBlockFormat rtime`/`duration`, scene duration mismatches, sample-based timelines, millisecond timelines, or off-by-one-frame timing, inspect `src/parsing/lusid_reader.cpp` first.
 - The key path is `readLusidScene()` -> `convertSceneTimeToSeconds()`, which normalizes LUSID v1.0 frame times into seconds before authoring.
 - Then inspect `src/authoring/adm_writer.cpp`, especially timeline sorting and `formatAdmTime(...)`, because this is where normalized seconds become ADM `rtime` and `duration` attributes.
-- For package roundtrips, also inspect `src/packaging/adm_package.cpp` only after confirming the LUSID scene times written by `transcoding/adm/adm_to_lusid.cpp` are correct.
+- For package roundtrips, also inspect `src/packaging/adm_package.cpp` only after confirming the LUSID scene times written by `src/transcoding/adm/adm_to_lusid.cpp` are correct.
 
 ---
 
@@ -750,7 +750,7 @@ the **default** forever. Phase 4 adds a new opt-in mode that uses `speakerLabel`
 attribute inspection. The flag is a new CLI argument; it must not change any
 existing behaviour when absent.
 
-These two sub-tasks live entirely inside `transcoding/adm/adm_profile_resolver.cpp`
+These two sub-tasks live entirely inside `src/transcoding/adm/adm_profile_resolver.cpp`
 (and `adm_profile_resolver.hpp`) plus a small addition to `src/transcoder.cpp` to pass the
 flag through. `adm_to_lusid.cpp` also received a `lfeMode` param to implement the
 `SpeakerLabel` branch — see §11.4.
@@ -888,7 +888,7 @@ conversion is Phase 5+.
 
 `adm_profile_resolver.cpp` is **implemented and compiled**. Both targets
 (`cult-transcoder` and `cult_tests`) include it. `adm_profile_resolver.hpp`
-is in `transcoding/adm/` which is already on the include path.
+is in `src/transcoding/adm/` which is already on the include path.
 
 ---
 
@@ -955,10 +955,10 @@ No other report schema changes in Phase 4. `reportVersion` stays `"0.1"`.
 
 | File                                                       | Change                                                                                               |
 | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `transcoding/adm/adm_profile_resolver.hpp`                 | **NEW** — ProfileResult, AdmProfile enum, resolveAdmProfile()                                        |
-| `transcoding/adm/adm_profile_resolver.cpp`                 | **IMPLEMENT** stub → full detection logic                                                            |
+| `src/transcoding/adm/adm_profile_resolver.hpp`                 | **NEW** — ProfileResult, AdmProfile enum, resolveAdmProfile()                                        |
+| `src/transcoding/adm/adm_profile_resolver.cpp`                 | **IMPLEMENT** stub → full detection logic                                                            |
 | `include/adm_to_lusid.hpp`                                 | Add `LfeMode` enum; add `lfeMode` param to `convertAdmToLusid()` and `convertAdmToLusidFromBuffer()` |
-| `src/adm_to_lusid.cpp`                                     | Add `lfeMode` param to `parseAdmDocument()`; add `SpeakerLabel` branch                               |
+| `src/transcoding/adm/adm_to_lusid.cpp`                                     | Add `lfeMode` param to `parseAdmDocument()`; add `SpeakerLabel` branch                               |
 | `include/cult_transcoder.hpp`                              | Add `lfeMode` field to `TranscodeRequest`                                                            |
 | `src/reporting/cult_report.hpp`                            | Add `lfeMode` field to `ResolvedArgs` (copied from `TranscodeRequest` before transcoding)            |
 | `src/transcoder.cpp`                                       | Parse `--lfe-mode` arg; pass to `resolveAdmProfile()` + converter calls                              |
@@ -971,7 +971,7 @@ No other report schema changes in Phase 4. `reportVersion` stays `"0.1"`.
 | `internalDocs/DEV-PLAN-CULT.md`                            | Mark Phase 4 work items complete                                                                     |
 | `spatialroot/internalDocs/AGENTS.md`                       | Note `--lfe-mode` flag exists, update binary contract if needed                                      |
 
-**Do not touch**: `transcoding/lusid/lusid_writer.cpp`, `lusid_validate.cpp`
+**Do not touch**: `src/transcoding/lusid/lusid_writer.cpp`, `lusid_validate.cpp`
 (Phase 5+ stubs), `runPipeline.py` (deprecated), any LUSID Python files.
 
 ---
@@ -1167,8 +1167,8 @@ CLI contract is **unchanged** — no new flags, no new `--in-format` values.
 
 | File                                                    | Purpose                                                       |
 | ------------------------------------------------------- | ------------------------------------------------------------- |
-| `transcoding/adm/sony360ra_to_lusid.hpp`                | Public API: `convertSony360RaToLusid()`                       |
-| `transcoding/adm/sony360ra_to_lusid.cpp`                | Full implementation                                           |
+| `src/transcoding/adm/sony360ra_to_lusid.hpp`                | Public API: `convertSony360RaToLusid()`                       |
+| `src/transcoding/adm/sony360ra_to_lusid.cpp`                | Full implementation                                           |
 | `tests/test_360ra.cpp`                                  | Phase 6 tests (polar→cart unit tests + structural invariants) |
 | `tests/parity/fixtures/sony_360ra_reference.lusid.json` | Reference LUSID output for regression                         |
 

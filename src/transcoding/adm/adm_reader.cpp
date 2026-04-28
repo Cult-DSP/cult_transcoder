@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // ---------------------------------------------------------------------------
-// transcoding/adm/adm_reader.cpp — ADM WAV Ingestion (Phase 3)
+// src/transcoding/adm/adm_reader.cpp — ADM WAV Ingestion (Phase 3)
 //
 // Implements extractAxmlFromWav() declared in adm_reader.hpp.
 //
@@ -35,7 +35,7 @@
 //   - DEV-PLAN-CULT Phase 3
 // ---------------------------------------------------------------------------
 
-#include "adm_reader.hpp"
+#include "transcoding/adm/adm_reader.hpp"
 
 #include <bw64/bw64.hpp>
 

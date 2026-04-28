@@ -22,12 +22,12 @@
 //          stub that always returns a fail result until Phase 2.
 //
 // Phase 2: adm_reader / adm_to_lusid implementations will be wired in via
-//          the transcoding/ subdirectory; this header remains the stable
+//          the src/transcoding/ subdirectory; this header remains the stable
 //          call-site for the CLI.
 // ---------------------------------------------------------------------------
 
 #include "reporting/cult_report.hpp"
-#include "adm_to_lusid.hpp"  // LfeMode enum
+#include "transcoding/adm/adm_to_lusid.hpp"  // LfeMode enum
 #include "progress.hpp"
 
 #include <string>

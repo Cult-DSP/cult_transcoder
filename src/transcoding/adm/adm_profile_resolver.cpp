@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // ---------------------------------------------------------------------------
-// transcoding/adm/adm_profile_resolver.cpp — ADM Profile Resolver (Phase 4)
+// src/transcoding/adm/adm_profile_resolver.cpp — ADM Profile Resolver (Phase 4)
 //
 // Implements resolveAdmProfile(). Read-only attribute-string pass over an
 // already-parsed pugi::xml_document. No ADM semantic model used.
@@ -30,7 +30,7 @@
 // NOTE: bare "360" is intentionally NOT a signal — too broad. Only "360ra".
 // ---------------------------------------------------------------------------
 
-#include "adm_profile_resolver.hpp"
+#include "transcoding/adm/adm_profile_resolver.hpp"
 #include "pugixml.hpp"
 
 #include <algorithm>

@@ -3,7 +3,7 @@
 Status snapshot:
 
 - Phases 1–6A complete (including Sony 360RA ADM conversion). MPEG-H (Phase 6B) is explicitly deferred. :contentReference[oaicite:0]{index=0}
-- Phase 6B requirements: Ittiam `libmpeghdec` as default backend; Fraunhofer optional; new `transcoding/mpegh/` module; owner-confirmed `.mpf` or `.mhas` fixtures before implementation. :contentReference[oaicite:1]{index=1}
+- Phase 6B requirements: Ittiam `libmpeghdec` as default backend; Fraunhofer optional; new `src/transcoding/mpegh/` module; owner-confirmed `.mpf` or `.mhas` fixtures before implementation. :contentReference[oaicite:1]{index=1}
 - Mode 2 (Sony 360RA “music format” MPEG-H) is a different ingestion modality: no ADM XML; metadata is MAEI; containers are `.mpf/.mhas/.m4f`; must not extend ADM resolver or `sony360ra_to_lusid.cpp`. :contentReference[oaicite:2]{index=2} :contentReference[oaicite:3]{index=3}
 
 ---
@@ -27,7 +27,7 @@ Non-goals (for first MPEG-H milestone):
 ## 1) Architectural invariants (do not break)
 
 1. Do not attempt to “route MPEG-H through ADM.”
-   - Mode 2 has no ADM XML and metadata is MAEI, so the conversion path must live in a new `transcoding/mpegh/` module. :contentReference[oaicite:4]{index=4} :contentReference[oaicite:5]{index=5}
+   - Mode 2 has no ADM XML and metadata is MAEI, so the conversion path must live in a new `src/transcoding/mpegh/` module. :contentReference[oaicite:4]{index=4} :contentReference[oaicite:5]{index=5}
 2. Do not extend the ADM profile resolver or `sony360ra_to_lusid.cpp` to handle MPEG-H.
    - Explicitly forbidden by design doc. :contentReference[oaicite:6]{index=6}
 3. Preserve existing CLI contract defaults (atomic output, fail-report behavior, default report path).
@@ -86,7 +86,7 @@ Concrete build integration plan:
 
 Create:
 
-transcoding/mpegh/
+src/transcoding/mpegh/
 mpegh_reader.hpp
 mpegh_reader.cpp
 mpegh_to_lusid.hpp
@@ -211,7 +211,7 @@ Update `src/transcoder.cpp` dispatch table:
 
 Dispatch rule:
 
-- MPEG-H formats route directly into `transcoding/mpegh/*` pipeline and must not call ADM or Sony 360RA converters. :contentReference[oaicite:20]{index=20}
+- MPEG-H formats route directly into `src/transcoding/mpegh/*` pipeline and must not call ADM or Sony 360RA converters. :contentReference[oaicite:20]{index=20}
 
 ---
 
@@ -288,4 +288,4 @@ When Phase 6B starts and/or lands:
   - requires MPEG-H decoder integration (Ittiam default)
   - requires fixture files
   - requires MAEI→LUSID mapping doc section
-  - must live in new `transcoding/mpegh/` module, separate from ADM paths :contentReference[oaicite:27]{index=27} :contentReference[oaicite:28]{index=28}
+  - must live in new `src/transcoding/mpegh/` module, separate from ADM paths :contentReference[oaicite:27]{index=27} :contentReference[oaicite:28]{index=28}

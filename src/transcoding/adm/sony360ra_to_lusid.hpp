@@ -15,7 +15,7 @@
 #pragma once
 
 // ---------------------------------------------------------------------------
-// transcoding/adm/sony360ra_to_lusid.hpp — Sony 360RA ADM → LUSID converter
+// src/transcoding/adm/sony360ra_to_lusid.hpp — Sony 360RA ADM → LUSID converter
 //
 // Phase 6A: converts a Sony 360RA ADM XML document (bwfmetaedit export,
 // ITU-R BS.2076-2, conformance_point_document wrapper) to a LUSID Scene JSON.
@@ -65,7 +65,7 @@
 //   ITU-R BS.2076-2 (Audio Definition Model)
 // ---------------------------------------------------------------------------
 
-#include "adm_to_lusid.hpp"   // ConversionResult, LusidScene, LfeMode
+#include "transcoding/adm/adm_to_lusid.hpp"   // ConversionResult, LusidScene, LfeMode
 
 // Forward-declare pugixml to keep this header lightweight.
 namespace pugi { class xml_document; }

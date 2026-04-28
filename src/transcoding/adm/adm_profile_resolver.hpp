@@ -15,7 +15,7 @@
 #pragma once
 
 // ---------------------------------------------------------------------------
-// transcoding/adm/adm_profile_resolver.hpp — ADM Profile Resolver (Phase 4)
+// src/transcoding/adm/adm_profile_resolver.hpp — ADM Profile Resolver (Phase 4)
 //
 // Inspects an already-parsed pugi::xml_document and returns the detected
 // ADM profile variant (DolbyAtmos, Sony360RA, Generic, or Unknown).

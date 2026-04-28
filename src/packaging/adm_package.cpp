@@ -15,10 +15,10 @@
 #include "packaging/adm_package.hpp"
 #include "packaging/packagingHelper.hpp"
 
-#include "adm_reader.hpp"
-#include "adm_profile_resolver.hpp"
-#include "adm_to_lusid.hpp"
-#include "sony360ra_to_lusid.hpp"
+#include "transcoding/adm/adm_reader.hpp"
+#include "transcoding/adm/adm_profile_resolver.hpp"
+#include "transcoding/adm/adm_to_lusid.hpp"
+#include "transcoding/adm/sony360ra_to_lusid.hpp"
 
 #include <bw64/bw64.hpp>
 #include <pugixml.hpp>

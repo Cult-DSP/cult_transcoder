@@ -28,10 +28,10 @@
 
 #include "cult_transcoder.hpp"
 #include "cult_version.hpp"
-#include "adm_to_lusid.hpp"
-#include "adm_reader.hpp"            // Phase 3: BW64 axml extraction
-#include "adm_profile_resolver.hpp"  // Phase 4: ADM profile detection
-#include "sony360ra_to_lusid.hpp"    // Phase 6: Sony 360RA ADM → LUSID
+#include "transcoding/adm/adm_to_lusid.hpp"
+#include "transcoding/adm/adm_reader.hpp"            // Phase 3: BW64 axml extraction
+#include "transcoding/adm/adm_profile_resolver.hpp"  // Phase 4: ADM profile detection
+#include "transcoding/adm/sony360ra_to_lusid.hpp"    // Phase 6: Sony 360RA ADM → LUSID
 #include <pugixml.hpp>
 
 #include <filesystem>

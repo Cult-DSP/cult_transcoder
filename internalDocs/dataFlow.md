@@ -146,7 +146,7 @@ Memory behavior:
 
 ## Generic ADM Metadata Conversion
 
-Generic ADM conversion lives in `transcoding/adm/adm_to_lusid.cpp`.
+Generic ADM conversion lives in `src/transcoding/adm/adm_to_lusid.cpp`.
 
 The converter searches for `ebuCoreMain`, extracts global metadata from
 `Technical`, then walks all descendant `audioChannelFormat` elements in document
@@ -247,7 +247,7 @@ Frame behavior:
 
 ## Sony 360RA ADM Conversion
 
-Sony 360RA dispatch lives in `transcoding/adm/sony360ra_to_lusid.cpp`.
+Sony 360RA dispatch lives in `src/transcoding/adm/sony360ra_to_lusid.cpp`.
 
 Profile detection recognizes Sony 360RA by profile signals such as `360RA` in
 ADM attributes. Once detected, the generic ADM converter is bypassed.

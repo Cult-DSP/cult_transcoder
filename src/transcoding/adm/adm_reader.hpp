@@ -15,7 +15,7 @@
 #pragma once
 
 // ---------------------------------------------------------------------------
-// transcoding/adm/adm_reader.hpp — ADM WAV Ingestion API (Phase 3)
+// src/transcoding/adm/adm_reader.hpp — ADM WAV Ingestion API (Phase 3)
 //
 // Provides extractAxmlFromWav(): opens a BW64/RF64/WAV file, reads the
 // embedded <axml> chunk, writes a debug copy to the fixed artifact path

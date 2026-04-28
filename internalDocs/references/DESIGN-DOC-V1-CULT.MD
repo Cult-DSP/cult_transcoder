@@ -165,7 +165,7 @@ Key structural characteristics:
 
 Detection signal: `audioProgrammeName` attribute contains `"360RA"` (case-insensitive). The Phase 4 profile resolver (`resolveAdmProfile()`) already detects this and returns `AdmProfile::Sony360RA`.
 
-CULT Transcoder handling (Phase 6): `convertSony360RaToLusid()` in `transcoding/adm/sony360ra_to_lusid.cpp`. Auto-dispatched after profile detection — no new CLI flags. Produces a single-frame LUSID scene (t=0) with 13 `audio_object` nodes, positions converted from polar (azimuth, elevation, distance) to LUSID Cartesian using the standard ADM formula (see AGENTS-CULT §15.7).
+CULT Transcoder handling (Phase 6): `convertSony360RaToLusid()` in `src/transcoding/adm/sony360ra_to_lusid.cpp`. Auto-dispatched after profile detection — no new CLI flags. Produces a single-frame LUSID scene (t=0) with 13 `audio_object` nodes, positions converted from polar (azimuth, elevation, distance) to LUSID Cartesian using the standard ADM formula (see AGENTS-CULT §15.7).
 
 ### Mode 2 — MPEG-H Music Format ← DEFERRED (future phase)
 
@@ -192,7 +192,7 @@ The Phase 6 implementation of Mode 1 does not block Mode 2 and does not need to 
 
 The two-mode architecture clarifies an important invariant: the `Sony360RA` profile detection signal (`audioProgrammeName` containing `"360RA"`) applies **only** to Mode 1 (ADM-variant). Mode 2 files are not ADM documents and will not trigger the profile resolver. Mode 2 requires a separate ingestion pipeline entry point, upstream of the ADM parser, that handles MPEG-H container parsing first.
 
-For future reference: do not attempt to extend the ADM profile resolver or `sony360ra_to_lusid.cpp` to handle Mode 2 inputs. Mode 2 is a fundamentally different input modality and belongs in a new `transcoding/mpegh/` module.
+For future reference: do not attempt to extend the ADM profile resolver or `sony360ra_to_lusid.cpp` to handle Mode 2 inputs. Mode 2 is a fundamentally different input modality and belongs in a new `src/transcoding/mpegh/` module.
 
 ## CLI Contract and Report Schema (Pinned)
 

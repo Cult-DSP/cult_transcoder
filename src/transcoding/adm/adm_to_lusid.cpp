@@ -27,8 +27,8 @@
 //   - IDs are "{group_counter}.1" — group_counter starts at 1.
 // ---------------------------------------------------------------------------
 
-#include "adm_to_lusid.hpp"
-#include "admHelper.hpp"
+#include "transcoding/adm/adm_to_lusid.hpp"
+#include "transcoding/adm/admHelper.hpp"
 
 #include <pugixml.hpp>
 

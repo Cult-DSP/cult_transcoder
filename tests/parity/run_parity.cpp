@@ -31,7 +31,7 @@
 // ---------------------------------------------------------------------------
 
 #include <catch2/catch_test_macros.hpp>
-#include "adm_to_lusid.hpp"
+#include "transcoding/adm/adm_to_lusid.hpp"
 
 #include <fstream>
 #include <sstream>

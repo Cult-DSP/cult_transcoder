@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // ---------------------------------------------------------------------------
-// transcoding/adm/sony360ra_to_lusid.cpp — Sony 360RA ADM → LUSID converter
+// src/transcoding/adm/sony360ra_to_lusid.cpp — Sony 360RA ADM → LUSID converter
 //
 // Phase 6A implementation.  See sony360ra_to_lusid.hpp for design decisions.
 //
@@ -40,9 +40,9 @@
 // This is used for scene.sampleRate and scene.duration.
 // ---------------------------------------------------------------------------
 
-#include "sony360ra_to_lusid.hpp"
-#include "admHelper.hpp"
-#include "adm_to_lusid.hpp"
+#include "transcoding/adm/sony360ra_to_lusid.hpp"
+#include "transcoding/adm/admHelper.hpp"
+#include "transcoding/adm/adm_to_lusid.hpp"
 
 #include <pugixml.hpp>
 
