@@ -21,6 +21,7 @@
 // ---------------------------------------------------------------------------
 
 #include "reporting/cult_report.hpp"
+#include "reporting/reportingHelper.hpp"
 #include "cult_version.hpp"
 
 #include <fstream>
@@ -29,43 +30,10 @@
 
 namespace cult {
 
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
-// File-local helpers live in an anonymous namespace to avoid exporting
-// implementation details or colliding with similar helpers in other modules.
 namespace {
-
-// Escape a string for JSON embedding.
-std::string jsonEscape(const std::string& s) {
-    std::string out;
-    out.reserve(s.size() + 4);
-    for (char c : s) {
-        switch (c) {
-            case '"':  out += "\\\""; break;
-            case '\\': out += "\\\\"; break;
-            case '\n': out += "\\n";  break;
-            case '\r': out += "\\t";  break;
-            case '\t': out += "\\t";  break;
-            default:   out += c;      break;
-        }
-    }
-    return out;
-}
-
-std::string jsonStr(const std::string& s) {
-    return "\"" + jsonEscape(s) + "\"";
-}
-
-// Indent helper — returns 'count' copies of two spaces.
-std::string ind(int count) {
-    std::string s;
-    for (int i = 0; i < count; ++i) s += "  ";
-    return s;
-}
-
-} // anonymous namespace
+using reporting_helpers::ind;
+using reporting_helpers::jsonStr;
+} // namespace
 
 // ---------------------------------------------------------------------------
 // Report::toJson()

@@ -7,6 +7,7 @@ Owner: report construction and write policy.
 - Build report payloads for success/failure states.
 - Centralize report write mechanics (including temp + rename policy).
 - Keep report schema compatibility guarantees visible.
+- Keep folder-local JSON serialization helpers in `reportingHelper.hpp`.
 
 ## Non-goals
 

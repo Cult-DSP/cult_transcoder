@@ -182,6 +182,19 @@ Historical importance:
 - this lowered memory pressure and removed redundant parse work in the sensitive ingest path without changing the public CLI/API contract
 - it records that future changes to this path should be parity-tested before altering node ordering, frame counts, profile warnings, or time encoding behavior
 
+### 2026-04-28: Reporting Helper Dedup Cleanup
+
+Implemented:
+
+- extracted reporting JSON formatting helpers from `src/reporting/report.cpp` into `src/reporting/reportingHelper.hpp`
+- aligned `src/reporting/` with the same local helper-header structure already used by `src/authoring/`, `src/parsing/`, and `src/packaging/`
+- kept report serialization behavior and output shape unchanged while reducing one remaining pocket of folder-local helper duplication
+
+Historical importance:
+
+- this completed the reporting-side helper cleanup called out in the post-v1 authoring/package follow-up work
+- it keeps module ownership patterns more consistent before the larger `transcoding/` relocation and other low-risk maintainability passes
+
 ## Resampling History
 
 The original `resamplingPlan.md` captured a narrow and important design boundary that should remain part of project history even after the standalone plan is retired.
