@@ -167,7 +167,7 @@ Current progress phases:
 See `internalDocsMD/DEV-PLAN-CULT.md` for details.
 
 Note: `internalDocsMD/DEV-PLAN-CULT.md` is outdated for authoring. See
-`internalDocsMD/admAuthoring.md` and `internalDocsMD/resamplingPlan.md` for the
+`internalDocsMD/AUTHORING.md` and `internalDocsMD/resamplingPlan.md` for the
 current export-side ADM authoring plan.
 
 ## Docs

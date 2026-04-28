@@ -8,7 +8,7 @@ Next-generation audio formats enable immersive spatial audio experiences by movi
 
 These decisions are part of the execution contract for CULT Transcoder in the Spatial Root toolchain. They exist to reduce ambiguity and prevent destructive regressions.
 
-- **Canonical format**: LUSID Scene v0.5 JSON is the canonical intermediate representation.
+- **Canonical format**: LUSID Scene v1.0 JSON is the canonical intermediate representation.
 - **Repo topology**: `cult-transcoder` is its own repository, cloned as a submodule at `spatialroot/cult-transcoder/` (already wired).
 - **Integration mode**: CLI-first. Spatial Root calls the binary at `spatialroot/cult-transcoder/build/cult-transcoder` (macOS/Linux). On Windows the pipeline calls `build/cult-transcoder.bat` — a thin wrapper around `cult-transcoder.exe`. The wrapper is committed to source. Every call-site in the Spatial Root pipeline must carry an inline comment explaining this indirection.
 - **C++ standard**: C++17 throughout. This is the baseline for all source files and the CMake `target_compile_features` setting.

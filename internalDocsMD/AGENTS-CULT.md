@@ -81,8 +81,7 @@ Execution order is mandatory: complete in sequence and keep ingest/parity behavi
 - Move/split `src/adm_author.cpp`, `src/adm_writer.cpp`, `src/adm_writer.hpp` into `src/authoring/` with minimal behavior change.
 - Keep deterministic ordering + current validation semantics exactly as implemented.
 - **Required doc update in same PR:**
-  - `internalDocsMD/admAuthoring.md` (paths and stage boundaries)
-  - `internalDocsMD/AUTHORING.md` (entrypoints and responsibilities)
+  - `internalDocsMD/AUTHORING.md` (paths, stage boundaries, contract snapshot, and entrypoint responsibilities)
 
 3. Move LUSID scene parsing behind `src/parsing/` — COMPLETE
 
@@ -124,7 +123,7 @@ Execution order is mandatory: complete in sequence and keep ingest/parity behavi
 - Perform manual Logic Pro Atmos import validation and capture notes.
 - Status 2026-04-27: mapping/integration tests are complete; Logic Pro manual import passed for `exported/lusid_package_logic_shaped.wav`.
 - **Required doc update in same PR:**
-  - `internalDocsMD/admAuthoring.md` (validation outcomes)
+  - `internalDocsMD/AUTHORING.md` (validation outcomes)
   - `internalDocsMD/CHANGELOG.md` (feature-complete test milestone)
 
 Repo placement: `spatialroot/cult-transcoder/` (git submodule, already wired).  

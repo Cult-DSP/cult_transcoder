@@ -4,13 +4,14 @@ This document is the implementation and validation record for `adm-author` and c
 
 ## Documentation Map
 
-- `internalDocsMD/admAuthoring.md` is the compact architecture and contract document for the authoring feature.
-- `internalDocsMD/AUTHORING.md` is this implementation record: detailed findings, validation candidates, compatibility hypotheses, and resolved investigations.
+- `internalDocsMD/AUTHORING.md` is the canonical internal authoring document: contract snapshot, implementation record, manual validation log, compatibility hypotheses, and resolved investigations.
+- `internalDocsMD/admAuthoring.md` now exists only as a legacy redirect to this file.
+- `internalDocsMD/authoringTests.md` now exists only as a legacy redirect to this file.
 - `src/authoring/README.md` is the code-owner map for the authoring module.
 - `src/packaging/README.md` is the code-owner map for ADM WAV -> LUSID package generation.
 - `internalDocsMD/audit.md` explains how CULT authoring relates to SpatialSeed pipeline wiring.
 
-Rule of thumb: update `admAuthoring.md` when the stable contract changes; update this file when a validation finding, compatibility detail, or investigative result needs to be preserved.
+Rule of thumb: update this file for both stable contract changes and durable validation findings. Keep the smaller legacy files as pointers only unless a downstream workflow still requires them.
 
 ## Implementation Entry Points (April 2026 module move)
 
@@ -24,6 +25,138 @@ Notes:
 
 - Ingest/parity-critical `adm_xml -> lusid_json` paths are intentionally untouched by authoring compatibility work.
 - ADM authoring and ADM WAV -> LUSID package generation are separate workflows even though they share ADM/LUSID concepts.
+
+## 0. Stable Contract Snapshot
+
+This section consolidates the durable contract material that previously lived in `admAuthoring.md`.
+
+### 0.1 Purpose
+
+Support LUSID -> authored ADM in `cult_transcoder` (C++), producing:
+
+- `export.adm.xml`
+- `export.wav`
+- report JSON
+
+The practical acceptance target for v1 is successful import into Logic Pro Atmos plus successful conversion through the Dolby Atmos Conversion Tool, even if Dolby still shows an unsupported-master approval warning.
+
+### 0.2 Architectural Framing
+
+- This feature is an export-side extension layered on top of the canonical LUSID scene model.
+- It must not redefine or regress the parity-critical `adm_xml` / `adm_wav -> lusid_json` ingest path.
+- CULT owns scene interpretation, mapping policy, deterministic ordering, and loss reporting.
+- Authoring compatibility fixes and ADM WAV -> LUSID package generation are related but separate workflows.
+
+### 0.3 Input / Output Contract
+
+Accepted inputs:
+
+1. LUSID package folder containing `scene.lusid.json` and referenced WAV assets.
+2. Explicit `scene.lusid.json` plus WAV directory path.
+
+Current WAV assumptions:
+
+- authored source assets are mono WAVs
+- authoring normalizes to mono 48 kHz float32 before interleaving
+- required assets must exist and unsupported layouts fail explicitly
+- one trailing-sample EOF spread is tolerated by truncating to the shortest normalized length
+- larger frame mismatches are hard failures
+
+Outputs:
+
+- `export.adm.xml`
+- `export.wav`
+- report JSON
+
+Atomicity:
+
+- all three outputs must be written via temp + rename
+
+### 0.4 CLI Contract
+
+Implemented `adm-author` command:
+
+```bash
+build/cult-transcoder adm-author \
+  --lusid <scene.lusid.json> \
+  --wav-dir <path> \
+  --out-xml <export.adm.xml> \
+  --out-wav <export.wav> \
+  [--report <path>] [--stdout-report] [--quiet] \
+  [--dbmd-source <source.wav|dbmd.bin>] \
+  [--metadata-post-data]
+
+# alternate input
+build/cult-transcoder adm-author \
+  --lusid-package <path> \
+  --out-xml <export.adm.xml> \
+  --out-wav <export.wav> \
+  [--report <path>] [--stdout-report] [--quiet] \
+  [--dbmd-source <source.wav|dbmd.bin>] \
+  [--metadata-post-data]
+```
+
+Exit codes:
+
+- `0`: success, final outputs exist
+- `1`: authoring failure
+- `2`: argument/usage error
+
+Contract rules:
+
+- keep existing `transcode` command semantics unchanged
+- do not overload ingest behavior to mean authoring
+- emit best-effort fail reports on errors
+
+### 0.5 Mapping Policy
+
+Supported node types:
+
+- `direct_speaker`
+- `audio_object`
+- `LFE`
+
+Mapping rules:
+
+- `direct_speaker` nodes map to the authored bed/direct-speaker structure
+- `audio_object` nodes map to authored ADM objects
+- `LFE` maps inside the bed, not as a free object
+- Logic-compatible output uses one `Master` bed object/pack
+- deterministic ordering is required: bed first in fixed template order, then objects in ascending LUSID id/group order, then motion blocks by ascending frame time
+- object authoring uses step-hold `audioBlockFormat` timing for v1
+
+Loss policy:
+
+- unsupported node types, metadata, or motion semantics must be reported explicitly
+- missing WAVs, unsupported formats, normalization failure, or duration/frame mismatches beyond the one-sample EOF tolerance are hard failures
+
+### 0.6 Progress Contract
+
+Both `adm-author` and `package-adm-wav` expose `ProgressCallback` through `src/progress.hpp`.
+
+- CLI progress bars render to stderr and can be disabled with `--quiet`
+- API callers use `AdmAuthorRequest::onProgress` or `PackageAdmWavRequest::onProgress`
+- current phases include `metadata`, `inspect`, `normalize`, `interleave`, and `split`
+
+Future long-running transcoding work should reuse this callback contract instead of inventing command-specific progress paths.
+
+### 0.7 Implementation Status
+
+Implemented:
+
+- separate `AdmAuthorRequest` / `AdmAuthorResult` API
+- `adm-author` CLI parsing and dispatch
+- LUSID package / explicit scene+WAV resolution
+- validation before output writing
+- deterministic ADM XML generation through CULT-owned mapping rules
+- ADM BWF/WAV writing through `libbw64`
+- Logic-shaped bed modeling, `chna`, and embedded `axml`
+- separate `package-adm-wav` path for ADM WAV -> LUSID package generation
+
+Open items:
+
+- stereo-pair reconstruction from adjacent mono L/R ADM tracks is not implemented
+- Dolby-approved-master recognition remains future work and is not a v1 blocker
 
 ## 1. ADM ID Generation Strategy (ITU-R BS.2076)
 
