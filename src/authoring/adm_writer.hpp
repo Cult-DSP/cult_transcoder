@@ -22,9 +22,14 @@
 #include "audio/wav_io.hpp"
 #include "progress.hpp"
 
+#include <iosfwd>
 #include <string>
 #include <vector>
 #include <map>
+
+namespace pugi {
+class xml_document;
+}
 
 namespace cult {
 
@@ -36,9 +41,9 @@ struct AdmWriterResult {
 };
 
 // ---------------------------------------------------------------------------
-// Maps LUSID Scene directly into ADM XML String (via pugixml).
-// Then orchestrates multi-channel streaming of WavFileInfo to the dest wav
-// alongside the AXML.
+// Maps LUSID Scene into an authored ADM XML DOM (via pugixml), streams the
+// sidecar XML file from that DOM, and serializes one compatibility string for
+// BW64 axml embedding / metadata-post-data rewrite.
 // ---------------------------------------------------------------------------
 class AdmWriter {
 public:
@@ -58,7 +63,13 @@ public:
     );
 
 private:
-    std::string generateAdmXml(const LusidScene& scene, const std::vector<WavFileInfo>& monoWavs, uint32_t targetSampleRate, uint64_t expectedFrames, uint32_t& outChannelCount, uint32_t& outObjectCount);
+    void populateAdmDocument(pugi::xml_document& doc,
+                             const LusidScene& scene,
+                             const std::vector<WavFileInfo>& monoWavs,
+                             uint32_t targetSampleRate,
+                             uint64_t expectedFrames,
+                             uint32_t& outChannelCount,
+                             uint32_t& outObjectCount);
 
     // Convert float time to ADM wallclock format, keeping enough fractional
     // precision for sample-spaced authoring timelines.

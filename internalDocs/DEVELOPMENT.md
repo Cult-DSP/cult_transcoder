@@ -274,6 +274,23 @@ Historical importance:
 - this is the first low-risk metadata streaming pass after the post-v1 cleanup wave
 - it narrows the remaining non-streaming metadata boundary to authored ADM XML and on-demand string compatibility helpers rather than JSON/report file output
 
+### 2026-04-28: Metadata Streaming Phase 2 (Authoring Sidecar XML)
+
+Implemented:
+
+- refactored `AdmWriter` to build one authored `pugi::xml_document` and stream the sidecar `.adm.xml` file directly from that DOM
+- kept one serialized `xmlString` for the existing BW64 `axml` chunk path and `--metadata-post-data` rewrite path
+- preserved authored XML content, ordering, formatting, sidecar/embedded parity, and public CLI/API behavior
+
+Validation gate:
+
+- `ctest --test-dir build --output-on-failure` passed `83/83`
+
+Historical importance:
+
+- this extends the metadata-streaming work into the authoring path without disturbing the BW64 embedding contract
+- it records the remaining future-work fork explicitly: either keep one compatibility XML string for `AxmlChunk` / post-data rewrite, or pursue a deeper redesign of authoring XML emission around dual-sink output or different `axml` chunk expectations
+
 ## Resampling History
 
 The original `resamplingPlan.md` captured a narrow and important design boundary that should remain part of project history even after the standalone plan is retired.

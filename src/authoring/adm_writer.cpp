@@ -481,6 +481,10 @@ std::string saveXmlToString(const pugi::xml_document& doc) {
     return out.str();
 }
 
+void saveXmlToStream(const pugi::xml_document& doc, std::ostream& out) {
+    doc.save(out, "  ", pugi::format_default, pugi::encoding_utf8);
+}
+
 } // namespace
 
 std::string AdmWriter::formatAdmTime(double timeSeconds, uint32_t sampleRate) const {
@@ -547,7 +551,13 @@ std::vector<std::string> AdmWriter::sortNodeIds(const std::vector<std::string>& 
     return sorted;
 }
 
-std::string AdmWriter::generateAdmXml(const LusidScene& scene, const std::vector<WavFileInfo>& monoWavs, uint32_t targetSampleRate, uint64_t expectedFrames, uint32_t& outChannelCount, uint32_t& outObjectCount) {
+void AdmWriter::populateAdmDocument(pugi::xml_document& doc,
+                                    const LusidScene& scene,
+                                    const std::vector<WavFileInfo>& monoWavs,
+                                    uint32_t targetSampleRate,
+                                    uint64_t expectedFrames,
+                                    uint32_t& outChannelCount,
+                                    uint32_t& outObjectCount) {
     (void)monoWavs;
 
     std::vector<std::string> ids;
@@ -610,7 +620,6 @@ std::string AdmWriter::generateAdmXml(const LusidScene& scene, const std::vector
 
     const double totalDuration = static_cast<double>(expectedFrames) / static_cast<double>(targetSampleRate);
 
-    pugi::xml_document doc;
     auto decl = doc.append_child(pugi::node_declaration);
     decl.append_attribute("version") = "1.0";
     decl.append_attribute("encoding") = "UTF-8";
@@ -783,7 +792,6 @@ std::string AdmWriter::generateAdmXml(const LusidScene& scene, const std::vector
         appendPcmStreamTrackAndUid(admFormat, makeObjectIds(objectIndex, trackIndex), objectIds[objectIndex], targetSampleRate);
     }
 
-    return saveXmlToString(doc);
 }
 
 AdmWriterResult AdmWriter::writeAdmBw64(
@@ -819,8 +827,9 @@ AdmWriterResult AdmWriter::writeAdmBw64(
     uint32_t channelCount = 0;
     uint32_t objectCount = 0;
 
-    // 1. Generate XML
-    std::string xmlString = generateAdmXml(scene, monoWavs, targetSampleRate, expectedFrames, channelCount, objectCount);
+    // 1. Generate XML DOM
+    pugi::xml_document doc;
+    populateAdmDocument(doc, scene, monoWavs, targetSampleRate, expectedFrames, channelCount, objectCount);
 
     // Write XML temp file
     std::string tmpXmlPath = outXmlPath + ".tmp";
@@ -829,8 +838,17 @@ AdmWriterResult AdmWriter::writeAdmBw64(
         result.errorMessage = "Failed to create temp XML file";
         return result;
     }
-    xmlOut << xmlString;
+    saveXmlToStream(doc, xmlOut);
     xmlOut.close();
+    if (!xmlOut) {
+        result.errorMessage = "Failed to write temp XML file";
+        return result;
+    }
+
+    // Keep one serialized XML string for BW64 axml embedding and optional
+    // metadata-post-data rewrite. The sidecar XML file is already streamed
+    // directly from the DOM above.
+    std::string xmlString = saveXmlToString(doc);
 
     // 2. Prepare BW64 Writer
     uint16_t bw64Channels = static_cast<uint16_t>(sortedIds.size());

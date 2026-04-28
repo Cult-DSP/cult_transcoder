@@ -60,7 +60,7 @@ The major allocation and transfer points are:
 | LUSID JSON output | `LusidScene` plus ostream writer | JSON is streamed directly to file/stdout in public write paths; a full string is still available through a compatibility wrapper |
 | Package source audio | file stream plus chunk buffer | decoded in chunks and written to mono stem streams |
 | Authoring normalized audio | temporary normalized WAV files | source stems are normalized to files, then read back for ADM BWF writing |
-| Authored ADM XML | `pugi::xml_document` plus serialized XML string | XML DOM is serialized to a full string for sidecar and BWF `axml` embedding |
+| Authored ADM XML | `pugi::xml_document` plus serialized XML string | sidecar XML is streamed directly from the DOM; one serialized XML string is still kept for BWF `axml` embedding and metadata-post-data rewrite |
 
 Important lifetime rule:
 
@@ -72,15 +72,16 @@ Important lifetime rule:
 Current non-streaming metadata points:
 
 - ADM XML is DOM-parsed before conversion
-- authored ADM XML is built as a DOM and serialized as a complete string
+- authored ADM XML still keeps one serialized compatibility string for BW64 `axml` embedding and metadata-post-data rewrite
 - on-demand compatibility helpers may still materialize full metadata strings:
   - `lusidSceneToJson()`
   - `Report::toJson()`
 
 These are intentional for the current implementation. The current metadata
-streaming pass covers LUSID JSON file writing and report file/stdout writing,
-while deeper authoring XML streaming remains deferred because the authored XML
-string is still reused for both the sidecar file and BW64 `axml` embedding.
+streaming pass covers LUSID JSON file writing, report file/stdout writing, and
+authored sidecar XML writing from the DOM, while deeper authoring XML streaming
+remains deferred because one authored XML string is still reused for BW64
+`axml` embedding and metadata-post-data rewrite.
 
 ## Flow 1: ADM XML to LUSID JSON
 

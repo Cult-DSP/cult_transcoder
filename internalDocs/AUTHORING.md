@@ -166,6 +166,7 @@ Implemented:
 
 Open items:
 
+- deeper authored XML streaming is not implemented yet; the sidecar XML can stream from the DOM, but one serialized XML string is still retained for BW64 `axml` embedding and `--metadata-post-data` rewrite
 - stereo-pair reconstruction from adjacent mono L/R ADM tracks is not implemented
 - Dolby-approved-master recognition remains future work and is not a v1 blocker
 

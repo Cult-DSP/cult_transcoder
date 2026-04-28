@@ -5,10 +5,10 @@
 ### Context Reset Prompt — Current Repo State
 
 ```
-You are continuing CULT Transcoder work from a stable post-v1-authoring baseline. The export-side `adm-author` pipeline writes Logic-compatible ADM XML plus ADM BWF/WAV via `libbw64`; `exported/lusid_package_logic_shaped.wav` has imported successfully in Logic Pro. A separate `package-adm-wav` command converts ADM BWF/WAV source material into a LUSID package by extracting embedded ADM metadata and splitting interleaved audio into mono float32 stems. Recent cleanup work is complete: reporting helpers were deduplicated, ingest code moved under `src/transcoding/`, generic `package-adm-wav` now shares one parsed ADM document instead of reparsing `axml`, shared ADM document-root / `Technical` / timecode helpers are consolidated in `src/transcoding/adm/admHelper.hpp`, and the time-compatibility audit confirmed that the real remaining issue was authoring precision on sample-spaced object blocks, which is now covered by tests and fixed by plain wallclock output that extends up to 9 fractional digits when needed. All 81/81 current ingest/parity/CLI/authoring/packaging/helper tests pass as of 2026-04-28. Do NOT regress the parity-critical ingest path. Keep authoring compatibility fixes separate from LUSID package generation work.
+You are continuing CULT Transcoder work from a stable post-v1-authoring baseline. The export-side `adm-author` pipeline writes Logic-compatible ADM XML plus ADM BWF/WAV via `libbw64`; `exported/lusid_package_logic_shaped.wav` has imported successfully in Logic Pro. A separate `package-adm-wav` command converts ADM BWF/WAV source material into a LUSID package by extracting embedded ADM metadata and splitting interleaved audio into mono float32 stems. Recent cleanup work is complete: reporting helpers were deduplicated, ingest code moved under `src/transcoding/`, generic `package-adm-wav` now shares one parsed ADM document instead of reparsing `axml`, shared ADM document-root / `Technical` / timecode helpers are consolidated in `src/transcoding/adm/admHelper.hpp`, the time-compatibility audit confirmed that the real remaining issue was authoring precision on sample-spaced object blocks, and metadata streaming Phase 2 now streams the authored sidecar XML from the DOM while still keeping one serialized XML string for BW64 `axml` embedding and metadata-post-data rewrite reuse. All 83/83 current ingest/parity/CLI/authoring/packaging/helper tests pass as of 2026-04-28. Do NOT regress the parity-critical ingest path. Keep authoring compatibility fixes separate from LUSID package generation work.
 
 Immediate context for the next agent:
-- metadata streaming remains deferred: LUSID JSON output and authored ADM XML are still materialized as complete strings before writing
+- metadata streaming is partially complete: LUSID JSON/report output is streamed directly, and authored sidecar XML now streams from the `pugi::xml_document`, but one serialized authoring XML string still remains for BW64 `axml` embedding and metadata-post-data rewrite
 - memory-sensitive ingest invariant: generic ADM object blocks should continue flowing directly into `timeToNodes`; do not reintroduce full object-block staging unless a tested behavior change requires it
 - the recent time-compatibility audit already established the narrow fix boundary: `src/parsing/parsingHelper.hpp::convertSceneTimeToSeconds()` and shared ADM time parsing stayed unchanged, while `src/authoring/adm_writer.cpp::formatAdmTime()` now keeps plain wallclock timing with up to 9 fractional digits when sample-spaced object blocks need extra precision
 - if future timing work is needed, keep it test-led and preserve parity/order semantics unless tests and docs are updated together
@@ -22,7 +22,7 @@ Canonical docs:
 - `internalDocs/audit.md` — integration-facing notes for SpatialSeed wiring and non-regression evidence
 
 Current open work:
-- metadata streaming for LUSID JSON output and authored ADM XML remains future work
+- deeper authored XML streaming remains future work beyond the current sidecar-streaming pass
 - stereo-pair reconstruction from adjacent mono ADM tracks is future work
 - Dolby-approved-master recognition is future work and not a v1 blocker
 - MPEG-H planning exists in docs, but is not the active implementation track unless explicitly requested
