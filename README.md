@@ -34,17 +34,21 @@ cult-transcoder adm-author \
   --wav-dir <path> \
   --out-xml <export.adm.xml> \
   --out-wav <export.wav> \
-  [--report <path>] [--stdout-report] [--quiet]
+  [--report <path>] [--stdout-report] [--quiet] \
+  [--dbmd-source <source.wav|dbmd.bin>]
 
 # alternate input
 cult-transcoder adm-author \
   --lusid-package <path> \
   --out-xml <export.adm.xml> \
   --out-wav <export.wav> \
-  [--report <path>] [--stdout-report] [--quiet]
+  [--report <path>] [--stdout-report] [--quiet] \
+  [--dbmd-source <source.wav|dbmd.bin>]
 ```
 
 `adm-author` normalizes mono stems to 48 kHz and uses the normalized audio length as the ADM duration. A one-frame end-of-file mismatch is tolerated by authoring to the shortest stem length and ignoring the trailing sample from longer stems; larger frame-count mismatches fail with per-file details in the report.
+
+`--dbmd-source` is experimental. It copies a Dolby `dbmd` chunk from an existing ADM WAV, or treats a non-WAV path as raw `dbmd` payload, for Dolby-tool compatibility testing.
 
 Source package generation command:
 

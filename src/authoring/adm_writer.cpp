@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstdint>
 #include <fstream>
 #include <iomanip>
 #include <map>
@@ -33,6 +34,31 @@
 namespace cult {
 
 namespace {
+
+uint32_t fourCc(const char id[4]) {
+    return static_cast<uint32_t>(static_cast<unsigned char>(id[0])) |
+           (static_cast<uint32_t>(static_cast<unsigned char>(id[1])) << 8) |
+           (static_cast<uint32_t>(static_cast<unsigned char>(id[2])) << 16) |
+           (static_cast<uint32_t>(static_cast<unsigned char>(id[3])) << 24);
+}
+
+class RawChunk : public bw64::Chunk {
+public:
+    RawChunk(const char id[4], std::vector<char> data)
+        : id_(fourCc(id)), data_(std::move(data)) {}
+
+    uint32_t id() const override { return id_; }
+    uint64_t size() const override { return data_.size(); }
+    void write(std::ostream& stream) const override {
+        if (!data_.empty()) {
+            stream.write(data_.data(), static_cast<std::streamsize>(data_.size()));
+        }
+    }
+
+private:
+    uint32_t id_;
+    std::vector<char> data_;
+};
 
 std::string to_string_fixed(double val, int precision) {
     std::ostringstream out;
@@ -390,6 +416,7 @@ std::string AdmWriter::generateAdmXml(const LusidScene& scene, const std::vector
     programme.append_attribute("audioProgrammeID") = "APR_1001";
     programme.append_attribute("audioProgrammeName") = "CULT Authoring Programme";
     programme.append_attribute("start") = formatAdmTime(0.0, targetSampleRate).c_str();
+    programme.append_attribute("end") = formatAdmTime(totalDuration, targetSampleRate).c_str();
     programme.append_attribute("duration") = formatAdmTime(totalDuration, targetSampleRate).c_str();
 
     auto content = admFormat.append_child("audioContent");
@@ -413,6 +440,7 @@ std::string AdmWriter::generateAdmXml(const LusidScene& scene, const std::vector
         audioObject.append_attribute("audioObjectID") = "AO_1001";
         audioObject.append_attribute("audioObjectName") = "Master";
         audioObject.append_attribute("start") = formatAdmTime(0.0, targetSampleRate).c_str();
+        audioObject.append_attribute("end") = formatAdmTime(totalDuration, targetSampleRate).c_str();
         audioObject.append_attribute("duration") = formatAdmTime(totalDuration, targetSampleRate).c_str();
         appendText(audioObject, "audioPackFormatIDRef", "AP_00011001");
         for (size_t i = 0; i < bedIds.size(); ++i) {
@@ -430,6 +458,7 @@ std::string AdmWriter::generateAdmXml(const LusidScene& scene, const std::vector
         audioObject.append_attribute("audioObjectID") = ids.audioObjectId.c_str();
         audioObject.append_attribute("audioObjectName") = id.c_str();
         audioObject.append_attribute("start") = formatAdmTime(0.0, targetSampleRate).c_str();
+        audioObject.append_attribute("end") = formatAdmTime(totalDuration, targetSampleRate).c_str();
         audioObject.append_attribute("duration") = formatAdmTime(totalDuration, targetSampleRate).c_str();
         appendText(audioObject, "audioPackFormatIDRef", ids.packId);
         appendText(audioObject, "audioTrackUIDRef", ids.trackUid);
@@ -550,7 +579,8 @@ AdmWriterResult AdmWriter::writeAdmBw64(
         const std::vector<WavFileInfo>& monoWavs,
         uint32_t targetSampleRate,
         uint64_t expectedFrames,
-        const ProgressCallback& onProgress
+        const ProgressCallback& onProgress,
+        const std::vector<char>& dbmdData
 ) {
     AdmWriterResult result;
 
@@ -643,6 +673,9 @@ AdmWriterResult AdmWriter::writeAdmBw64(
 
     try {
         bw64::Bw64Writer bw64Writer(tmpWavPath.c_str(), bw64Channels, targetSampleRate, 24, extraChunks);
+        if (!dbmdData.empty()) {
+            bw64Writer.setAxmlChunk(std::make_shared<RawChunk>("dbmd", dbmdData));
+        }
 
         // 3. Open mono WAV streams
         std::vector<std::ifstream> streams(bw64Channels);

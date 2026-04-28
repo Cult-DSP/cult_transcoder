@@ -1,6 +1,10 @@
 # Build output (CMake)
 build/
 
+# Generated validation/export artifacts
+exported/*
+!exported/.gitkeep
+
 # OS
 .DS_Store
 Thumbs.db

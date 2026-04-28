@@ -64,6 +64,7 @@ struct AdmAuthorRequest {
     std::string lusidPackage;   // optional package path (mutually exclusive)
     std::string outXmlPath;     // authored ADM XML output path
     std::string outWavPath;     // authored ADM BW64 output path
+    std::string dbmdSourcePath;  // optional experimental dbmd source WAV/bin
     std::string reportPath;     // resolved path for the report file
     bool        stdoutReport = false;
     bool        quiet = false;

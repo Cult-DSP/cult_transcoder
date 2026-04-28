@@ -52,7 +52,8 @@ public:
         const std::vector<WavFileInfo>& monoWavs,
         uint32_t targetSampleRate,
         uint64_t expectedFrames,
-        const ProgressCallback& onProgress = nullptr
+        const ProgressCallback& onProgress = nullptr,
+        const std::vector<char>& dbmdData = {}
     );
 
 private:

@@ -11,7 +11,10 @@ All notable changes to cult_transcoder are documented here. This file is scoped 
 - Kept authoring fixes and source-package generation documented as separate workflows.
 - Documented stereo-pair reconstruction as future work; current package generation preserves mono object tracks.
 - Recorded Logic Pro validation success for `exported/lusid_package_logic_shaped.wav`.
-- Validation evidence: `cmake --build build && ctest --test-dir build --output-on-failure` passes 72/72 tests.
+- Added experimental `adm-author --dbmd-source <source.wav|dbmd.bin>` for Dolby `dbmd` copy testing.
+- Added explicit ADM `end` timing on authored `audioProgramme` and `audioObject` elements.
+- Added Dolby Conversion Tool candidate notes for `exported/eden_dolby_candidate.wav`; the tool converts the file successfully, and the converted output opens in Logic, while the Dolby-approved-master warning remains.
+- Validation evidence: `cmake --build build && ctest --test-dir build --output-on-failure` passes 73/73 tests.
 
 ## 2026-04-26
 

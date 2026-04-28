@@ -277,6 +277,7 @@ static int cmdAdmAuthor(const std::vector<std::string>& argv) {
         else if (flag == "--lusid-package") req.lusidPackage = nextArg(argv, i, "--lusid-package");
         else if (flag == "--out-xml")       req.outXmlPath   = nextArg(argv, i, "--out-xml");
         else if (flag == "--out-wav")       req.outWavPath   = nextArg(argv, i, "--out-wav");
+        else if (flag == "--dbmd-source")   req.dbmdSourcePath = nextArg(argv, i, "--dbmd-source");
         else if (flag == "--report")        req.reportPath   = nextArg(argv, i, "--report");
         else if (flag == "--stdout-report") req.stdoutReport = true;
         else if (flag == "--quiet")         req.quiet        = true;
@@ -508,11 +509,13 @@ static void printUsage(const std::string& progName) {
         "           --lusid <scene.lusid.json> --wav-dir <path>\n"
         "           --out-xml <export.adm.xml> --out-wav <export.wav>\n"
         "           [--report <path>] [--stdout-report] [--quiet]\n"
+        "           [--dbmd-source <source.wav|dbmd.bin>]\n"
         "\n"
         "       " << progName << " adm-author\n"
         "           --lusid-package <path>\n"
         "           --out-xml <export.adm.xml> --out-wav <export.wav>\n"
         "           [--report <path>] [--stdout-report] [--quiet]\n"
+        "           [--dbmd-source <source.wav|dbmd.bin>]\n"
         "\n"
         "       " << progName << " package-adm-wav\n"
         "           --in <source.wav> --out-package <package-dir>\n"

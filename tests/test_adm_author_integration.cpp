@@ -24,6 +24,7 @@
 #include <pugixml.hpp>
 
 #include <cstdint>
+#include <array>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -65,6 +66,44 @@ std::string readTextFile(const fs::path& path) {
     std::ostringstream out;
     out << f.rdbuf();
     return out.str();
+}
+
+uint32_t readU32(std::ifstream& in) {
+    std::array<unsigned char, 4> b{};
+    in.read(reinterpret_cast<char*>(b.data()), b.size());
+    return static_cast<uint32_t>(b[0]) |
+           (static_cast<uint32_t>(b[1]) << 8) |
+           (static_cast<uint32_t>(b[2]) << 16) |
+           (static_cast<uint32_t>(b[3]) << 24);
+}
+
+bool outputHasChunk(const fs::path& path, const std::string& wantedId) {
+    std::ifstream in(path, std::ios::binary);
+    REQUIRE(in.is_open());
+    char tag[4];
+    in.read(tag, 4);
+    if (std::string(tag, 4) != "RIFF" && std::string(tag, 4) != "BW64" && std::string(tag, 4) != "RF64") {
+        return false;
+    }
+    (void)readU32(in);
+    in.read(tag, 4);
+    if (std::string(tag, 4) != "WAVE") {
+        return false;
+    }
+
+    while (in) {
+        in.read(tag, 4);
+        if (in.gcount() != 4) break;
+        const uint32_t size = readU32(in);
+        if (std::string(tag, 4) == wantedId) {
+            return true;
+        }
+        in.seekg(static_cast<std::streamoff>(size), std::ios::cur);
+        if (size % 2 == 1) {
+            in.seekg(1, std::ios::cur);
+        }
+    }
+    return false;
 }
 
 } // namespace
@@ -136,6 +175,9 @@ TEST_CASE("admAuthor writes ADM XML and BW64 with matching embedded axml",
 
     const std::string xml = readTextFile(outXml);
     REQUIRE(xml.find("<audioFormatExtended") != std::string::npos);
+    REQUIRE(xml.find("start=\"00:00:00.00000\"") != std::string::npos);
+    REQUIRE(xml.find("end=\"00:00:00.01000\"") != std::string::npos);
+    REQUIRE(xml.find("duration=\"00:00:00.01000\"") != std::string::npos);
     REQUIRE(xml.find("audioObjectName=\"11.1\"") != std::string::npos);
     REQUIRE(xml.find("audioObjectName=\"Master\"") != std::string::npos);
     REQUIRE(xml.find("audioChannelFormatName=\"RoomCentricLFE\"") != std::string::npos);
@@ -171,6 +213,46 @@ TEST_CASE("admAuthor writes ADM XML and BW64 with matching embedded axml",
     REQUIRE(audioIds[2].uid() == "ATU_00000003");
     REQUIRE(audioIds[2].trackRef() == "AT_00031003_01");
     REQUIRE(audioIds[2].packRef() == "AP_00031002");
+}
+
+TEST_CASE("admAuthor can copy an experimental dbmd chunk into authored output",
+          "[adm-author][integration]") {
+    TempDir temp;
+
+    const fs::path scenePath = temp.path / "scene.lusid.json";
+    writeTextFile(scenePath, R"JSON({
+  "version": "0.5",
+  "timeUnit": "seconds",
+  "duration": 0.01,
+  "frames": [
+    {
+      "time": 0.0,
+      "nodes": [
+        {"id": "1.1", "type": "direct_speaker", "cart": [-1.0, 0.0, 0.0]}
+      ]
+    }
+  ]
+})JSON");
+
+    writeFloatWav(temp.path / "1.1.wav", 0.1f);
+    const fs::path dbmd = temp.path / "source.dbmd.bin";
+    writeTextFile(dbmd, "CULT_DBMD_TEST");
+
+    const fs::path outXml = temp.path / "export.adm.xml";
+    const fs::path outWav = temp.path / "export.wav";
+
+    cult::AdmAuthorRequest req;
+    req.lusidPath = scenePath.string();
+    req.wavDir = temp.path.string();
+    req.outXmlPath = outXml.string();
+    req.outWavPath = outWav.string();
+    req.dbmdSourcePath = dbmd.string();
+
+    auto result = cult::admAuthor(req);
+    INFO(result.report.toJson());
+    REQUIRE(result.success);
+    REQUIRE(outputHasChunk(outWav, "dbmd"));
+    REQUIRE(result.report.warnings.size() == 1);
 }
 
 TEST_CASE("admAuthor tolerates one trailing sample mismatch by truncating to shortest length",

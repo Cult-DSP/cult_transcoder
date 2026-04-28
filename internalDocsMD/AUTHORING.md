@@ -403,6 +403,47 @@ Conclusion:
 - The current authoring implementation should keep the Logic-shaped ADM XML conventions listed in section 5.6.
 - Future compatibility work should treat `dbmd` preservation/synthesis as optional metadata hardening, not as the known primary import fix.
 
+### 5.10 Dolby Atmos Conversion Tool Result
+
+Manual validation with the Dolby Atmos Conversion Tool produced a stricter result than Logic Pro import.
+
+Observed messages:
+
+- On import: `Opening an unsupported master. This file is invalid or was not created by Dolby approved software. It may not open or play back correctly.`
+- Earlier conversion attempt displayed: `Conversion output error: The time entered for the FFOA must be in a range between the start time and end time. Enter a new time greater or equal to 00:00:00:00 and less than 00:00:00:00.`
+- Later validation showed the FFOA message was not blocking: the Dolby Atmos Conversion Tool successfully converted the file, and the converted file opened in Logic.
+
+Interpretation:
+
+- Logic-compatible ADM BWF output can also be usable by the Dolby Atmos Conversion Tool.
+- The remaining import warning indicates the authored file is not recognized as a Dolby-approved master. This appears to be a provenance/certification warning rather than a conversion blocker.
+- The FFOA message should not be treated as the current blocker because conversion succeeded and the converted output opened in Logic.
+
+Follow-up:
+
+- If Dolby-approved-master recognition becomes a target, compare accepted Dolby/Logic source BWF metadata against CULT output for private/provenance fields.
+- Continue to preserve the distinction between conversion usability and Dolby approval status.
+
+Implemented experiment:
+
+- `adm-author` now supports `--dbmd-source <source.wav|dbmd.bin>` as an experimental path for copying a Dolby `dbmd` payload into authored output.
+- Authored ADM XML now writes an explicit nonzero `end` attribute alongside `start` and `duration` on `audioProgramme` and `audioObject` elements.
+- Automated tests verify `end`/`duration` XML output and `dbmd` chunk emission.
+
+Candidate:
+
+- `exported/eden_dolby_candidate.wav`
+- `exported/eden_dolby_candidate.adm.xml`
+- `exported/eden_dolby_candidate.report.json`
+
+This candidate uses `dbmd` extracted from `/Users/lucian/projects/spatialroot/sourceData/EDEN-ATMOS-MIX-LFE.wav`. It should be used for the next Dolby Atmos Conversion Tool validation pass.
+
+Validation result:
+
+- Dolby Atmos Conversion Tool converted the file successfully.
+- The converted output opened in Logic.
+- The unsupported-master warning remains and should be tracked separately from structural conversion success.
+
 ## 6. ADM WAV -> LUSID Package Generation
 
 This is a separate workflow from ADM authoring fixes.

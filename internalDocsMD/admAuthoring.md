@@ -122,14 +122,16 @@ cult-transcoder adm-author \
   --wav-dir <path> \
   --out-xml <export.adm.xml> \
   --out-wav <export.wav> \
-  [--report <path>] [--stdout-report] [--quiet]
+  [--report <path>] [--stdout-report] [--quiet] \
+  [--dbmd-source <source.wav|dbmd.bin>]
 
 # Alternate input:
 cult-transcoder adm-author \
   --lusid-package <path> \
   --out-xml <export.adm.xml> \
   --out-wav <export.wav> \
-  [--report <path>] [--stdout-report] [--quiet]
+  [--report <path>] [--stdout-report] [--quiet] \
+  [--dbmd-source <source.wav|dbmd.bin>]
 ```
 
 ### Exit codes
@@ -373,6 +375,8 @@ Manual validation status should be stated explicitly when authoring behavior cha
 
 Status 2026-04-27: `exported/lusid_package_logic_shaped.wav` imported successfully in Logic Pro. Keep the current Logic-shaped ADM XML conventions unless a newer Logic/Dolby compatibility fixture proves otherwise.
 
+Dolby Atmos Conversion Tool status: current output still shows an unsupported-master warning because it is not recognized as created by Dolby-approved software, but the tool successfully converted the candidate and the converted file opened in Logic. The earlier FFOA range message is not the current blocker.
+
 ## 8.1 Progress and Packaging Boundary
 
 `adm-author` is the export-side authoring path. It now reports progress through `AdmAuthorRequest::onProgress` using `ProgressEvent` phases such as `metadata`, `inspect`, `normalize`, and `interleave`.
@@ -412,6 +416,7 @@ Open item:
 - Stereo-pair reconstruction from mono L/R ADM tracks is not implemented.
 - Future motion interpolation beyond step-hold needs a written policy and fresh Logic validation.
 - Future metadata expansion beyond the current Logic-compatible ADM subset needs explicit loss/reporting policy.
+- Dolby-approved-master recognition is not yet solved; investigate Dolby-private/provenance metadata if that target becomes required. Conversion usability is currently validated.
 
 ## 10. Deliverables
 

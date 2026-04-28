@@ -27,8 +27,12 @@
 #include "adm_writer.hpp"
 
 #include <algorithm>
+#include <array>
+#include <cstdint>
 #include <cmath>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <limits>
 #include <map>
 #include <vector>
@@ -85,6 +89,79 @@ std::map<std::string, int> countUniqueSupportedNodeTypes(const LusidScene& scene
     return counts;
 }
 
+uint32_t readU32(std::ifstream& in) {
+    std::array<unsigned char, 4> b{};
+    in.read(reinterpret_cast<char*>(b.data()), b.size());
+    return static_cast<uint32_t>(b[0]) |
+           (static_cast<uint32_t>(b[1]) << 8) |
+           (static_cast<uint32_t>(b[2]) << 16) |
+           (static_cast<uint32_t>(b[3]) << 24);
+}
+
+bool readTag(std::ifstream& in, char out[4]) {
+    in.read(out, 4);
+    return in.gcount() == 4;
+}
+
+bool extractDbmdFromRiff(const std::string& path, std::vector<char>& data, std::string& error) {
+    data.clear();
+    std::ifstream in(path, std::ios::binary);
+    if (!in.is_open()) {
+        error = "failed to open dbmd source: " + path;
+        return false;
+    }
+
+    char riff[4];
+    if (!readTag(in, riff)) {
+        error = "dbmd source is empty";
+        return false;
+    }
+    const std::string riffId(riff, 4);
+    if (riffId != "RIFF" && riffId != "BW64" && riffId != "RF64") {
+        in.clear();
+        in.seekg(0, std::ios::beg);
+        data.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+        if (data.empty()) {
+            error = "raw dbmd source is empty";
+            return false;
+        }
+        return true;
+    }
+
+    (void)readU32(in);
+    char wave[4];
+    if (!readTag(in, wave) || std::string(wave, 4) != "WAVE") {
+        error = "dbmd source is RIFF-like but not WAVE";
+        return false;
+    }
+
+    while (in) {
+        char chunkId[4];
+        if (!readTag(in, chunkId)) break;
+        const uint32_t chunkSize = readU32(in);
+        const std::string id(chunkId, 4);
+        if (id == "dbmd") {
+            data.resize(chunkSize);
+            if (chunkSize > 0) {
+                in.read(data.data(), static_cast<std::streamsize>(chunkSize));
+            }
+            if (!in) {
+                error = "failed to read dbmd chunk from source";
+                data.clear();
+                return false;
+            }
+            return true;
+        }
+        in.seekg(static_cast<std::streamoff>(chunkSize), std::ios::cur);
+        if (chunkSize % 2 == 1) {
+            in.seekg(1, std::ios::cur);
+        }
+    }
+
+    error = "dbmd chunk not found in source: " + path;
+    return false;
+}
+
 } // namespace
 
 AdmAuthorResult admAuthor(const AdmAuthorRequest& req) {
@@ -127,6 +204,17 @@ AdmAuthorResult admAuthor(const AdmAuthorRequest& req) {
     if (!report.errors.empty()) {
         report.status = "fail";
         return result;
+    }
+
+    std::vector<char> dbmdData;
+    if (!req.dbmdSourcePath.empty()) {
+        std::string dbmdError;
+        if (!extractDbmdFromRiff(req.dbmdSourcePath, dbmdData, dbmdError)) {
+            report.errors.push_back("adm-author: " + dbmdError);
+            report.status = "fail";
+            return result;
+        }
+        report.warnings.push_back("adm-author: copied experimental dbmd chunk from " + req.dbmdSourcePath);
     }
 
     if (hasPackage && !fs::exists(req.lusidPackage)) {
@@ -330,7 +418,8 @@ AdmAuthorResult admAuthor(const AdmAuthorRequest& req) {
         normWavInfos,
         targetSampleRate,
         expectedFrames,
-        req.onProgress
+        req.onProgress,
+        dbmdData
     );
 
     if (!wRes.success) {

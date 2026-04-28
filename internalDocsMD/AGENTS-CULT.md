@@ -204,6 +204,14 @@ Observed in the current submodule (no assumptions beyond code/tests in this repo
 - CLI progress bars render to stderr and can be disabled with `--quiet`.
 - Future transcoding tasks must reuse this callback contract for long-running work instead of inventing per-command progress mechanisms.
 
+**Dolby Conversion Tool experiment (Implemented):**
+
+- `adm-author` accepts experimental `--dbmd-source <source.wav|dbmd.bin>`.
+- When the source is WAVE-like, CULT extracts the source `dbmd` chunk and writes it as a post-data `dbmd` chunk in the authored output.
+- When the source is not WAVE-like, CULT treats the file as a raw `dbmd` payload.
+- Authored ADM XML writes nonzero `end` attributes alongside `start` and `duration` on `audioProgramme` and `audioObject`.
+- This is for Dolby Atmos Conversion Tool compatibility testing. It is separate from the already passing Logic import target.
+
 Known doc mismatch to fix later:
 
 - `README.md` (formerly `OVERVIEW.md`) phase table may reference stale phase numbering.
@@ -366,7 +374,7 @@ Defaults:
 - If `--report` omitted: report path is `<out>.report.json`.
 - `--stdout-report` prints report JSON to stdout. File report is still written unless a future option disables it.
 
-### Planned ADM authoring command
+### ADM authoring command
 
 ```bash
 cult-transcoder adm-author \
@@ -375,7 +383,9 @@ cult-transcoder adm-author \
   --out-xml <export.adm.xml> \
   --out-wav <export.wav> \
   [--report <path>] \
-  [--stdout-report]
+  [--stdout-report] \
+  [--quiet] \
+  [--dbmd-source <source.wav|dbmd.bin>]
 
 # alternate input
 cult-transcoder adm-author \
@@ -383,7 +393,9 @@ cult-transcoder adm-author \
   --out-xml <export.adm.xml> \
   --out-wav <export.wav> \
   [--report <path>] \
-  [--stdout-report]
+  [--stdout-report] \
+  [--quiet] \
+  [--dbmd-source <source.wav|dbmd.bin>]
 ```
 
 Exit codes for both commands:
