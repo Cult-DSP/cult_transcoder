@@ -1,6 +1,16 @@
 # ADM Authoring Extension — Implementation Decisions
 
-This document formally captures the design decisions for the `adm-author` pipeline (Steps 3 and 4) which handles LUSID → ADM export mapping and writing to a `.wav` BW64 container. It follows the execution-safe, contract-first design set throughout CULT.
+This document is the implementation and validation record for `adm-author` and closely related ADM package work. It captures the concrete decisions, Logic Pro findings, compatibility experiments, and roundtrip evidence behind the current code.
+
+## Documentation Map
+
+- `internalDocsMD/admAuthoring.md` is the compact architecture and contract document for the authoring feature.
+- `internalDocsMD/AUTHORING.md` is this implementation record: detailed findings, validation candidates, compatibility hypotheses, and resolved investigations.
+- `src/authoring/README.md` is the code-owner map for the authoring module.
+- `src/packaging/README.md` is the code-owner map for ADM WAV -> LUSID package generation.
+- `internalDocsMD/audit.md` explains how CULT authoring relates to SpatialSeed pipeline wiring.
+
+Rule of thumb: update `admAuthoring.md` when the stable contract changes; update this file when a validation finding, compatibility detail, or investigative result needs to be preserved.
 
 ## Implementation Entry Points (April 2026 module move)
 
@@ -12,8 +22,8 @@ Authoring code now lives under `src/authoring/`.
 
 Notes:
 
-- This move is structural only; behavior and validation semantics remain unchanged.
-- Ingest/parity-critical `adm_xml -> lusid_json` paths are intentionally untouched.
+- Ingest/parity-critical `adm_xml -> lusid_json` paths are intentionally untouched by authoring compatibility work.
+- ADM authoring and ADM WAV -> LUSID package generation are separate workflows even though they share ADM/LUSID concepts.
 
 ## 1. ADM ID Generation Strategy (ITU-R BS.2076)
 
@@ -425,7 +435,7 @@ The command is self-contained. It extracts embedded ADM XML through CULT/libbw64
 
 ### 6.2 Stem Splitting Policy
 
-Current first pass:
+Current package-generation behavior:
 
 - Split the interleaved ADM WAV data into mono 48 kHz float32 stems.
 - Name stems by the generated LUSID node IDs. `4.1` is written as `LFE.wav`.
@@ -455,3 +465,34 @@ API behavior:
 - Current phases include `metadata`, `inspect`, `normalize`, `interleave`, and `split`.
 
 Future transcoding tasks should reuse this callback contract instead of inventing command-specific progress channels.
+
+### 6.4 EDEN Roundtrip Validation
+
+Source:
+
+- `/Users/lucian/projects/spatialroot/sourceData/EDEN-ATMOS-MIX-LFE.wav`
+
+Validated flow:
+
+1. `package-adm-wav` generated a self-contained LUSID package.
+2. `adm-author` re-authored that package back to ADM BWF/WAV.
+3. Both commands completed successfully with progress output enabled.
+
+Generated validation artifacts:
+
+- `exported/eden_roundtrip_package_cpp/`
+- `exported/eden_roundtrip_package_cpp.report.json`
+- `exported/eden_roundtrip_reauthored.wav`
+- `exported/eden_roundtrip_reauthored.adm.xml`
+- `exported/eden_roundtrip_reauthored.report.json`
+
+Observed facts:
+
+- Package generation wrote 46 mono float32 stems plus `scene.lusid.json`, `channel_order.txt`, and `scene_report.json`.
+- `channel_order.txt` contained 46 generated node IDs/stems.
+- Package report status was `success`.
+- Re-author report status was `pass`.
+- Re-authored output duration was 98 seconds at 48 kHz.
+- Re-authored summary counted 9 direct speakers, 1 LFE, and 36 audio objects.
+
+The generated files are validation artifacts only. The useful findings are captured here, so the artifacts may be deleted when no longer needed for manual DAW inspection.
