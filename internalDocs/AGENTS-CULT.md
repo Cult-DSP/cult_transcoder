@@ -8,8 +8,8 @@
 You are continuing CULT Transcoder work from a stable post-v1-authoring baseline. The export-side `adm-author` pipeline writes Logic-compatible ADM XML plus ADM BWF/WAV via `libbw64`; `exported/lusid_package_logic_shaped.wav` has imported successfully in Logic Pro. A separate `package-adm-wav` command converts ADM BWF/WAV source material into a LUSID package by extracting embedded ADM metadata and splitting interleaved audio into mono float32 stems. Recent cleanup work is complete: reporting helpers were deduplicated, ingest code moved under `src/transcoding/`, generic `package-adm-wav` now shares one parsed ADM document instead of reparsing `axml`, shared ADM document-root / `Technical` / timecode helpers are consolidated in `src/transcoding/adm/admHelper.hpp`, the time-compatibility audit confirmed that the real remaining issue was authoring precision on sample-spaced object blocks, and metadata streaming Phase 2 now streams the authored sidecar XML from the DOM while still keeping one serialized XML string for BW64 `axml` embedding and metadata-post-data rewrite reuse. All 83/83 current ingest/parity/CLI/authoring/packaging/helper tests pass as of 2026-04-28. Do NOT regress the parity-critical ingest path. Keep authoring compatibility fixes separate from LUSID package generation work.
 
 Immediate context for the next agent:
+- primary focus is now the memory-sensitive ingest invariant: generic ADM object blocks should continue flowing directly into `timeToNodes`; do not reintroduce full object-block staging unless a tested behavior change requires it
 - metadata streaming is partially complete: LUSID JSON/report output is streamed directly, and authored sidecar XML now streams from the `pugi::xml_document`, but one serialized authoring XML string still remains for BW64 `axml` embedding and metadata-post-data rewrite
-- memory-sensitive ingest invariant: generic ADM object blocks should continue flowing directly into `timeToNodes`; do not reintroduce full object-block staging unless a tested behavior change requires it
 - the recent time-compatibility audit already established the narrow fix boundary: `src/parsing/parsingHelper.hpp::convertSceneTimeToSeconds()` and shared ADM time parsing stayed unchanged, while `src/authoring/adm_writer.cpp::formatAdmTime()` now keeps plain wallclock timing with up to 9 fractional digits when sample-spaced object blocks need extra precision
 - if future timing work is needed, keep it test-led and preserve parity/order semantics unless tests and docs are updated together
 
@@ -21,14 +21,29 @@ Canonical docs:
 - `internalDocs/dataFlow.md` — runtime data ownership, parsing/serialization flow, and non-streaming boundaries
 - `internalDocs/audit.md` — integration-facing notes for SpatialSeed wiring and non-regression evidence
 
-Current open work:
-- deeper authored XML streaming remains future work beyond the current sidecar-streaming pass
-- stereo-pair reconstruction from adjacent mono ADM tracks is future work
-- Dolby-approved-master recognition is future work and not a v1 blocker
-- MPEG-H planning exists in docs, but is not the active implementation track unless explicitly requested
+Task status:
+
+Completed:
+- export-side `adm-author` baseline is implemented and manually validated in Logic Pro
+- `package-adm-wav` is implemented and shares one parsed ADM document on the generic path
+- reporting helper dedup, transcoding tree relocation, package metadata single-parse cleanup, and ADM helper consolidation are complete
+- time-compatibility audit and narrow authoring fix are complete
+- metadata streaming Phase 1 is complete for LUSID JSON/report output
+- metadata streaming Phase 2 sidecar step is complete for authored `.adm.xml` output from the DOM
+
+Partially complete:
+- metadata streaming overall is only partially complete: one authored XML compatibility string still remains for BW64 `axml` embedding and metadata-post-data rewrite
+- memory-sensitive ingest cleanup is partially complete: generic object blocks already flow directly into `timeToNodes`, but future maintainability work must preserve that invariant and avoid backsliding
+- authoring validation/tool compatibility is practically complete for Logic import and Dolby-tool conversion usability, but not complete for Dolby-approved-master recognition or broader DAW-specific guarantees
+
+Future work:
+- deeper authored XML streaming beyond the current sidecar-streaming pass
+- stereo-pair reconstruction from adjacent mono ADM tracks
+- Dolby-approved-master recognition
+- MPEG-H planning, only if explicitly requested
 
 Next task focus:
-- prioritize low-risk follow-up work before coding: preserve the protected ingest/parity path, keep authoring and packaging fixes separate, and prefer small maintainability or consistency fixes with focused tests and matching doc updates
+- prioritize the memory-sensitive ingest invariant before other cleanup: preserve the protected ingest/parity path, keep generic ADM object blocks flowing directly into `timeToNodes`, and prefer small maintainability or consistency fixes with focused tests and matching doc updates
 ```
 
 Goal: keep the repo clean, stable, and maintainable while preserving the working v1 authoring/packaging baseline and the protected ingest/parity path.
