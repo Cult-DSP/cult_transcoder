@@ -198,7 +198,7 @@ PackageAdmWavResult packageAdmWav(const PackageAdmWavRequest& req) {
     if (profile.profile == AdmProfile::Sony360RA) {
         conversion = convertSony360RaToLusid(doc, req.lfeMode);
     } else {
-        conversion = convertAdmToLusidFromBuffer(axmlResult.xmlData, req.lfeMode);
+        conversion = convertAdmDocumentToLusid(doc, req.lfeMode);
     }
     for (const auto& warning : conversion.warnings) {
         report.warnings.push_back(warning);

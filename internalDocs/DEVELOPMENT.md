@@ -209,6 +209,19 @@ Historical importance:
 - this completes the remaining top-level source-tree migration work called out in the post-v1 cleanup plan
 - it reduces path drift between module ownership docs and the actual code layout without changing ingest behavior or public CLI/API contracts
 
+### 2026-04-28: Package Metadata Single-Parse Cleanup
+
+Implemented:
+
+- updated `src/packaging/adm_package.cpp` so generic `package-adm-wav` conversion reuses the already-loaded `pugi::xml_document`
+- removed the extra generic-ADM reparse through `convertAdmToLusidFromBuffer()` after profile detection on the package path
+- kept Sony 360RA package conversion on the existing parsed-document dispatch path
+
+Historical importance:
+
+- this aligns `package-adm-wav` metadata handling with the earlier single-parse cleanup already applied to `transcode`
+- it removes redundant parse work in the package-generation path without changing package output shape, stem ordering, or CLI/API behavior
+
 ## Resampling History
 
 The original `resamplingPlan.md` captured a narrow and important design boundary that should remain part of project history even after the standalone plan is retired.

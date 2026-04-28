@@ -161,6 +161,7 @@ Implemented:
 - ADM BWF/WAV writing through `libbw64`
 - Logic-shaped bed modeling, `chna`, and embedded `axml`
 - separate `package-adm-wav` path for ADM WAV -> LUSID package generation
+- `package-adm-wav` now shares one parsed ADM `pugi::xml_document` between profile detection and generic metadata conversion, matching the `transcode` single-parse metadata path
 
 Open items:
 

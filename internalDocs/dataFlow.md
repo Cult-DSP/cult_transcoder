@@ -287,15 +287,16 @@ cult-transcoder package-adm-wav \
 Actual steps:
 
 1. Extract embedded `axml` from the ADM BWF/WAV.
-2. Parse the XML for profile detection.
-3. Convert ADM metadata to a `LusidScene`.
-4. Inspect the source WAV container and audio format.
-5. Determine canonical node order from the converted LUSID scene.
-6. Write `scene.lusid.json`.
-7. Write `channel_order.txt`.
-8. Split interleaved source audio into package-local mono float32 WAV stems.
-9. Write `scene_report.json`.
-10. Rename the temporary package directory into place.
+2. Parse the XML once into a `pugi::xml_document`.
+3. Run profile detection on that parsed document.
+4. Convert ADM metadata to a `LusidScene` using the same parsed document.
+5. Inspect the source WAV container and audio format.
+6. Determine canonical node order from the converted LUSID scene.
+7. Write `scene.lusid.json`.
+8. Write `channel_order.txt`.
+9. Split interleaved source audio into package-local mono float32 WAV stems.
+10. Write `scene_report.json`.
+11. Rename the temporary package directory into place.
 
 Package channel/stem order is derived from LUSID node IDs:
 
@@ -309,6 +310,13 @@ The package path keeps metadata conversion and audio splitting separate:
 - metadata comes from ADM `axml`
 - audio samples come from the source WAV `data` chunk
 - stems are decoded to mono float32 WAV files
+
+Important ownership rule:
+
+- `package-adm-wav` keeps one parsed `pugi::xml_document` alive for both
+  profile detection and generic ADM conversion
+- do not reintroduce `convertAdmToLusidFromBuffer()` on this path unless a
+  tested behavior change requires reparsing
 
 If `chna` metadata is missing or does not match expectations, CULT warns and
 uses canonical LUSID order.
@@ -329,9 +337,9 @@ Memory behavior:
 Implementation note:
 
 - Sony 360RA package conversion reuses the parsed document
-- generic package conversion currently calls the in-memory buffer conversion API
-  after profile detection, so it reparses the extracted `axml`; the single-parse
-  cleanup described above currently applies to `transcode`
+- generic package conversion now follows the same single-parse metadata path as
+  `transcode`: extract `axml`, parse once, detect profile, and convert from the
+  already-loaded document
 
 ## Flow 4: LUSID JSON or Package to ADM XML and ADM BWF/WAV
 
