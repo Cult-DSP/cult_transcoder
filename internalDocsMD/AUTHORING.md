@@ -423,6 +423,7 @@ Follow-up:
 
 - If Dolby-approved-master recognition becomes a target, compare accepted Dolby/Logic source BWF metadata against CULT output for private/provenance fields.
 - Continue to preserve the distinction between conversion usability and Dolby approval status.
+- Treat Dolby-approved-master recognition as future work for now. It is not a v1 blocker for CULT authoring as long as Logic import and Dolby-tool conversion remain successful.
 
 Implemented experiment:
 
@@ -447,7 +448,9 @@ Validation result:
 - Dolby Atmos Conversion Tool converted the file successfully.
 - The converted output opened in Logic.
 - The unsupported-master warning remains and should be tracked separately from structural conversion success.
-- The post-data candidate is the next candidate to test against the unsupported-master warning. If the warning remains, the next likely cause is Dolby-approved provenance/private metadata rather than basic ADM BWF structure.
+- The post-data candidate did not clear the unsupported-master warning.
+- Current conclusion: the remaining warning is most likely tied to Dolby-approved provenance/private metadata rather than basic ADM BWF structure.
+- This should now be treated as future work unless Dolby-approved-master recognition becomes a product requirement.
 
 ## 6. ADM WAV -> LUSID Package Generation
 

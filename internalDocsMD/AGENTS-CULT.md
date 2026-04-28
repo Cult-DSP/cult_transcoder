@@ -204,14 +204,16 @@ Observed in the current submodule (no assumptions beyond code/tests in this repo
 - CLI progress bars render to stderr and can be disabled with `--quiet`.
 - Future transcoding tasks must reuse this callback contract for long-running work instead of inventing per-command progress mechanisms.
 
-**Dolby Conversion Tool experiment (Implemented):**
+**Dolby Conversion Tool experiment (Implemented, now future work):**
 
 - `adm-author` accepts experimental `--dbmd-source <source.wav|dbmd.bin>`.
 - When the source is WAVE-like, CULT extracts the source `dbmd` chunk and writes it as a post-data `dbmd` chunk in the authored output.
 - When the source is not WAVE-like, CULT treats the file as a raw `dbmd` payload.
 - `adm-author` accepts experimental `--metadata-post-data`, which rewrites authored WAV chunk order to `JUNK`, `fmt `, `data`, `axml`, `chna`, and optional `dbmd`.
 - Authored ADM XML writes nonzero `end` attributes alongside `start` and `duration` on `audioProgramme` and `audioObject`.
-- This is for Dolby Atmos Conversion Tool compatibility testing. It is separate from the already passing Logic import target.
+- These experiments did not remove the Dolby unsupported-master warning.
+- Current conclusion: Dolby-tool conversion usability is good enough for v1, while Dolby-approved-master recognition should be treated as future work tied to provenance/private Dolby metadata rather than basic ADM BWF structure.
+- This is separate from the already passing Logic import target and should not block unrelated authoring or packaging work.
 
 Known doc mismatch to fix later:
 
