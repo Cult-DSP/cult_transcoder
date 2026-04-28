@@ -17,6 +17,7 @@
 // ---------------------------------------------------------------------------
 
 #include "parsing/lusid_reader.hpp"
+#include "parsing/parsingHelper.hpp"
 
 #include <nlohmann/json.hpp>
 
@@ -29,95 +30,14 @@
 
 namespace cult {
 
-// File-local helpers live in an anonymous namespace to avoid exporting
-// implementation details or colliding with similar helpers in other modules.
-namespace {
-
-bool isSupportedAudioNodeType(const std::string& type) {
-    return type == "direct_speaker" || type == "audio_object" || type == "LFE";
-}
-
-bool isKnownNodeType(const std::string& type) {
-    return isSupportedAudioNodeType(type) ||
-           type == "spectral_features" ||
-           type == "agent_state";
-}
-
-bool isValidNodeId(const std::string& id) {
-    const auto dot = id.find('.');
-    if (dot == std::string::npos || dot == 0 || dot + 1 >= id.size()) {
-        return false;
-    }
-    if (id.find('.', dot + 1) != std::string::npos) {
-        return false;
-    }
-    return std::all_of(id.begin(), id.begin() + static_cast<std::ptrdiff_t>(dot), [](unsigned char c) {
-               return std::isdigit(c);
-           }) &&
-           std::all_of(id.begin() + static_cast<std::ptrdiff_t>(dot + 1), id.end(), [](unsigned char c) {
-               return std::isdigit(c);
-           });
-}
-
-std::string normalizeTimeUnit(const std::string& raw) {
-    std::string value = raw;
-    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
-        return static_cast<char>(std::tolower(c));
-    });
-    if (value == "s") return "seconds";
-    if (value == "samp") return "samples";
-    if (value == "ms") return "milliseconds";
-    return value;
-}
-
-bool convertSceneTimeToSeconds(LusidScene& scene, std::string& error) {
-    const std::string unit = normalizeTimeUnit(scene.timeUnit);
-    double scale = 1.0;
-    if (unit == "seconds") {
-        scale = 1.0;
-    } else if (unit == "milliseconds") {
-        scale = 0.001;
-    } else if (unit == "samples") {
-        if (scene.sampleRate <= 0) {
-            error = "LUSID scene timeUnit is 'samples' but sampleRate is missing or invalid";
-            return false;
-        }
-        scale = 1.0 / static_cast<double>(scene.sampleRate);
-    } else {
-        error = "LUSID scene has unsupported timeUnit: '" + scene.timeUnit + "'";
-        return false;
-    }
-
-    for (auto& frame : scene.frames) {
-        frame.time *= scale;
-    }
-    scene.timeUnit = "seconds";
-    return true;
-}
-
-bool readJsonFile(const std::string& path, nlohmann::json& out, std::string& error) {
-    std::ifstream f(path);
-    if (!f.is_open()) {
-        error = "Failed to open LUSID scene: '" + path + "'";
-        return false;
-    }
-    try {
-        f >> out;
-    } catch (const std::exception& e) {
-        error = std::string("Failed to parse LUSID scene JSON: ") + e.what();
-        return false;
-    }
-    return true;
-}
-
-} // namespace
+// Helpers live in parsing_helpers (parsingHelper.hpp).
 
 LusidSceneLoadResult readLusidScene(const std::string& path) {
     LusidSceneLoadResult result;
     nlohmann::json root;
     std::string error;
 
-    if (!readJsonFile(path, root, error)) {
+    if (!parsing_helpers::readJsonFile(path, root, error)) {
         result.errors.push_back(error);
         return result;
     }
@@ -214,16 +134,16 @@ LusidSceneLoadResult readLusidScene(const std::string& path) {
             LusidNode node;
             node.id = nodeJson["id"].get<std::string>();
             node.type = nodeJson["type"].get<std::string>();
-            if (!isValidNodeId(node.id)) {
+            if (!parsing_helpers::isValidNodeId(node.id)) {
                 result.errors.push_back("LUSID node id '" + node.id + "' must match X.Y");
                 continue;
             }
-            if (!isKnownNodeType(node.type)) {
+            if (!parsing_helpers::isKnownNodeType(node.type)) {
                 result.errors.push_back("LUSID node '" + node.id + "' has unknown type '" + node.type + "'");
                 continue;
             }
 
-            if (!isSupportedAudioNodeType(node.type)) {
+            if (!parsing_helpers::isSupportedAudioNodeType(node.type)) {
                 frame.nodes.push_back(node);
                 continue;
             }
@@ -274,7 +194,7 @@ LusidSceneLoadResult readLusidScene(const std::string& path) {
     });
 
     std::string timeError;
-    if (!convertSceneTimeToSeconds(result.scene, timeError)) {
+    if (!parsing_helpers::convertSceneTimeToSeconds(result.scene, timeError)) {
         result.errors.push_back(timeError);
         return result;
     }

@@ -1,6 +1,6 @@
 # now
 
-- cleanup documentation
-- move to LUSID v1 in docs and code
+- helper functions to remove repeated code
+- move transcoding into sc
 
 # after
