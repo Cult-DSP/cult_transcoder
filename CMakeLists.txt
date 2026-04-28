@@ -155,6 +155,7 @@ add_executable(cult-transcoder
     src/audio/wav_io.cpp                     # self-contained RIFF WAV reader/writer
     src/audio/normalize_audio.cpp            # 48 kHz float32 normalization coordinator
     src/audio/resampler_r8brain.cpp          # r8brain-backed mono resampling
+    src/packaging/adm_package.cpp            # ADM WAV -> LUSID package generation
     transcoding/adm/adm_reader.cpp           # Phase 3: BW64 axml extraction (libbw64)
     transcoding/adm/adm_profile_resolver.cpp # Phase 4: ADM profile detection
     transcoding/adm/sony360ra_to_lusid.cpp   # Phase 6: Sony 360RA ADM → LUSID
@@ -195,6 +196,7 @@ add_executable(cult_tests
     tests/test_adm_author_args.cpp           # adm-author CLI validation tests
     tests/test_lusid_to_adm_mapping.cpp      # adm-author LUSID -> ADM mapping tests
     tests/test_adm_author_integration.cpp    # adm-author XML + BW64 integration tests
+    tests/test_adm_package.cpp               # package-adm-wav roundtrip tests
     tests/parity/run_parity.cpp
 
     # Same source files the main binary uses, so tests exercise real code
@@ -207,6 +209,7 @@ add_executable(cult_tests
     src/audio/wav_io.cpp
     src/audio/normalize_audio.cpp
     src/audio/resampler_r8brain.cpp
+    src/packaging/adm_package.cpp
     transcoding/adm/adm_reader.cpp           # Phase 3: needed by transcoder
     transcoding/adm/adm_profile_resolver.cpp # Phase 4: ADM profile detection
     transcoding/adm/sony360ra_to_lusid.cpp   # Phase 6: Sony 360RA ADM → LUSID

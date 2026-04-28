@@ -2,6 +2,17 @@
 
 All notable changes to cult_transcoder are documented here. This file is scoped to this submodule only.
 
+## 2026-04-27
+
+- Added `package-adm-wav` for ADM BWF/WAV -> LUSID package generation.
+- Added `src/packaging/` ownership docs and `tests/test_adm_package.cpp`.
+- Added shared `ProgressCallback` / `ProgressEvent` API in `src/progress.hpp`.
+- Wired CLI progress bars for `adm-author` and `package-adm-wav`; progress renders to stderr and can be disabled with `--quiet`.
+- Kept authoring fixes and source-package generation documented as separate workflows.
+- Documented stereo-pair reconstruction as future work; current package generation preserves mono object tracks.
+- Recorded Logic Pro validation success for `exported/lusid_package_logic_shaped.wav`.
+- Validation evidence: `cmake --build build && ctest --test-dir build --output-on-failure` passes 72/72 tests.
+
 ## 2026-04-26
 
 - Added a pinned DRY + module re-organization task list to `internalDocsMD/AGENTS-CULT.md`, with required markdown update targets per task.

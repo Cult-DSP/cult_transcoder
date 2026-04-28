@@ -380,3 +380,78 @@ Lower priority:
 - Top-level FourCC: the known source is `RIFF`, not `BW64`.
 - `fmt ` extensible: the known source uses classic PCM `fmt ` size 16.
 - `bext`: no top-level `bext` was found in the source file's chunk list.
+
+### 5.9 Logic Validation Result and Current State
+
+Logic result:
+
+- `exported/lusid_package_logic_shaped.wav` imported successfully in Logic Pro.
+
+Conclusion:
+
+- The blocker was the authored ADM XML profile shape, not the `.wav` extension, the lack of a copied `dbmd` payload, or pre/post-data placement of `axml` and `chna`.
+- The current authoring implementation should keep the Logic-shaped ADM XML conventions listed in section 5.6.
+- Future compatibility work should treat `dbmd` preservation/synthesis as optional metadata hardening, not as the known primary import fix.
+
+## 6. ADM WAV -> LUSID Package Generation
+
+This is a separate workflow from ADM authoring fixes.
+
+- `adm-author` consumes a LUSID package or explicit `scene.lusid.json` + mono WAV directory and produces authored ADM XML plus an ADM BWF/WAV.
+- `package-adm-wav` consumes an existing ADM BWF/WAV and produces a LUSID package directory.
+
+The two flows share some ADM/LUSID mapping code, but they solve different problems and should not be conflated during debugging.
+
+### 6.1 Package Command
+
+Implemented command:
+
+```bash
+build/cult-transcoder package-adm-wav \
+  --in <source.wav> \
+  --out-package <package-dir> \
+  [--report <path>] [--stdout-report] [--quiet] \
+  [--lfe-mode hardcoded|speaker-label]
+```
+
+Package outputs:
+
+- `scene.lusid.json`
+- one mono float32 WAV stem per generated LUSID node
+- `channel_order.txt`
+- `scene_report.json`
+
+The command is self-contained. It extracts embedded ADM XML through CULT/libbw64, converts ADM metadata to LUSID, and splits the interleaved audio data with an internal streaming RIFF/BW64 reader. It does not require ffmpeg, libsndfile, or host-project audio utilities.
+
+### 6.2 Stem Splitting Policy
+
+Current first pass:
+
+- Split the interleaved ADM WAV data into mono 48 kHz float32 stems.
+- Name stems by the generated LUSID node IDs. `4.1` is written as `LFE.wav`.
+- Write `channel_order.txt` so the package records the exact generated node order.
+- Use existing LFE detection policy from ingest (`hardcoded` by default, `speaker-label` opt-in).
+- Validate `chna` presence/count/contiguity where possible and warn if CULT falls back to canonical LUSID order.
+
+Open issue:
+
+- CULT does not currently reconstruct stereo objects from adjacent mono L/R stems. ADM object tracks are packaged as mono LUSID objects. Stereo-pair inference is future work and must be explicit because false pairing would be worse than preserving mono tracks.
+
+### 6.3 Progress Reporting
+
+Both `adm-author` and `package-adm-wav` now expose `ProgressCallback` in the public API.
+
+CLI behavior:
+
+- Progress bars are written to stderr.
+- JSON reports still go to the report file and optional stdout, so progress does not contaminate `--stdout-report`.
+- Use `--quiet` to disable progress output.
+
+API behavior:
+
+- Include `src/progress.hpp`.
+- Set `AdmAuthorRequest::onProgress` or `PackageAdmWavRequest::onProgress`.
+- Each callback receives `ProgressEvent { phase, current, total, detail }`.
+- Current phases include `metadata`, `inspect`, `normalize`, `interleave`, and `split`.
+
+Future transcoding tasks should reuse this callback contract instead of inventing command-specific progress channels.

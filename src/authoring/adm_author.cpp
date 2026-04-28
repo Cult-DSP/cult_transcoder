@@ -162,6 +162,10 @@ AdmAuthorResult admAuthor(const AdmAuthorRequest& req) {
         return result;
     }
 
+    if (req.onProgress) {
+        req.onProgress(ProgressEvent{"metadata", 0, 1, "reading LUSID scene"});
+    }
+
     auto sceneResult = readLusidScene(scenePath);
     if (!sceneResult.success) {
         for (const auto& e : sceneResult.errors) {
@@ -179,6 +183,10 @@ AdmAuthorResult admAuthor(const AdmAuthorRequest& req) {
     }
 
     std::vector<WavFileInfo> wavInfos;
+    if (req.onProgress) {
+        req.onProgress(ProgressEvent{"metadata", 1, 1, "loaded LUSID scene"});
+        req.onProgress(ProgressEvent{"inspect", 0, static_cast<uint64_t>(nodeIds.size()), "checking source stems"});
+    }
     for (const auto& id : nodeIds) {
         fs::path wavPath = fs::path(wavDir);
         if (id == "4.1") {
@@ -198,6 +206,9 @@ AdmAuthorResult admAuthor(const AdmAuthorRequest& req) {
             continue;
         }
         wavInfos.push_back(info);
+        if (req.onProgress) {
+            req.onProgress(ProgressEvent{"inspect", static_cast<uint64_t>(wavInfos.size()), static_cast<uint64_t>(nodeIds.size()), "checking source stems"});
+        }
     }
 
     if (!report.errors.empty()) {
@@ -207,6 +218,9 @@ AdmAuthorResult admAuthor(const AdmAuthorRequest& req) {
 
     const uint32_t targetSampleRate = 48000;
     fs::path workDir = fs::path(req.outWavPath + ".work");
+    if (req.onProgress) {
+        req.onProgress(ProgressEvent{"normalize", 0, static_cast<uint64_t>(wavInfos.size()), "normalizing source stems"});
+    }
     auto normalized = normalizeWavSet(wavInfos, workDir.string(), targetSampleRate);
     if (!normalized.success) {
         for (const auto& e : normalized.errors) {
@@ -217,6 +231,9 @@ AdmAuthorResult admAuthor(const AdmAuthorRequest& req) {
     }
 
     report.authoringResample = normalized.files;
+    if (req.onProgress) {
+        req.onProgress(ProgressEvent{"normalize", static_cast<uint64_t>(normalized.files.size()), static_cast<uint64_t>(wavInfos.size()), "normalized source stems"});
+    }
 
     report.hasAuthoringValidation = true;
     uint64_t minFrames = std::numeric_limits<uint64_t>::max();
@@ -312,7 +329,8 @@ AdmAuthorResult admAuthor(const AdmAuthorRequest& req) {
         sceneResult.scene,
         normWavInfos,
         targetSampleRate,
-        expectedFrames
+        expectedFrames,
+        req.onProgress
     );
 
     if (!wRes.success) {

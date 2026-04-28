@@ -549,7 +549,8 @@ AdmWriterResult AdmWriter::writeAdmBw64(
         const LusidScene& scene,
         const std::vector<WavFileInfo>& monoWavs,
         uint32_t targetSampleRate,
-        uint64_t expectedFrames
+        uint64_t expectedFrames,
+        const ProgressCallback& onProgress
 ) {
     AdmWriterResult result;
 
@@ -683,6 +684,11 @@ AdmWriterResult AdmWriter::writeAdmBw64(
         std::vector<float> interleaveBuf(framesPerChunk * bw64Channels);
 
         uint64_t framesRemaining = expectedFrames;
+        uint64_t framesWritten = 0;
+        uint64_t lastReported = 0;
+        if (onProgress) {
+            onProgress(ProgressEvent{"interleave", 0, expectedFrames, "writing ADM WAV"});
+        }
         while (framesRemaining > 0) {
             uint64_t toRead = std::min(framesPerChunk, framesRemaining);
 
@@ -701,6 +707,12 @@ AdmWriterResult AdmWriter::writeAdmBw64(
 
             bw64Writer.write(interleaveBuf.data(), toRead);
             framesRemaining -= toRead;
+            framesWritten += toRead;
+            if (onProgress && (framesWritten == expectedFrames ||
+                               framesWritten - lastReported >= targetSampleRate / 2)) {
+                lastReported = framesWritten;
+                onProgress(ProgressEvent{"interleave", framesWritten, expectedFrames, "writing ADM WAV"});
+            }
         }
 
     } catch (const std::exception& e) {

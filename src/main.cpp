@@ -40,9 +40,13 @@
 #include "cult_version.hpp"
 #include "adm_to_lusid.hpp"  // LfeMode
 
+#include <chrono>
 #include <cstdlib>
+#include <cstdint>
 #include <filesystem>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -53,16 +57,79 @@ namespace fs = std::filesystem;
 // ---------------------------------------------------------------------------
 static int cmdTranscode(const std::vector<std::string>& argv);
 static int cmdAdmAuthor(const std::vector<std::string>& argv);
+static int cmdPackageAdmWav(const std::vector<std::string>& argv);
 static void printUsage(const std::string& progName);
 static std::string defaultReportPath(const std::string& outPath);
 static std::string defaultAuthorReportPath(const std::string& outWavPath,
                                            const std::string& outXmlPath);
+static std::string defaultPackageReportPath(const std::string& outPackageDir);
 static std::string nextArg(const std::vector<std::string>& argv,
                            size_t& index,
                            const std::string& name);
 static bool requireFlag(const std::string& val, const std::string& name);
+static cult::LfeMode parseLfeModeOrExit(const std::string& val);
 static void writeAtomicReport(const cult::Report& report, const std::string& reportPath);
 static void printErrors(const cult::Report& report);
+
+class CliProgress {
+public:
+    explicit CliProgress(bool enabled) : enabled_(enabled) {}
+    ~CliProgress() {
+        if (enabled_ && lineOpen_) {
+            std::cerr << "\n";
+        }
+    }
+
+    cult::ProgressCallback callback() {
+        return [this](const cult::ProgressEvent& event) { render(event); };
+    }
+
+private:
+    void render(const cult::ProgressEvent& event) {
+        if (!enabled_) return;
+        using clock = std::chrono::steady_clock;
+        const auto now = clock::now();
+        const bool complete = event.total > 0 && event.current >= event.total;
+        const bool phaseChanged = event.phase != lastPhase_;
+        if (!phaseChanged && !complete && now - lastRender_ < std::chrono::milliseconds(100)) {
+            return;
+        }
+        lastRender_ = now;
+        lastPhase_ = event.phase;
+
+        constexpr int width = 24;
+        double ratio = 0.0;
+        if (event.total > 0) {
+            ratio = static_cast<double>(event.current) / static_cast<double>(event.total);
+            if (ratio < 0.0) ratio = 0.0;
+            if (ratio > 1.0) ratio = 1.0;
+        }
+        const int filled = static_cast<int>(ratio * width);
+
+        std::ostringstream bar;
+        for (int i = 0; i < width; ++i) {
+            bar << (i < filled ? '#' : '-');
+        }
+
+        std::cerr << "\r[cult-transcoder] " << std::left << std::setw(10) << event.phase
+                  << " [" << bar.str() << "] "
+                  << std::right << std::setw(3) << static_cast<int>(ratio * 100.0) << "%";
+        if (!event.detail.empty()) {
+            std::cerr << " " << event.detail;
+        }
+        std::cerr << std::flush;
+        lineOpen_ = true;
+        if (complete) {
+            std::cerr << "\n";
+            lineOpen_ = false;
+        }
+    }
+
+    bool enabled_ = false;
+    bool lineOpen_ = false;
+    std::string lastPhase_;
+    std::chrono::steady_clock::time_point lastRender_{};
+};
 
 // ---------------------------------------------------------------------------
 // main()
@@ -84,6 +151,10 @@ int main(int argc, char* argv[]) {
 
     if (subcommand == "adm-author") {
         return cmdAdmAuthor(args);
+    }
+
+    if (subcommand == "package-adm-wav") {
+        return cmdPackageAdmWav(args);
     }
 
     if (subcommand == "--version" || subcommand == "-v") {
@@ -120,15 +191,7 @@ static int cmdTranscode(const std::vector<std::string>& argv) {
         else if (flag == "--stdout-report") req.stdoutReport = true;
         else if (flag == "--lfe-mode") {
             const std::string val = nextArg(argv, i, "--lfe-mode");
-            if (val == "hardcoded") {
-                req.lfeMode = cult::LfeMode::Hardcoded;
-            } else if (val == "speaker-label") {
-                req.lfeMode = cult::LfeMode::SpeakerLabel;
-            } else {
-                std::cerr << "[cult-transcoder] ERROR: unknown --lfe-mode value: '"
-                          << val << "'. Valid values: hardcoded, speaker-label\n";
-                std::exit(2);
-            }
+            req.lfeMode = parseLfeModeOrExit(val);
         }
         else {
             std::cerr << "[cult-transcoder] ERROR: unknown flag: " << flag << "\n";
@@ -216,6 +279,7 @@ static int cmdAdmAuthor(const std::vector<std::string>& argv) {
         else if (flag == "--out-wav")       req.outWavPath   = nextArg(argv, i, "--out-wav");
         else if (flag == "--report")        req.reportPath   = nextArg(argv, i, "--report");
         else if (flag == "--stdout-report") req.stdoutReport = true;
+        else if (flag == "--quiet")         req.quiet        = true;
         else {
             std::cerr << "[cult-transcoder] ERROR: unknown flag: " << flag << "\n";
             printUsage(argv[0]);
@@ -262,9 +326,83 @@ static int cmdAdmAuthor(const std::vector<std::string>& argv) {
     }
 
     // --- Invoke authoring ---
+    CliProgress progress(!req.quiet);
+    req.onProgress = progress.callback();
     cult::AdmAuthorResult result = cult::admAuthor(req);
 
     // --- Atomic report write ---
+    writeAtomicReport(result.report, req.reportPath);
+
+    if (req.stdoutReport) {
+        result.report.printToStdout();
+    }
+
+    if (!result.success) {
+        printErrors(result.report);
+        const std::string reportTmp = req.reportPath + ".tmp";
+        if (fs::exists(reportTmp)) fs::remove(reportTmp);
+        return 1;
+    }
+
+    return 0;
+}
+
+// ---------------------------------------------------------------------------
+// cmdPackageAdmWav() — split an ADM WAV into a LUSID package
+// ---------------------------------------------------------------------------
+static int cmdPackageAdmWav(const std::vector<std::string>& argv) {
+    cult::PackageAdmWavRequest req;
+
+    for (size_t i = 2; i < argv.size(); ++i) {
+        const std::string& flag = argv[i];
+
+        if      (flag == "--in")             req.inWavPath     = nextArg(argv, i, "--in");
+        else if (flag == "--out-package")    req.outPackageDir = nextArg(argv, i, "--out-package");
+        else if (flag == "--report")         req.reportPath    = nextArg(argv, i, "--report");
+        else if (flag == "--stdout-report")  req.stdoutReport  = true;
+        else if (flag == "--quiet")          req.quiet         = true;
+        else if (flag == "--lfe-mode")       req.lfeMode       = parseLfeModeOrExit(nextArg(argv, i, "--lfe-mode"));
+        else {
+            std::cerr << "[cult-transcoder] ERROR: unknown flag: " << flag << "\n";
+            printUsage(argv[0]);
+            std::exit(2);
+        }
+    }
+
+    bool argError = false;
+    argError = requireFlag(req.inWavPath, "--in") || argError;
+    argError = requireFlag(req.outPackageDir, "--out-package") || argError;
+
+    if (argError) {
+        printUsage(argv[0]);
+        if (!req.outPackageDir.empty() || !req.reportPath.empty()) {
+            const std::string rpath = req.reportPath.empty()
+                                      ? defaultPackageReportPath(req.outPackageDir)
+                                      : req.reportPath;
+            cult::Report failReport;
+            failReport.status = "fail";
+            failReport.args.inPath = req.inWavPath;
+            failReport.args.inFormat = "adm_wav";
+            failReport.args.outPath = req.outPackageDir;
+            failReport.args.outFormat = "lusid_package";
+            failReport.args.reportPath = rpath;
+            failReport.args.stdoutReport = req.stdoutReport;
+            failReport.args.lfeMode = req.lfeMode == cult::LfeMode::SpeakerLabel ? "speaker-label" : "hardcoded";
+            failReport.errors.push_back("Argument error — see stderr for details");
+            failReport.writeTo(rpath);
+            if (req.stdoutReport) failReport.printToStdout();
+        }
+        return 2;
+    }
+
+    if (req.reportPath.empty()) {
+        req.reportPath = defaultPackageReportPath(req.outPackageDir);
+    }
+
+    CliProgress progress(!req.quiet);
+    req.onProgress = progress.callback();
+    cult::PackageAdmWavResult result = cult::packageAdmWav(req);
+
     writeAtomicReport(result.report, req.reportPath);
 
     if (req.stdoutReport) {
@@ -295,6 +433,26 @@ static std::string defaultAuthorReportPath(const std::string& outWavPath,
     if (!outWavPath.empty()) return outWavPath + ".report.json";
     if (!outXmlPath.empty()) return outXmlPath + ".report.json";
     return "cult-transcoder.report.json";
+}
+
+static std::string defaultPackageReportPath(const std::string& outPackageDir) {
+    if (!outPackageDir.empty()) {
+        return (fs::path(outPackageDir) / "scene_report.json").string();
+    }
+    return "cult-transcoder.package.report.json";
+}
+
+static cult::LfeMode parseLfeModeOrExit(const std::string& val) {
+    if (val == "hardcoded") {
+        return cult::LfeMode::Hardcoded;
+    }
+    if (val == "speaker-label") {
+        return cult::LfeMode::SpeakerLabel;
+    }
+    std::cerr << "[cult-transcoder] ERROR: unknown --lfe-mode value: '"
+              << val << "'. Valid values: hardcoded, speaker-label\n";
+    std::exit(2);
+    return cult::LfeMode::Hardcoded;
 }
 
 static std::string nextArg(const std::vector<std::string>& argv,
@@ -349,12 +507,17 @@ static void printUsage(const std::string& progName) {
         "       " << progName << " adm-author\n"
         "           --lusid <scene.lusid.json> --wav-dir <path>\n"
         "           --out-xml <export.adm.xml> --out-wav <export.wav>\n"
-        "           [--report <path>] [--stdout-report]\n"
+        "           [--report <path>] [--stdout-report] [--quiet]\n"
         "\n"
         "       " << progName << " adm-author\n"
         "           --lusid-package <path>\n"
         "           --out-xml <export.adm.xml> --out-wav <export.wav>\n"
-        "           [--report <path>] [--stdout-report]\n"
+        "           [--report <path>] [--stdout-report] [--quiet]\n"
+        "\n"
+        "       " << progName << " package-adm-wav\n"
+        "           --in <source.wav> --out-package <package-dir>\n"
+        "           [--report <path>] [--stdout-report] [--quiet]\n"
+        "           [--lfe-mode <val>]  LFE detection: hardcoded (default) | speaker-label\n"
         "\n"
         "       " << progName << " --version\n"
         "       " << progName << " --help\n";

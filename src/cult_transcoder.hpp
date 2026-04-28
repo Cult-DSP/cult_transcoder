@@ -28,6 +28,7 @@
 
 #include "reporting/cult_report.hpp"
 #include "adm_to_lusid.hpp"  // LfeMode enum
+#include "progress.hpp"
 
 #include <string>
 
@@ -65,6 +66,8 @@ struct AdmAuthorRequest {
     std::string outWavPath;     // authored ADM BW64 output path
     std::string reportPath;     // resolved path for the report file
     bool        stdoutReport = false;
+    bool        quiet = false;
+    ProgressCallback onProgress;
 };
 
 // ---------------------------------------------------------------------------
@@ -94,5 +97,25 @@ TranscodeResult transcode(const TranscodeRequest& req);
 // admAuthor() — LUSID -> ADM authoring entry point (export-side)
 // ---------------------------------------------------------------------------
 AdmAuthorResult admAuthor(const AdmAuthorRequest& req);
+
+// ---------------------------------------------------------------------------
+// PackageAdmWavRequest — ADM WAV -> LUSID package generation
+// ---------------------------------------------------------------------------
+struct PackageAdmWavRequest {
+    std::string inWavPath;
+    std::string outPackageDir;
+    std::string reportPath;
+    bool        stdoutReport = false;
+    bool        quiet = false;
+    LfeMode     lfeMode = LfeMode::Hardcoded;
+    ProgressCallback onProgress;
+};
+
+struct PackageAdmWavResult {
+    bool success = false;
+    Report report;
+};
+
+PackageAdmWavResult packageAdmWav(const PackageAdmWavRequest& req);
 
 } // namespace cult

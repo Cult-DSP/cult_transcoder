@@ -5,7 +5,7 @@
 ### Context Reset Prompt — adm-author Tests & Validation
 
 ```
-You are continuing CULT Transcoder adm-author work. We have implemented the core export-side `adm-author` pipeline, including `AdmWriter` parsing the `scene.lusid.json` and writing deterministic ADM XML via `pugixml`. We also completed chunked, interleaved 24-bit float32 BW64 WAV packaging using `libbw64` with embedded `axml` metadata. All 70/70 current ingest/parity/CLI/authoring tests pass as of 2026-04-26. The next task is manual validation (e.g., verifying the resulting files import flawlessly into Logic Pro Atmos) and then SpatialSeed pipeline wiring. Do NOT regress the parity-critical ingest path. Your work will heavily involve `src/authoring/adm_writer.cpp`, `src/authoring/adm_author.cpp`, and Catch2 testing in `tests/`.
+You are continuing CULT Transcoder adm-author and package-generation work. The export-side `adm-author` pipeline writes Logic-compatible ADM XML plus ADM BWF/WAV via `libbw64`; `exported/lusid_package_logic_shaped.wav` has imported successfully in Logic Pro. A separate `package-adm-wav` command converts ADM BWF/WAV source material into a LUSID package by extracting embedded ADM metadata and splitting interleaved audio into mono float32 stems. All 72/72 current ingest/parity/CLI/authoring/packaging tests pass as of 2026-04-27. Do NOT regress the parity-critical ingest path. Keep authoring compatibility fixes separate from LUSID package generation work.
 ```
 
 Goal: implement the final mapping and integration tests for the new export-side `adm-author` path, and perform strict Logic Pro Atmos manual validation.
@@ -33,7 +33,7 @@ Step-by-step tasks:
 - If `scene.lusid.json` includes `duration`, validate against audio-derived duration after any one-frame tail normalization.
 - On larger mismatch, fail authoring and report expected vs actual counts per file.
 
-Status update (2026-04-26): Steps 1-6 are covered by automated tests. `adm-author` validates inputs, normalizes WAVs, builds deterministic ADM XML via `AdmWriter` using `pugixml`, and writes interwoven 24-bit BW64 with `libbw64` plus embedded `axml`. `test_adm_author_args.cpp`, `test_lusid_to_adm_mapping.cpp`, and `test_adm_author_integration.cpp` cover CLI/API validation, mapping, sidecar XML, and embedded metadata. Manual Logic Pro Atmos import validation remains pending.
+Status update (2026-04-27): Steps 1-6 are covered by automated tests. `adm-author` validates inputs, normalizes WAVs, builds deterministic Logic-shaped ADM XML via `AdmWriter` using `pugixml`, and writes interwoven 24-bit ADM BWF/WAV with `libbw64` plus embedded `axml` and `chna`. `test_adm_author_args.cpp`, `test_lusid_to_adm_mapping.cpp`, and `test_adm_author_integration.cpp` cover CLI/API validation, mapping, sidecar XML, and embedded metadata. Manual Logic Pro import passed for `exported/lusid_package_logic_shaped.wav`.
 
 3. Build authoring mapping layer (LUSID -> ADM model) (IMPLEMENTED)
 
@@ -62,7 +62,7 @@ Status update (2026-04-26): Steps 1-6 are covered by automated tests. `adm-autho
 
 ### Refactor Task List — DRY + Module Re-Organization (April 2026)
 
-Status 2026-04-26: complete through structure stabilization. Module ownership is now under `src/authoring/`, `src/parsing/`, and `src/reporting/`; root-level transitional shims were removed; `ctest --test-dir build --output-on-failure` passes 70/70.
+Status 2026-04-27: complete through structure stabilization plus ADM package generation. Module ownership is now under `src/authoring/`, `src/parsing/`, `src/reporting/`, and `src/packaging/`; root-level transitional shims were removed; `ctest --test-dir build --output-on-failure` passes 72/72.
 
 This list is retained as the completion record. Each task included a matching markdown/doc update in the same PR.
 
@@ -113,16 +113,16 @@ Execution order is mandatory: complete in sequence and keep ingest/parity behavi
 
 - Run focused authoring tests + full existing ingest/parity tests for every refactor slice.
 - No merge if parity tests regress.
-- Status 2026-04-26: full test gate passes 70/70 after the final shim-removal cleanup, including parity tests.
+- Status 2026-04-27: full test gate passes 72/72 after package-generation integration, including parity, authoring, and packaging tests.
 - **Required doc update in same PR:**
   - `internalDocsMD/audit.md` (what was moved, evidence of non-regression)
   - `internalDocsMD/CHANGELOG.md` (test/status note)
 
-7. Finish pending Step 6 validation after structure stabilization — AUTOMATED TESTS COMPLETE, MANUAL VALIDATION PENDING
+7. Finish pending Step 6 validation after structure stabilization — AUTOMATED TESTS COMPLETE, LOGIC VALIDATION PASSED
 
 - Complete `tests/test_lusid_to_adm_mapping.cpp` and `tests/test_adm_author_integration.cpp`.
 - Perform manual Logic Pro Atmos import validation and capture notes.
-- Status 2026-04-26: mapping/integration tests are complete; Logic Pro Atmos manual import remains the next external validation gate.
+- Status 2026-04-27: mapping/integration tests are complete; Logic Pro manual import passed for `exported/lusid_package_logic_shaped.wav`.
 - **Required doc update in same PR:**
   - `internalDocsMD/admAuthoring.md` (validation outcomes)
   - `internalDocsMD/CHANGELOG.md` (feature-complete test milestone)
@@ -186,6 +186,24 @@ Observed in the current submodule (no assumptions beyond code/tests in this repo
 - `tests/test_lusid_to_adm_mapping.cpp` — deterministic LUSID -> ADM mapping tests.
 - `tests/test_adm_author_integration.cpp` — XML + BW64 `axml` integration tests.
 
+**package-adm-wav path (Implemented, separate from authoring):**
+
+- `src/packaging/adm_package.cpp` — ADM BWF/WAV -> LUSID package generation.
+- Extracts embedded `axml`, converts ADM metadata to LUSID, and writes `scene.lusid.json`.
+- Splits interleaved source audio into mono float32 package stems with a self-contained streaming WAV/BW64 reader. No ffmpeg, libsndfile, or host-project utility dependency.
+- Writes `channel_order.txt` and package-local `scene_report.json`.
+- Does not reconstruct stereo pairs; adjacent mono L/R object inference is an explicit future task.
+- `tests/test_adm_package.cpp` covers ADM author -> package roundtrip and split progress events.
+
+**progress callback contract (Implemented):**
+
+- Public API type: `src/progress.hpp`.
+- `AdmAuthorRequest::onProgress` and `PackageAdmWavRequest::onProgress` accept `ProgressCallback`.
+- Events are `ProgressEvent { phase, current, total, detail }`.
+- Current phases include `metadata`, `inspect`, `normalize`, `interleave`, and `split`.
+- CLI progress bars render to stderr and can be disabled with `--quiet`.
+- Future transcoding tasks must reuse this callback contract for long-running work instead of inventing per-command progress mechanisms.
+
 Known doc mismatch to fix later:
 
 - `README.md` (formerly `OVERVIEW.md`) phase table may reference stale phase numbering.
@@ -219,6 +237,8 @@ These decisions are final and must not be changed without a doc-update PR.
 | BW64 packaging library            | `libbw64` (git submodule, `thirdparty/libbw64`)                                                                                                   |
 | Resampling library                | r8brain-free-src (git submodule, `thirdparty/r8brain`) — authoring path only                                                                      |
 | WAV I/O                           | Self-contained RIFF parser in `src/audio/wav_io.cpp` — no libsndfile dependency                                                                   |
+| ADM package splitting             | Self-contained streaming splitter in `src/packaging/adm_package.cpp` — no ffmpeg/libsndfile/host-project dependency                              |
+| Progress reporting                | Shared `ProgressCallback` / `ProgressEvent` in `src/progress.hpp`; CLI renders to stderr, disabled by `--quiet`                                   |
 | ADM authoring normalized audio    | mono, 48 kHz, float32 WAV (v1 export path)                                                                                                        |
 | ADM authoring resampling          | allowed only in `adm-author` normalization stage; must be explicit in report                                                                      |
 | ADM authoring duration source     | normalized WAV frame count; scene duration must match or fail                                                                                     |

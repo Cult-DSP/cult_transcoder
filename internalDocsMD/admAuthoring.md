@@ -325,7 +325,7 @@ Validation and normalization reporting:
 - one trailing-frame mismatches are warnings; affected files set `truncatedToExpected: true` and `framesUsed` to the authored frame count
 - include per-file expected vs actual frame counts in a structured report section
 
-### Step 10: Add tests (PENDING)
+### Step 10: Add tests (IMPLEMENTED)
 
 Required minimum test coverage:
 
@@ -346,11 +346,12 @@ Required minimum test coverage:
 - verify authoring subset constraints
 - verify deterministic output structure across repeated runs
 
-Status 2026-04-26:
+Status 2026-04-27:
 
 - `tests/test_lusid_to_adm_mapping.cpp` verifies deterministic bed/LFE/object ordering, object counts, direct-speaker/object channel typing, LFE placement, and step-hold `audioBlockFormat` timing.
 - `tests/test_adm_author_integration.cpp` verifies `admAuthor()` emits sidecar ADM XML and BW64, and that the BW64 `axml` chunk exactly matches the XML sidecar.
-- `ctest --test-dir build --output-on-failure` passes 70/70 tests, including existing ingest/parity tests.
+- `tests/test_adm_package.cpp` verifies the separate ADM WAV -> LUSID package flow and its split progress callback.
+- `ctest --test-dir build --output-on-failure` passes 72/72 tests, including existing ingest/parity tests.
 
 ### Manual validation
 
@@ -364,7 +365,22 @@ Import `export.wav` into Logic Pro Atmos and verify:
 
 Manual validation status must be stated explicitly in the PR.
 
-Status 2026-04-26: pending. No Logic Pro Atmos import validation was performed in this automated test slice.
+Status 2026-04-27: `exported/lusid_package_logic_shaped.wav` imported successfully in Logic Pro. Keep the current Logic-shaped ADM XML conventions unless a newer Logic/Dolby compatibility fixture proves otherwise.
+
+## 8.1 Progress and Packaging Boundary
+
+`adm-author` is the export-side authoring path. It now reports progress through `AdmAuthorRequest::onProgress` using `ProgressEvent` phases such as `metadata`, `inspect`, `normalize`, and `interleave`.
+
+`package-adm-wav` is a separate source-packaging path for ADM BWF/WAV -> LUSID package generation. It reports package progress through `PackageAdmWavRequest::onProgress`, especially the long-running `split` phase.
+
+The two paths should remain separate:
+
+- authoring fixes target Logic-compatible ADM BWF output from an existing LUSID package
+- package generation extracts ADM metadata and splits interleaved audio into mono stems for a LUSID package
+
+Open item:
+
+- Stereo-pair reconstruction from adjacent mono ADM tracks is not implemented. Package generation currently preserves mono tracks as mono stems and documents the generated node order in `channel_order.txt`.
 
 ## 9. Risks and Open Items
 
@@ -401,4 +417,4 @@ Status 2026-04-26: pending. No Logic Pro Atmos import validation was performed i
 - authored BW64 packager integrated
 - tests covering validation, mapping, and integration added
 - updated docs reflecting the new export-side contract
-- explicit statement of Logic Pro Atmos validation status: pending as of 2026-04-26
+- explicit statement of Logic Pro Atmos validation status: passed for `exported/lusid_package_logic_shaped.wav` as of 2026-04-27

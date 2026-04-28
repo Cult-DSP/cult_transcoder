@@ -20,6 +20,7 @@
 
 #include "lusid_scene.hpp"
 #include "audio/wav_io.hpp"
+#include "progress.hpp"
 
 #include <string>
 #include <vector>
@@ -50,7 +51,8 @@ public:
         const LusidScene& scene,
         const std::vector<WavFileInfo>& monoWavs,
         uint32_t targetSampleRate,
-        uint64_t expectedFrames
+        uint64_t expectedFrames,
+        const ProgressCallback& onProgress = nullptr
     );
 
 private:
