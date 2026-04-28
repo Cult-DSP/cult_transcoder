@@ -2,15 +2,28 @@
 
 ## Onboarding Tasks (New Agent)
 
-### Context Reset Prompt — adm-author Tests & Validation
+### Context Reset Prompt — Current Repo State
 
 ```
-You are continuing CULT Transcoder adm-author and package-generation work. The export-side `adm-author` pipeline writes Logic-compatible ADM XML plus ADM BWF/WAV via `libbw64`; `exported/lusid_package_logic_shaped.wav` has imported successfully in Logic Pro. A separate `package-adm-wav` command converts ADM BWF/WAV source material into a LUSID package by extracting embedded ADM metadata and splitting interleaved audio into mono float32 stems. All 73/73 current ingest/parity/CLI/authoring/packaging tests pass as of 2026-04-27. Do NOT regress the parity-critical ingest path. Keep authoring compatibility fixes separate from LUSID package generation work.
+You are continuing CULT Transcoder work from a post-v1-authoring baseline. The export-side `adm-author` pipeline writes Logic-compatible ADM XML plus ADM BWF/WAV via `libbw64`; `exported/lusid_package_logic_shaped.wav` has imported successfully in Logic Pro. A separate `package-adm-wav` command converts ADM BWF/WAV source material into a LUSID package by extracting embedded ADM metadata and splitting interleaved audio into mono float32 stems. All 73/73 current ingest/parity/CLI/authoring/packaging tests pass as of 2026-04-27. Do NOT regress the parity-critical ingest path. Keep authoring compatibility fixes separate from LUSID package generation work.
 
 Documentation rule: whenever you make a major implementation, architecture, milestone, validation, or future-work change, update `internalDocsMD/DEVELOPMENT.md` in the same change set so the historical development record stays current. Whenever a change affects authoring behavior, authoring validation, authoring CLI/API contract, compatibility status, or authoring future work, also update `internalDocsMD/AUTHORING.md` in the same change set.
+
+Canonical docs:
+- `internalDocsMD/AUTHORING.md` — authoring contract, validation results, compatibility status, and authoring future work
+- `internalDocsMD/DEVELOPMENT.md` — historical implementation timeline, milestones, refactors, and major feature decisions
+- `internalDocsMD/audit.md` — integration-facing notes for SpatialSeed wiring and non-regression evidence
+
+Current open work:
+- stereo-pair reconstruction from adjacent mono ADM tracks is future work
+- Dolby-approved-master recognition is future work and not a v1 blocker
+- MPEG-H planning exists in docs, but is not the active implementation track unless explicitly requested
+
+Next task focus:
+- prioritize code cleanup, reduction of duplication, doc drift cleanup, naming cleanup, ownership cleanup, and low-risk maintainability improvements before starting new feature work
 ```
 
-Goal: implement the final mapping and integration tests for the new export-side `adm-author` path, and perform strict Logic Pro Atmos manual validation.
+Goal: keep the repo clean, stable, and maintainable while preserving the working v1 authoring/packaging baseline and the protected ingest/parity path.
 
 Scope and constraints:
 
@@ -20,22 +33,24 @@ Scope and constraints:
 - Resampling policy: normalize mono WAVs to 48 kHz float32 in the authoring path only.
 - Duration policy: use normalized frame count as canonical; tolerate only one trailing-frame mismatch by authoring to the shortest normalized length and reporting the truncation.
 - `containsAudio.json` is deprecated; resolve WAVs by deterministic id-to-filename mapping.
+- Before editing, read `AUTHORING.md` if touching authoring behavior or validation, and read `DEVELOPMENT.md` if making a major architectural or cleanup change.
+- Run the full test gate before closing major cleanup or implementation work.
 
-Step-by-step tasks:
+Historical implementation record:
 
-1. Implement resampling (historical design now captured in internalDocsMD/DEVELOPMENT.md)
+1. Resampling and validation foundation (implemented; history retained here for context)
 
 - Vendor r8brain-free-src, wrap in a small internal API.
 - Normalize only non-48 kHz mono inputs to 48 kHz float32.
 - Report resampling details in the report (source rate, target rate, files).
 
-2. Implement post-normalization validation
+2. Post-normalization validation (implemented)
 
 - Validate normalized WAV frame counts. Exact matches pass; a one-frame spread is accepted by ignoring the final sample from longer files and recording a warning/loss-ledger entry; larger mismatches fail.
 - If `scene.lusid.json` includes `duration`, validate against audio-derived duration after any one-frame tail normalization.
 - On larger mismatch, fail authoring and report expected vs actual counts per file.
 
-Status update (2026-04-27): Steps 1-6 are covered by automated tests. `adm-author` validates inputs, normalizes WAVs, builds deterministic Logic-shaped ADM XML via `AdmWriter` using `pugixml`, and writes interwoven 24-bit ADM BWF/WAV with `libbw64` plus embedded `axml` and `chna`. `test_adm_author_args.cpp`, `test_lusid_to_adm_mapping.cpp`, and `test_adm_author_integration.cpp` cover CLI/API validation, mapping, sidecar XML, and embedded metadata. Manual Logic Pro import passed for `exported/lusid_package_logic_shaped.wav`.
+Status update (2026-04-27): the export-side authoring and packaging baseline is implemented and covered by automated tests. `adm-author` validates inputs, normalizes WAVs, builds deterministic Logic-shaped ADM XML via `AdmWriter` using `pugixml`, and writes interwoven 24-bit ADM BWF/WAV with `libbw64` plus embedded `axml` and `chna`. `test_adm_author_args.cpp`, `test_lusid_to_adm_mapping.cpp`, `test_adm_author_integration.cpp`, and `test_adm_package.cpp` cover CLI/API validation, mapping, sidecar XML, embedded metadata, package generation, and progress callbacks. Manual Logic Pro import passed for `exported/lusid_package_logic_shaped.wav`.
 
 3. Build authoring mapping layer (LUSID -> ADM model) (IMPLEMENTED)
 
@@ -54,7 +69,7 @@ Status update (2026-04-27): Steps 1-6 are covered by automated tests. `adm-autho
 - Add authoring-specific summary fields as needed.
 - Add structured validation/resampling details in a new section if required.
 
-6. Tests (PENDING)
+6. Tests (implemented; keep expanding only when behavior changes)
 
 - CLI arg validation for adm-author.
 - Missing files, unsupported formats, sample-rate and duration mismatches.
