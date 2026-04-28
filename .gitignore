@@ -4,6 +4,8 @@ build/
 # Generated validation/export artifacts
 exported/*
 !exported/.gitkeep
+processedData/*
+!processedData/.gitkeep
 
 # OS
 .DS_Store
