@@ -3,6 +3,8 @@
 C++17 CLI tool that transcodes ADM XML/WAV to LUSID Scene JSON, authors LUSID packages back to ADM BWF/WAV, and can package ADM BWF/WAV source material into self-contained LUSID packages.  
 Submodule of [spatialroot](https://github.com/Cult-DSP/spatialroot), branch `devel`.
 
+CULT reads and writes LUSID Scene v1.0 JSON (`version: "1.0"`), matching the schema in `../LUSID/SCHEMA/lusid_scene_v1.0.schema.json` when run from the SpatialSeed workspace.
+
 ## Quick start
 
 ```bash
@@ -52,15 +54,15 @@ build/cult-transcoder transcode \
 
 Options:
 
-| Option | Required | Description |
-| ------ | -------- | ----------- |
-| `--in <path>` | yes | Source ADM XML or ADM WAV/BWF file. |
-| `--in-format <adm_xml\|adm_wav>` | yes | Input format. `adm_wav` extracts embedded `axml`. |
-| `--out <path>` | yes | Output `scene.lusid.json`. |
-| `--out-format lusid_json` | yes | Current supported output format. |
-| `--report <path>` | no | Report path. Default: `<out>.report.json`. |
-| `--stdout-report` | no | Also print report JSON to stdout. |
-| `--lfe-mode <hardcoded\|speaker-label>` | no | LFE detection mode. Default: `hardcoded`, where the fourth direct speaker is LFE. |
+| Option                                  | Required | Description                                                                       |
+| --------------------------------------- | -------- | --------------------------------------------------------------------------------- |
+| `--in <path>`                           | yes      | Source ADM XML or ADM WAV/BWF file.                                               |
+| `--in-format <adm_xml\|adm_wav>`        | yes      | Input format. `adm_wav` extracts embedded `axml`.                                 |
+| `--out <path>`                          | yes      | Output `scene.lusid.json`.                                                        |
+| `--out-format lusid_json`               | yes      | Current supported output format.                                                  |
+| `--report <path>`                       | no       | Report path. Default: `<out>.report.json`.                                        |
+| `--stdout-report`                       | no       | Also print report JSON to stdout.                                                 |
+| `--lfe-mode <hardcoded\|speaker-label>` | no       | LFE detection mode. Default: `hardcoded`, where the fourth direct speaker is LFE. |
 
 ### `adm-author`
 
@@ -88,20 +90,22 @@ build/cult-transcoder adm-author \
 
 `adm-author` normalizes mono stems to 48 kHz and uses the normalized audio length as the ADM duration. A one-frame end-of-file mismatch is tolerated by authoring to the shortest stem length and ignoring the trailing sample from longer stems; larger frame-count mismatches fail with per-file details in the report.
 
+Input scenes must be LUSID Scene v1.0. Authoring accepts `timeUnit` values of `seconds`/`s`, `milliseconds`/`ms`, and `samples`/`samp`; sample timestamps require `sampleRate`. Internally, authored ADM timing is converted to seconds.
+
 Options:
 
-| Option | Required | Description |
-| ------ | -------- | ----------- |
-| `--lusid <scene.lusid.json>` | yes, unless `--lusid-package` is used | Explicit LUSID scene file. Must be paired with `--wav-dir`. |
-| `--wav-dir <path>` | yes, unless `--lusid-package` is used | Directory containing mono WAV stems named by node ID, with `4.1` resolved as `LFE.wav`. |
-| `--lusid-package <path>` | yes, unless `--lusid`/`--wav-dir` are used | Package directory containing `scene.lusid.json` and stems. Mutually exclusive with `--lusid`/`--wav-dir`. |
-| `--out-xml <path>` | yes | Authored ADM XML sidecar. |
-| `--out-wav <path>` | yes | Authored ADM BWF/WAV with embedded `axml` and `chna`. |
-| `--report <path>` | no | Report path. Default: `<out-wav>.report.json`, or `<out-xml>.report.json` if no WAV path is available. |
-| `--stdout-report` | no | Also print report JSON to stdout. |
-| `--quiet` | no | Disable stderr progress bars. |
-| `--dbmd-source <source.wav\|dbmd.bin>` | no | Experimental Dolby-tool compatibility option. Copies `dbmd` from an existing ADM WAV, or treats a non-WAV file as raw `dbmd` payload. |
-| `--metadata-post-data` | no | Experimental Dolby-tool compatibility option. Rewrites authored WAV metadata so `axml`, `chna`, and optional `dbmd` are after `data`, matching common Dolby/Logic source chunk order. |
+| Option                                 | Required                                   | Description                                                                                                                                                                           |
+| -------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--lusid <scene.lusid.json>`           | yes, unless `--lusid-package` is used      | Explicit LUSID scene file. Must be paired with `--wav-dir`.                                                                                                                           |
+| `--wav-dir <path>`                     | yes, unless `--lusid-package` is used      | Directory containing mono WAV stems named by node ID, with `4.1` resolved as `LFE.wav`.                                                                                               |
+| `--lusid-package <path>`               | yes, unless `--lusid`/`--wav-dir` are used | Package directory containing `scene.lusid.json` and stems. Mutually exclusive with `--lusid`/`--wav-dir`.                                                                             |
+| `--out-xml <path>`                     | yes                                        | Authored ADM XML sidecar.                                                                                                                                                             |
+| `--out-wav <path>`                     | yes                                        | Authored ADM BWF/WAV with embedded `axml` and `chna`.                                                                                                                                 |
+| `--report <path>`                      | no                                         | Report path. Default: `<out-wav>.report.json`, or `<out-xml>.report.json` if no WAV path is available.                                                                                |
+| `--stdout-report`                      | no                                         | Also print report JSON to stdout.                                                                                                                                                     |
+| `--quiet`                              | no                                         | Disable stderr progress bars.                                                                                                                                                         |
+| `--dbmd-source <source.wav\|dbmd.bin>` | no                                         | Experimental Dolby-tool compatibility option. Copies `dbmd` from an existing ADM WAV, or treats a non-WAV file as raw `dbmd` payload.                                                 |
+| `--metadata-post-data`                 | no                                         | Experimental Dolby-tool compatibility option. Rewrites authored WAV metadata so `axml`, `chna`, and optional `dbmd` are after `data`, matching common Dolby/Logic source chunk order. |
 
 ### `package-adm-wav`
 
@@ -119,14 +123,14 @@ build/cult-transcoder package-adm-wav \
 
 Options:
 
-| Option | Required | Description |
-| ------ | -------- | ----------- |
-| `--in <source.wav>` | yes | Source ADM WAV/BWF with embedded `axml`. |
-| `--out-package <package-dir>` | yes | Destination package directory. Existing package output is replaced after temp output succeeds. |
-| `--report <path>` | no | Report path. Default: `<package-dir>/scene_report.json`. A package-local `scene_report.json` is also written. |
-| `--stdout-report` | no | Also print report JSON to stdout. |
-| `--quiet` | no | Disable stderr progress bars. |
-| `--lfe-mode <hardcoded\|speaker-label>` | no | LFE detection mode. Default: `hardcoded`. |
+| Option                                  | Required | Description                                                                                                   |
+| --------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------- |
+| `--in <source.wav>`                     | yes      | Source ADM WAV/BWF with embedded `axml`.                                                                      |
+| `--out-package <package-dir>`           | yes      | Destination package directory. Existing package output is replaced after temp output succeeds.                |
+| `--report <path>`                       | no       | Report path. Default: `<package-dir>/scene_report.json`. A package-local `scene_report.json` is also written. |
+| `--stdout-report`                       | no       | Also print report JSON to stdout.                                                                             |
+| `--quiet`                               | no       | Disable stderr progress bars.                                                                                 |
+| `--lfe-mode <hardcoded\|speaker-label>` | no       | LFE detection mode. Default: `hardcoded`.                                                                     |
 
 ## Public C++ API
 
@@ -164,17 +168,17 @@ Current progress phases:
 | 6     | ADM WAV -> LUSID package          | Complete |
 | 7     | Stereo-pair reconstruction        | Future   |
 
-See `internalDocsMD/DEV-PLAN-CULT.md` for details.
+See `internalDocs/DEV-PLAN-CULT.md` for details.
 
-Note: `internalDocsMD/DEV-PLAN-CULT.md` is outdated for authoring. See
-`internalDocsMD/AUTHORING.md` and `internalDocsMD/DEVELOPMENT.md` for the
+Note: `internalDocs/DEV-PLAN-CULT.md` is outdated for authoring. See
+`internalDocs/AUTHORING.md` and `internalDocs/DEVELOPMENT.md` for the
 current export-side ADM authoring plan.
 
 ## Docs
 
-- `internalDocsMD/AGENTS-CULT.md` — execution-safe agent contract
-- `internalDocsMD/DEV-PLAN-CULT.md` — phased development plan
-- `internalDocsMD/DESIGN-DOC-V1-CULT.MD` — design reference
+- `internalDocs/AGENTS-CULT.md` — execution-safe agent contract
+- `internalDocs/DEV-PLAN-CULT.md` — phased development plan
+- `internalDocs/DESIGN-DOC-V1-CULT.MD` — design reference
 
 ## Source module layout (April 2026 scaffolding)
 

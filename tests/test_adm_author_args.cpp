@@ -121,7 +121,7 @@ TEST_CASE("admAuthor: validates required scene + wav files", "[adm-author][valid
     const fs::path wavDir = temp.path;
 
     writeTextFile(scenePath, R"JSON({
-  "version": "0.5",
+  "version": "1.0",
   "timeUnit": "seconds",
   "frames": [
     {

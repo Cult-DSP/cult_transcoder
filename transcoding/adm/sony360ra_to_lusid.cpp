@@ -453,7 +453,7 @@ ConversionResult convertSony360RaToLusid(
     // ------------------------------------------------------------------
     // 7. Build LusidScene — single frame at t=0
     // ------------------------------------------------------------------
-    result.scene.version  = "0.5";
+    result.scene.version  = "1.0";
     result.scene.timeUnit = "seconds";
     result.scene.sampleRate = sampleRate;
     if (durationSec >= 0.0)

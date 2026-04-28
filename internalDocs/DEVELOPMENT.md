@@ -4,18 +4,18 @@ This document is the historical development record for `cult_transcoder`.
 
 It consolidates the durable development history that had been spread across:
 
-- `internalDocsMD/resamplingPlan.md`
-- `internalDocsMD/CHANGELOG.md`
-- milestone and execution notes in `internalDocsMD/AGENTS-CULT.md`
+- `internalDocs/resamplingPlan.md`
+- `internalDocs/CHANGELOG.md`
+- milestone and execution notes in `internalDocs/AGENTS-CULT.md`
 
 Use this file to understand how the module evolved, what was implemented when, which decisions were transitional versus durable, and which items were intentionally moved to future work.
 
 ## Documentation Role
 
-- `internalDocsMD/DEVELOPMENT.md` is the historical dev log and milestone record.
-- `internalDocsMD/AUTHORING.md` is the canonical internal authoring contract plus validation record.
-- `internalDocsMD/AGENTS-CULT.md` remains the execution-safe operational guide for future coding work.
-- `internalDocsMD/audit.md` remains the integration-facing record for SpatialSeed wiring and non-regression evidence.
+- `internalDocs/DEVELOPMENT.md` is the historical dev log and milestone record.
+- `internalDocs/AUTHORING.md` is the canonical internal authoring contract plus validation record.
+- `internalDocs/AGENTS-CULT.md` remains the execution-safe operational guide for future coding work.
+- `internalDocs/audit.md` remains the integration-facing record for SpatialSeed wiring and non-regression evidence.
 
 Rule of thumb:
 
@@ -151,6 +151,21 @@ Historical importance:
 
 - this was the point where the export-side authoring path became practical enough to call a functional v1 target
 - packaging and progress reporting were intentionally kept separate from authoring fixes, which prevented conceptual drift
+
+### 2026-04-28: LUSID Scene v1.0 Contract Update
+
+Implemented:
+
+- updated CULT-generated LUSID scenes to emit `version: "1.0"`
+- updated parity fixtures and authoring/package tests from v0.5 scene headers to v1.0
+- made the authoring LUSID reader require v1.0 input scenes
+- added authoring support for v1.0 `timeUnit` aliases by converting `seconds`, `milliseconds`, and `samples` frame timestamps to internal seconds
+- kept ADM ingest/parity ordering and node mapping behavior unchanged apart from the schema version field
+
+Historical importance:
+
+- this aligns CULT with the SpatialSeed-local schema-only LUSID repo at `LUSID/SCHEMA/lusid_scene_v1.0.schema.json`
+- it preserves the existing CULT responsibilities: source-format conversion, package creation, validation, and ADM authoring stay in CULT rather than moving into LUSID
 
 ## Resampling History
 
@@ -296,8 +311,8 @@ As of the latest verified development slice captured here:
 
 This historical document was consolidated from:
 
-- `internalDocsMD/resamplingPlan.md`
-- `internalDocsMD/CHANGELOG.md`
-- implementation and milestone notes retained in `internalDocsMD/AGENTS-CULT.md`
+- `internalDocs/resamplingPlan.md`
+- `internalDocs/CHANGELOG.md`
+- implementation and milestone notes retained in `internalDocs/AGENTS-CULT.md`
 
 Once this file is accepted as the canonical historical development record, the standalone resampling-plan and changelog docs can be deleted or reduced to redirect stubs.

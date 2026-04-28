@@ -17,7 +17,7 @@
 // ---------------------------------------------------------------------------
 // lusid_scene.hpp — LUSID scene data model
 //
-// Defines the in-memory representation of a LUSID Scene v0.5 document.
+// Defines the in-memory representation of a LUSID Scene v1.0 document.
 // Used by both the ADM ingest path (adm_to_lusid) and the LUSID JSON reader
 // (lusid_reader).  No ADM-specific types here.
 // ---------------------------------------------------------------------------
@@ -43,7 +43,7 @@ struct LusidFrame {
 };
 
 struct LusidScene {
-    std::string version  = "0.5";
+    std::string version  = "1.0";
     std::string timeUnit = "seconds";
     double duration   = -1.0;   // <0 means not set
     int    sampleRate =  0;     // 0 means not set

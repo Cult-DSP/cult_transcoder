@@ -138,7 +138,7 @@ TEST_CASE("admAuthor writes ADM XML and BW64 with matching embedded axml",
 
     const fs::path scenePath = temp.path / "scene.lusid.json";
     writeTextFile(scenePath, R"JSON({
-  "version": "0.5",
+  "version": "1.0",
   "timeUnit": "seconds",
   "duration": 0.01,
   "frames": [
@@ -239,13 +239,64 @@ TEST_CASE("admAuthor writes ADM XML and BW64 with matching embedded axml",
     REQUIRE(audioIds[2].packRef() == "AP_00031002");
 }
 
+TEST_CASE("admAuthor accepts LUSID v1 sample timestamps by converting them to seconds",
+          "[adm-author][integration]") {
+    TempDir temp;
+
+    const fs::path scenePath = temp.path / "scene.lusid.json";
+    writeTextFile(scenePath, R"JSON({
+  "version": "1.0",
+  "timeUnit": "samples",
+  "sampleRate": 48000,
+  "duration": 0.01,
+  "frames": [
+    {
+      "time": 0,
+      "nodes": [
+        {"id": "11.1", "type": "audio_object", "cart": [0.0, 0.0, 0.0]},
+        {"id": "11.2", "type": "spectral_features", "centroid": 5000.0}
+      ]
+    },
+    {
+      "time": 240,
+      "nodes": [
+        {"id": "11.1", "type": "audio_object", "cart": [0.5, 0.0, 0.25]}
+      ]
+    }
+  ]
+})JSON");
+
+    writeFloatWav(temp.path / "11.1.wav", 0.3f);
+
+    const fs::path outXml = temp.path / "export.adm.xml";
+    const fs::path outWav = temp.path / "export.wav";
+
+    cult::AdmAuthorRequest req;
+    req.lusidPath = scenePath.string();
+    req.wavDir = temp.path.string();
+    req.outXmlPath = outXml.string();
+    req.outWavPath = outWav.string();
+
+    auto result = cult::admAuthor(req);
+    INFO(result.report.toJson());
+    REQUIRE(result.success);
+    REQUIRE(result.report.summary.timeUnit == "seconds");
+    REQUIRE(result.report.summary.numFrames == 2);
+    REQUIRE(result.report.summary.countsByNodeType["audio_object"] == 1);
+    REQUIRE(result.report.summary.countsByNodeType.count("spectral_features") == 0);
+
+    const std::string xml = readTextFile(outXml);
+    REQUIRE(xml.find("rtime=\"00:00:00.00500\"") != std::string::npos);
+    REQUIRE(xml.find("duration=\"00:00:00.00500\"") != std::string::npos);
+}
+
 TEST_CASE("admAuthor can copy an experimental dbmd chunk into authored output",
           "[adm-author][integration]") {
     TempDir temp;
 
     const fs::path scenePath = temp.path / "scene.lusid.json";
     writeTextFile(scenePath, R"JSON({
-  "version": "0.5",
+  "version": "1.0",
   "timeUnit": "seconds",
   "duration": 0.01,
   "frames": [
@@ -287,7 +338,7 @@ TEST_CASE("admAuthor tolerates one trailing sample mismatch by truncating to sho
 
     const fs::path scenePath = temp.path / "scene.lusid.json";
     writeTextFile(scenePath, R"JSON({
-  "version": "0.5",
+  "version": "1.0",
   "timeUnit": "seconds",
   "duration": 0.01,
   "frames": [

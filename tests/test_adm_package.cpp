@@ -68,7 +68,7 @@ TEST_CASE("packageAdmWav creates a self-contained LUSID package from authored AD
 
     const fs::path scenePath = temp.path / "scene.lusid.json";
     writeTextFile(scenePath, R"JSON({
-  "version": "0.5",
+  "version": "1.0",
   "timeUnit": "seconds",
   "duration": 0.01,
   "frames": [

@@ -7,12 +7,12 @@
 ```
 You are continuing CULT Transcoder work from a post-v1-authoring baseline. The export-side `adm-author` pipeline writes Logic-compatible ADM XML plus ADM BWF/WAV via `libbw64`; `exported/lusid_package_logic_shaped.wav` has imported successfully in Logic Pro. A separate `package-adm-wav` command converts ADM BWF/WAV source material into a LUSID package by extracting embedded ADM metadata and splitting interleaved audio into mono float32 stems. All 73/73 current ingest/parity/CLI/authoring/packaging tests pass as of 2026-04-27. Do NOT regress the parity-critical ingest path. Keep authoring compatibility fixes separate from LUSID package generation work.
 
-Documentation rule: whenever you make a major implementation, architecture, milestone, validation, or future-work change, update `internalDocsMD/DEVELOPMENT.md` in the same change set so the historical development record stays current. Whenever a change affects authoring behavior, authoring validation, authoring CLI/API contract, compatibility status, or authoring future work, also update `internalDocsMD/AUTHORING.md` in the same change set.
+Documentation rule: whenever you make a major implementation, architecture, milestone, validation, or future-work change, update `internalDocs/DEVELOPMENT.md` in the same change set so the historical development record stays current. Whenever a change affects authoring behavior, authoring validation, authoring CLI/API contract, compatibility status, or authoring future work, also update `internalDocs/AUTHORING.md` in the same change set.
 
 Canonical docs:
-- `internalDocsMD/AUTHORING.md` — authoring contract, validation results, compatibility status, and authoring future work
-- `internalDocsMD/DEVELOPMENT.md` — historical implementation timeline, milestones, refactors, and major feature decisions
-- `internalDocsMD/audit.md` — integration-facing notes for SpatialSeed wiring and non-regression evidence
+- `internalDocs/AUTHORING.md` — authoring contract, validation results, compatibility status, and authoring future work
+- `internalDocs/DEVELOPMENT.md` — historical implementation timeline, milestones, refactors, and major feature decisions
+- `internalDocs/audit.md` — integration-facing notes for SpatialSeed wiring and non-regression evidence
 
 Current open work:
 - stereo-pair reconstruction from adjacent mono ADM tracks is future work
@@ -91,22 +91,22 @@ Execution order is mandatory: complete in sequence and keep ingest/parity behavi
 - Add `README.md` in each folder describing ownership and non-goals.
 - **Required doc update in same PR:**
   - `README.md` (top-level source tree section)
-  - `internalDocsMD/DESIGN-DOC-V1-CULT.MD` (module boundaries)
+  - `internalDocs/DESIGN-DOC-V1-CULT.MD` (module boundaries)
 
 2. Move authoring implementation behind `src/authoring/` — COMPLETE
 
 - Move/split `src/adm_author.cpp`, `src/adm_writer.cpp`, `src/adm_writer.hpp` into `src/authoring/` with minimal behavior change.
 - Keep deterministic ordering + current validation semantics exactly as implemented.
 - **Required doc update in same PR:**
-  - `internalDocsMD/AUTHORING.md` (paths, stage boundaries, contract snapshot, and entrypoint responsibilities)
-  - `internalDocsMD/DEVELOPMENT.md` (historical reorganization record)
+  - `internalDocs/AUTHORING.md` (paths, stage boundaries, contract snapshot, and entrypoint responsibilities)
+  - `internalDocs/DEVELOPMENT.md` (historical reorganization record)
 
 3. Move LUSID scene parsing behind `src/parsing/` — COMPLETE
 
 - Move/split `src/lusid_reader.cpp`, `src/lusid_reader.hpp` into `src/parsing/`.
 - Keep parser behavior stable; no schema/semantic changes.
 - **Required doc update in same PR:**
-  - `internalDocsMD/design-reference-CULT.md` (parser ownership and interfaces)
+  - `internalDocs/design-reference-CULT.md` (parser ownership and interfaces)
   - `README.md` (file map)
 
 4. Move report construction/writing behind `src/reporting/` — COMPLETE
@@ -114,7 +114,7 @@ Execution order is mandatory: complete in sequence and keep ingest/parity behavi
 - Move/split `src/report.cpp`, `src/cult_report.hpp` into `src/reporting/` (or adapters that preserve external includes during transition).
 - Centralize fail-report write behavior and temp+rename policy.
 - **Required doc update in same PR:**
-  - `internalDocsMD/DEVELOPMENT.md` (migration note + compatibility)
+  - `internalDocs/DEVELOPMENT.md` (migration note + compatibility)
   - `README.md` (reporting module location)
 
 5. Remove duplication in CLI and pipeline orchestration — COMPLETE
@@ -123,7 +123,7 @@ Execution order is mandatory: complete in sequence and keep ingest/parity behavi
 - Keep CLI contract and error text stable unless intentionally changed.
 - Status 2026-04-26: `src/main.cpp` now shares argument-value parsing, required-flag validation, atomic report writing, and error printing helpers across both subcommands. CLI flags/defaults/error text are intended to remain unchanged.
 - **Required doc update in same PR:**
-  - `internalDocsMD/AGENTS-CULT.md` (CLI contract section, if changed)
+  - `internalDocs/AGENTS-CULT.md` (CLI contract section, if changed)
   - `README.md` (usage/help examples)
 
 6. Test and regression gate for each re-org slice — COMPLETE
@@ -132,8 +132,8 @@ Execution order is mandatory: complete in sequence and keep ingest/parity behavi
 - No merge if parity tests regress.
 - Status 2026-04-27: full test gate passes 73/73 after package-generation integration, including parity, authoring, and packaging tests.
 - **Required doc update in same PR:**
-  - `internalDocsMD/audit.md` (what was moved, evidence of non-regression)
-  - `internalDocsMD/DEVELOPMENT.md` (test/status note)
+  - `internalDocs/audit.md` (what was moved, evidence of non-regression)
+  - `internalDocs/DEVELOPMENT.md` (test/status note)
 
 7. Finish pending Step 6 validation after structure stabilization — AUTOMATED TESTS COMPLETE, LOGIC VALIDATION PASSED
 
@@ -141,21 +141,21 @@ Execution order is mandatory: complete in sequence and keep ingest/parity behavi
 - Perform manual Logic Pro Atmos import validation and capture notes.
 - Status 2026-04-27: mapping/integration tests are complete; Logic Pro manual import passed for `exported/lusid_package_logic_shaped.wav`.
 - **Required doc update in same PR:**
-  - `internalDocsMD/AUTHORING.md` (validation outcomes)
-  - `internalDocsMD/DEVELOPMENT.md` (feature-complete test milestone)
+  - `internalDocs/AUTHORING.md` (validation outcomes)
+  - `internalDocs/DEVELOPMENT.md` (feature-complete test milestone)
 
 Repo placement: `spatialroot/cult-transcoder/` (git submodule, already wired).  
 Invocation: CLI-first. Spatial Root calls `spatialroot/cult-transcoder/build/cult-transcoder` (macOS/Linux) or the `.bat` wrapper on Windows (see §9).  
 Build: CMake. C++17. Cross-platform (macOS + Windows required; Linux later).  
 Test framework: Catch2 (via CMake FetchContent; no install required).  
 License: Apache-2.0. All source files carry an Apache-2.0 header with Cult-DSP copyright.  
-Canonical: LUSID Scene v0.5 JSON.
+Canonical: LUSID Scene v1.0 JSON (`version: "1.0"`), validated against the SpatialSeed-local LUSID schema at `LUSID/SCHEMA/lusid_scene_v1.0.schema.json`.
 
 This file is designed to be executable and non-destructive. Do not guess.
 
 Last verified against the submodule code: 2026-04-15.  
 This document is updated to reflect the planned ADM authoring extension from LUSID.  
-`internalDocsMD/DEV-PLAN-CULT.md` is outdated and must not be used as a source of truth.
+`internalDocs/DEV-PLAN-CULT.md` is outdated and must not be used as a source of truth.
 
 ### Development environment
 
@@ -265,11 +265,12 @@ These decisions are final and must not be changed without a doc-update PR.
 | BW64 packaging library            | `libbw64` (git submodule, `thirdparty/libbw64`)                                                                                                   |
 | Resampling library                | r8brain-free-src (git submodule, `thirdparty/r8brain`) — authoring path only                                                                      |
 | WAV I/O                           | Self-contained RIFF parser in `src/audio/wav_io.cpp` — no libsndfile dependency                                                                   |
-| ADM package splitting             | Self-contained streaming splitter in `src/packaging/adm_package.cpp` — no ffmpeg/libsndfile/host-project dependency                              |
+| ADM package splitting             | Self-contained streaming splitter in `src/packaging/adm_package.cpp` — no ffmpeg/libsndfile/host-project dependency                               |
 | Progress reporting                | Shared `ProgressCallback` / `ProgressEvent` in `src/progress.hpp`; CLI renders to stderr, disabled by `--quiet`                                   |
 | ADM authoring normalized audio    | mono, 48 kHz, float32 WAV (v1 export path)                                                                                                        |
 | ADM authoring resampling          | allowed only in `adm-author` normalization stage; must be explicit in report                                                                      |
 | ADM authoring duration source     | normalized WAV frame count; scene duration must match or fail                                                                                     |
+| LUSID authoring time normalization | `src/parsing/lusid_reader.cpp` converts accepted v1.0 `timeUnit` values (`seconds`/`s`, `milliseconds`/`ms`, `samples`/`samp`) to internal seconds |
 | Windows binary                    | `build/cult-transcoder.exe` called via `scripts/cult-transcoder.bat` wrapper                                                                      |
 | `.bat` wrapper rule               | Must be committed; every call-site in Spatial Root pipeline must have an inline comment explaining the indirection                                |
 | Fail-report behavior              | On any error (missing file, unsupported format, etc.) the CLI writes a best-effort `status: "fail"` report to the default path and exits non-zero |
@@ -280,7 +281,7 @@ These decisions are final and must not be changed without a doc-update PR.
 
 Authority order (resolve conflicts in this order):
 
-1. `LUSID/internalDocsMD/toolchain_AGENTS.md` (contract authority)
+1. `LUSID/internalDocs/toolchain_AGENTS.md` (contract authority)
 2. LUSID schema + LUSID scene semantics
 3. Spatial Root pipeline docs
 4. CULT docs
@@ -301,7 +302,7 @@ then update, in the same PR:
 
 - `spatialroot/AGENTS.md` (pipeline + GUI wiring)
 - `LUSID/LUSID_AGENTS.md`
-- if and only if the toolchain contract changes: update `LUSID/internalDocsMD/toolchain_AGENTS.md` and `LUSID/internalDocsMD/CHANGELOG_TOOLCHAIN.md`
+- if and only if the toolchain contract changes: update `LUSID/internalDocs/toolchain_AGENTS.md` and `LUSID/internalDocs/CHANGELOG_TOOLCHAIN.md`
 
 No behavior change without doc change.
 
@@ -315,7 +316,7 @@ cult_transcoder/
 ├── .gitmodules
 ├── CMakeLists.txt
 ├── README.md
-├── internalDocsMD/
+├── internalDocs/
 │   ├── AGENTS-CULT.md
 │   ├── DEV-PLAN-CULT.md                # outdated; do not use as source of truth
 │   ├── DESIGN-DOC-V1-CULT.MD
@@ -440,6 +441,13 @@ Authoring path input rules (v1):
 - normalize only non-48 kHz mono WAVs to 48 kHz float32 (resampling reported explicitly)
 - validate normalized frame counts after normalization; tolerate only a one-frame EOF spread by using the shortest length and reporting the truncation
 - if scene duration metadata exists, validate against normalized audio duration; fail on mismatch
+
+Time compatibility debug rule:
+
+- If future bugs involve shifted ADM motion, wrong `audioBlockFormat rtime`/`duration`, scene duration mismatches, sample-based timelines, millisecond timelines, or off-by-one-frame timing, inspect `src/parsing/lusid_reader.cpp` first.
+- The key path is `readLusidScene()` -> `convertSceneTimeToSeconds()`, which normalizes LUSID v1.0 frame times into seconds before authoring.
+- Then inspect `src/authoring/adm_writer.cpp`, especially timeline sorting and `formatAdmTime(...)`, because this is where normalized seconds become ADM `rtime` and `duration` attributes.
+- For package roundtrips, also inspect `src/packaging/adm_package.cpp` only after confirming the LUSID scene times written by `transcoding/adm/adm_to_lusid.cpp` are correct.
 
 ---
 
@@ -942,9 +950,9 @@ No other report schema changes in Phase 4. `reportVersion` stays `"0.1"`.
 | `CMakeLists.txt`                                           | Add `adm_profile_resolver.cpp` to both targets                                                       |
 | `tests/test_cli_args.cpp` or new `tests/test_lfe_mode.cpp` | New Phase 4 tests (see §11.6)                                                                        |
 | `tests/parity/fixtures/`                                   | Add `sony_360ra_example.xml` + synthetic `lfe_speaker_label_fixture.xml`                             |
-| `internalDocsMD/AGENTS-CULT.md`                            | Update §1 repo layout, §2 CLI contract, §11 status                                                   |
-| `internalDocsMD/DEV-PLAN-CULT.md`                          | Mark Phase 4 work items complete                                                                     |
-| `spatialroot/internalDocsMD/AGENTS.md`                     | Note `--lfe-mode` flag exists, update binary contract if needed                                      |
+| `internalDocs/AGENTS-CULT.md`                              | Update §1 repo layout, §2 CLI contract, §11 status                                                   |
+| `internalDocs/DEV-PLAN-CULT.md`                            | Mark Phase 4 work items complete                                                                     |
+| `spatialroot/internalDocs/AGENTS.md`                       | Note `--lfe-mode` flag exists, update binary contract if needed                                      |
 
 **Do not touch**: `transcoding/lusid/lusid_writer.cpp`, `lusid_validate.cpp`
 (Phase 5+ stubs), `runPipeline.py` (deprecated), any LUSID Python files.

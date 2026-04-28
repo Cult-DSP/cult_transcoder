@@ -233,9 +233,9 @@ Report must include:
 
 When Phase 6B starts and/or lands:
 
-- Update `internalDocsMD/AGENTS-CULT.md` status line to reflect Phase 6B work beginning/completion. :contentReference[oaicite:21]{index=21}
-- Update `internalDocsMD/DEV-PLAN-CULT.md` to move Phase 6B from deferred to active, and list work items. :contentReference[oaicite:22]{index=22}
-- Update `internalDocsMD/DESIGN-DOC-V1-CULT.MD` with the MAEI→LUSID mapping subsection (required by Mode 2 gating). :contentReference[oaicite:23]{index=23}
+- Update `internalDocs/AGENTS-CULT.md` status line to reflect Phase 6B work beginning/completion. :contentReference[oaicite:21]{index=21}
+- Update `internalDocs/DEV-PLAN-CULT.md` to move Phase 6B from deferred to active, and list work items. :contentReference[oaicite:22]{index=22}
+- Update `internalDocs/DESIGN-DOC-V1-CULT.MD` with the MAEI→LUSID mapping subsection (required by Mode 2 gating). :contentReference[oaicite:23]{index=23}
 - Do not change existing ADM/Sony360RA modules to “help” Mode 2. :contentReference[oaicite:24]{index=24}
 
 ---

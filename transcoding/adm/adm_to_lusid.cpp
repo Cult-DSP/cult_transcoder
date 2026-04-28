@@ -15,7 +15,7 @@
 // ---------------------------------------------------------------------------
 // adm_to_lusid.cpp — ADM XML → LUSID Scene JSON conversion
 //
-// Mirrors LUSID/src/xml_etree_parser.py line-for-line.
+// Preserves the original ADM encounter-order conversion.
 //
 // Key parity rules (AGENTS §3, §5):
 //   - DirectSpeakers appear in t=0 frame, in encounter order.
@@ -423,7 +423,7 @@ static ConversionResult parseAdmDocument(pugi::xml_document& doc,
     }
 
     // -- Fill scene metadata --
-    result.scene.version = "0.5";
+    result.scene.version = "1.0";
     result.scene.timeUnit = "seconds";
     result.scene.sampleRate = sampleRate;
     if (durationSeconds >= 0.0)
@@ -488,7 +488,7 @@ ConversionResult convertAdmToLusidFromBuffer(const std::string& xmlBuffer,
 }
 
 // ---------------------------------------------------------------------------
-// lusidSceneToJson — serialize to JSON matching Python json.dump(indent=2)
+// lusidSceneToJson — serialize to stable pretty-printed LUSID Scene JSON
 // ---------------------------------------------------------------------------
 std::string lusidSceneToJson(const LusidScene& scene) {
     std::ostringstream o;

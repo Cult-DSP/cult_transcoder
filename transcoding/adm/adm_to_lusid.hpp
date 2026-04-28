@@ -17,7 +17,7 @@
 // ---------------------------------------------------------------------------
 // adm_to_lusid.hpp — ADM XML → LUSID Scene JSON conversion
 //
-// Mirrors the Python oracle (LUSID/src/xml_etree_parser.py) exactly:
+// Preserves the established ADM encounter-order mapping:
 //   - Iterates audioChannelFormat elements in document (encounter) order.
 //   - DirectSpeakers go in the t=0 frame; channel 4 (1-based) is LFE.
 //   - Objects are grouped by rtime into time-keyed frames.
@@ -25,9 +25,8 @@
 //   - containsAudio is NOT used (all channels assumed active, AGENTS §4).
 //   - timeUnit is always "seconds" (AGENTS §4).
 //
-// The output JSON is semantically identical to the Python oracle's output
-// for the same input XML.  Parity is verified by deep-compare of parsed
-// JSON objects (not byte-identical string comparison).
+// The output JSON follows LUSID Scene v1.0 while preserving the original
+// parity-critical ordering and node semantics for the same input XML.
 // ---------------------------------------------------------------------------
 
 #include "lusid_scene.hpp"
@@ -69,7 +68,7 @@ struct ConversionResult {
 // ---------------------------------------------------------------------------
 
 /// Parse an ADM XML file and produce a LUSID scene.
-/// This mirrors parse_adm_xml_to_lusid_scene(xml_path, contains_audio=None).
+/// This preserves the original ADM XML encounter-order conversion.
 ConversionResult convertAdmToLusid(const std::string& xmlPath,
                                     LfeMode lfeMode = LfeMode::Hardcoded);
 
@@ -81,7 +80,7 @@ ConversionResult convertAdmToLusidFromBuffer(const std::string& xmlBuffer,
                                               LfeMode lfeMode = LfeMode::Hardcoded);
 
 /// Serialize a LusidScene to a JSON string.
-/// Output matches Python's json.dump(scene.to_dict(), indent=2) format.
+/// Output is stable, pretty-printed LUSID Scene JSON.
 std::string lusidSceneToJson(const LusidScene& scene);
 
 /// Write a LusidScene to a file.  Returns true on success.

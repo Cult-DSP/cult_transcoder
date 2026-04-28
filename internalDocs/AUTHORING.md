@@ -4,12 +4,12 @@ This document is the implementation and validation record for `adm-author` and c
 
 ## Documentation Map
 
-- `internalDocsMD/AUTHORING.md` is the canonical internal authoring document: contract snapshot, implementation record, manual validation log, compatibility hypotheses, and resolved investigations.
-- `internalDocsMD/admAuthoring.md` now exists only as a legacy redirect to this file.
-- `internalDocsMD/authoringTests.md` now exists only as a legacy redirect to this file.
+- `internalDocs/AUTHORING.md` is the canonical internal authoring document: contract snapshot, implementation record, manual validation log, compatibility hypotheses, and resolved investigations.
+- `internalDocs/admAuthoring.md` now exists only as a legacy redirect to this file.
+- `internalDocs/authoringTests.md` now exists only as a legacy redirect to this file.
 - `src/authoring/README.md` is the code-owner map for the authoring module.
 - `src/packaging/README.md` is the code-owner map for ADM WAV -> LUSID package generation.
-- `internalDocsMD/audit.md` explains how CULT authoring relates to SpatialSeed pipeline wiring.
+- `internalDocs/audit.md` explains how CULT authoring relates to SpatialSeed pipeline wiring.
 
 Rule of thumb: update this file for both stable contract changes and durable validation findings. Keep the smaller legacy files as pointers only unless a downstream workflow still requires them.
 
@@ -53,6 +53,15 @@ Accepted inputs:
 
 1. LUSID package folder containing `scene.lusid.json` and referenced WAV assets.
 2. Explicit `scene.lusid.json` plus WAV directory path.
+
+LUSID scene contract:
+
+- accepted scene metadata is LUSID Scene v1.0 (`version: "1.0"`)
+- the canonical schema is `LUSID/SCHEMA/lusid_scene_v1.0.schema.json` in the SpatialSeed workspace
+- `duration`, when present, is top-level seconds and must match normalized audio duration
+- authoring accepts frame timestamps in `seconds`/`s`, `milliseconds`/`ms`, or `samples`/`samp`; sample timestamps require `sampleRate`
+- authoring converts accepted frame timestamps to seconds before ADM block generation
+- unsupported metadata child nodes such as `spectral_features` and `agent_state` are ignored by ADM authoring
 
 Current WAV assumptions:
 
@@ -490,9 +499,9 @@ Current validation candidate for this experiment:
 
 Local references supplied:
 
-- `internalDocsMD/references/bwf-ref.pdf`
-- `internalDocsMD/references/axml-reading.pdf`
-- `internalDocsMD/references/ebuNotes.md`
+- `internalDocs/references/bwf-ref.pdf`
+- `internalDocs/references/axml-reading.pdf`
+- `internalDocs/references/ebuNotes.md`
 
 External EBU ADM guideline pages used for this analysis:
 
