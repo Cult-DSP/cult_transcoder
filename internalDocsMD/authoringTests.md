@@ -29,6 +29,7 @@ Implemented experiment:
 - If the source is a RIFF/BW64/RF64 WAVE file, CULT extracts its `dbmd` payload and writes it as a post-data `dbmd` chunk in the authored output.
 - If the source is not WAVE-like, CULT treats the file as a raw `dbmd` payload.
 - Authored ADM XML now writes nonzero `end` attributes alongside existing `start`/`duration` on `audioProgramme` and `audioObject` elements.
+- `adm-author` also accepts `--metadata-post-data`, which rewrites authored WAV chunk order so `axml`, `chna`, and optional `dbmd` appear after `data`.
 
 Generated candidate:
 
@@ -44,6 +45,14 @@ build/cult-transcoder adm-author --quiet \
   --out-wav exported/eden_dolby_candidate.wav \
   --dbmd-source /Users/lucian/projects/spatialroot/sourceData/EDEN-ATMOS-MIX-LFE.wav \
   --report exported/eden_dolby_candidate.report.json
+
+build/cult-transcoder adm-author --quiet \
+  --lusid-package exported/eden_dolby_candidate_package \
+  --out-xml exported/eden_dolby_postdata_candidate.adm.xml \
+  --out-wav exported/eden_dolby_postdata_candidate.wav \
+  --dbmd-source /Users/lucian/projects/spatialroot/sourceData/EDEN-ATMOS-MIX-LFE.wav \
+  --metadata-post-data \
+  --report exported/eden_dolby_postdata_candidate.report.json
 ```
 
 Observed local verification:
@@ -51,8 +60,11 @@ Observed local verification:
 - `exported/eden_dolby_candidate.report.json` status: `pass`
 - `exported/eden_dolby_candidate.wav` contains a `dbmd` chunk.
 - `exported/eden_dolby_candidate.adm.xml` has `audioProgramme start="00:00:00.00000" end="00:01:38.00000" duration="00:01:38.00000"`.
+- `exported/eden_dolby_postdata_candidate.report.json` status: `pass`
+- `exported/eden_dolby_postdata_candidate.wav` chunk order is `JUNK`, `fmt `, `data`, `axml`, `chna`, `dbmd`.
+- The post-data candidate preserves the source `data`, `chna`, and `dbmd` chunk sizes. Its `axml` size differs because CULT emits a smaller Logic-shaped ADM XML profile.
 
 Next manual test:
 
-- Track whether future candidates still show the unsupported-master warning.
+- Import `exported/eden_dolby_postdata_candidate.wav` into the Dolby Atmos Conversion Tool and track whether the unsupported-master warning changes.
 - Conversion usability is currently validated: the Dolby Atmos Conversion Tool converted the file and the converted output opened in Logic.

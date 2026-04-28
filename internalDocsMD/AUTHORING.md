@@ -428,21 +428,26 @@ Implemented experiment:
 
 - `adm-author` now supports `--dbmd-source <source.wav|dbmd.bin>` as an experimental path for copying a Dolby `dbmd` payload into authored output.
 - Authored ADM XML now writes an explicit nonzero `end` attribute alongside `start` and `duration` on `audioProgramme` and `audioObject` elements.
-- Automated tests verify `end`/`duration` XML output and `dbmd` chunk emission.
+- `adm-author` now supports `--metadata-post-data` as an experimental path for rewriting authored WAV chunk order so `axml`, `chna`, and optional `dbmd` appear after `data`, matching the observed Dolby/Logic source layout.
+- Automated tests verify `end`/`duration` XML output, `dbmd` chunk emission, and post-data chunk ordering.
 
 Candidate:
 
 - `exported/eden_dolby_candidate.wav`
 - `exported/eden_dolby_candidate.adm.xml`
 - `exported/eden_dolby_candidate.report.json`
+- `exported/eden_dolby_postdata_candidate.wav`
+- `exported/eden_dolby_postdata_candidate.adm.xml`
+- `exported/eden_dolby_postdata_candidate.report.json`
 
-This candidate uses `dbmd` extracted from `/Users/lucian/projects/spatialroot/sourceData/EDEN-ATMOS-MIX-LFE.wav`. It should be used for the next Dolby Atmos Conversion Tool validation pass.
+These candidates use `dbmd` extracted from `/Users/lucian/projects/spatialroot/sourceData/EDEN-ATMOS-MIX-LFE.wav`. The post-data candidate additionally writes the observed source-style order `JUNK`, `fmt `, `data`, `axml`, `chna`, `dbmd`.
 
 Validation result:
 
 - Dolby Atmos Conversion Tool converted the file successfully.
 - The converted output opened in Logic.
 - The unsupported-master warning remains and should be tracked separately from structural conversion success.
+- The post-data candidate is the next candidate to test against the unsupported-master warning. If the warning remains, the next likely cause is Dolby-approved provenance/private metadata rather than basic ADM BWF structure.
 
 ## 6. ADM WAV -> LUSID Package Generation
 

@@ -123,7 +123,8 @@ cult-transcoder adm-author \
   --out-xml <export.adm.xml> \
   --out-wav <export.wav> \
   [--report <path>] [--stdout-report] [--quiet] \
-  [--dbmd-source <source.wav|dbmd.bin>]
+  [--dbmd-source <source.wav|dbmd.bin>] \
+  [--metadata-post-data]
 
 # Alternate input:
 cult-transcoder adm-author \
@@ -131,7 +132,8 @@ cult-transcoder adm-author \
   --out-xml <export.adm.xml> \
   --out-wav <export.wav> \
   [--report <path>] [--stdout-report] [--quiet] \
-  [--dbmd-source <source.wav|dbmd.bin>]
+  [--dbmd-source <source.wav|dbmd.bin>] \
+  [--metadata-post-data]
 ```
 
 ### Exit codes
@@ -359,7 +361,7 @@ Status 2026-04-27:
 - `tests/test_lusid_to_adm_mapping.cpp` verifies deterministic bed/LFE/object ordering, object counts, direct-speaker/object channel typing, LFE placement, and step-hold `audioBlockFormat` timing.
 - `tests/test_adm_author_integration.cpp` verifies `admAuthor()` emits sidecar ADM XML and BW64, and that the BW64 `axml` chunk exactly matches the XML sidecar.
 - `tests/test_adm_package.cpp` verifies the separate ADM WAV -> LUSID package flow and its split progress callback.
-- `ctest --test-dir build --output-on-failure` passes 72/72 tests, including existing ingest/parity tests.
+- `ctest --test-dir build --output-on-failure` passes 73/73 tests, including existing ingest/parity tests.
 
 ### Manual validation
 
@@ -375,7 +377,7 @@ Manual validation status should be stated explicitly when authoring behavior cha
 
 Status 2026-04-27: `exported/lusid_package_logic_shaped.wav` imported successfully in Logic Pro. Keep the current Logic-shaped ADM XML conventions unless a newer Logic/Dolby compatibility fixture proves otherwise.
 
-Dolby Atmos Conversion Tool status: current output still shows an unsupported-master warning because it is not recognized as created by Dolby-approved software, but the tool successfully converted the candidate and the converted file opened in Logic. The earlier FFOA range message is not the current blocker.
+Dolby Atmos Conversion Tool status: current output still shows an unsupported-master warning because it is not recognized as created by Dolby-approved software, but the tool successfully converted the candidate and the converted file opened in Logic. The earlier FFOA range message is not the current blocker. The next experimental candidate combines copied source `dbmd`, explicit ADM `end` timing, and `--metadata-post-data` source-like chunk ordering.
 
 ## 8.1 Progress and Packaging Boundary
 

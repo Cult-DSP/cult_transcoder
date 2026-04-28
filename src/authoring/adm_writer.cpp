@@ -26,6 +26,8 @@
 #include <cstdint>
 #include <fstream>
 #include <iomanip>
+#include <ios>
+#include <limits>
 #include <map>
 #include <optional>
 #include <sstream>
@@ -59,6 +61,202 @@ private:
     uint32_t id_;
     std::vector<char> data_;
 };
+
+struct ChunkLocation {
+    uint64_t payloadOffset = 0;
+    uint64_t size = 0;
+};
+
+uint32_t readLe32(std::istream& in) {
+    unsigned char b[4] = {0, 0, 0, 0};
+    in.read(reinterpret_cast<char*>(b), 4);
+    return static_cast<uint32_t>(b[0]) |
+           (static_cast<uint32_t>(b[1]) << 8) |
+           (static_cast<uint32_t>(b[2]) << 16) |
+           (static_cast<uint32_t>(b[3]) << 24);
+}
+
+void writeLe32(std::ostream& out, uint32_t value) {
+    const unsigned char b[4] = {
+        static_cast<unsigned char>(value & 0xffu),
+        static_cast<unsigned char>((value >> 8) & 0xffu),
+        static_cast<unsigned char>((value >> 16) & 0xffu),
+        static_cast<unsigned char>((value >> 24) & 0xffu)
+    };
+    out.write(reinterpret_cast<const char*>(b), 4);
+}
+
+bool readChunkLocations(const std::string& path, std::map<std::string, ChunkLocation>& locations, std::string& error) {
+    locations.clear();
+    std::ifstream in(path, std::ios::binary);
+    if (!in.is_open()) {
+        error = "Failed to open WAV for chunk rewrite";
+        return false;
+    }
+
+    char riff[4];
+    in.read(riff, 4);
+    if (!in || (std::string(riff, 4) != "RIFF" && std::string(riff, 4) != "BW64" && std::string(riff, 4) != "RF64")) {
+        error = "Invalid WAV for chunk rewrite";
+        return false;
+    }
+    (void)readLe32(in);
+    char wave[4];
+    in.read(wave, 4);
+    if (!in || std::string(wave, 4) != "WAVE") {
+        error = "Invalid WAVE header for chunk rewrite";
+        return false;
+    }
+
+    while (in) {
+        char chunkId[4];
+        in.read(chunkId, 4);
+        if (in.gcount() != 4) break;
+        const uint32_t size = readLe32(in);
+        if (!in) break;
+        const std::string id(chunkId, 4);
+        locations.emplace(id, ChunkLocation{static_cast<uint64_t>(in.tellg()), size});
+        in.seekg(static_cast<std::streamoff>(size), std::ios::cur);
+        if (size % 2 == 1) {
+            in.seekg(1, std::ios::cur);
+        }
+    }
+
+    if (!locations.count("fmt ") || !locations.count("data")) {
+        error = "Chunk rewrite requires fmt and data chunks";
+        return false;
+    }
+    return true;
+}
+
+bool copyPayload(std::ifstream& in, std::ofstream& out, const ChunkLocation& location, std::string& error) {
+    in.clear();
+    in.seekg(static_cast<std::streamoff>(location.payloadOffset), std::ios::beg);
+    if (!in) {
+        error = "Failed to seek source chunk";
+        return false;
+    }
+
+    constexpr size_t kBufferSize = 1024 * 1024;
+    std::vector<char> buffer(kBufferSize);
+    uint64_t remaining = location.size;
+    while (remaining > 0) {
+        const size_t now = static_cast<size_t>(std::min<uint64_t>(remaining, buffer.size()));
+        in.read(buffer.data(), static_cast<std::streamsize>(now));
+        if (static_cast<size_t>(in.gcount()) != now) {
+            error = "Short read while rewriting chunks";
+            return false;
+        }
+        out.write(buffer.data(), static_cast<std::streamsize>(now));
+        if (!out) {
+            error = "Failed to write rewritten chunk payload";
+            return false;
+        }
+        remaining -= now;
+    }
+    return true;
+}
+
+bool writeChunkFromSource(std::ifstream& in, std::ofstream& out, const char id[4], const ChunkLocation& location, std::string& error) {
+    out.write(id, 4);
+    if (location.size > std::numeric_limits<uint32_t>::max()) {
+        error = "Chunk rewrite does not support >4GB chunks";
+        return false;
+    }
+    writeLe32(out, static_cast<uint32_t>(location.size));
+    if (!copyPayload(in, out, location, error)) {
+        return false;
+    }
+    if (location.size % 2 == 1) {
+        out.put('\0');
+    }
+    return static_cast<bool>(out);
+}
+
+bool writeChunkFromBytes(std::ofstream& out, const char id[4], const char* data, size_t size, std::string& error) {
+    out.write(id, 4);
+    if (size > std::numeric_limits<uint32_t>::max()) {
+        error = "Chunk rewrite does not support >4GB metadata chunks";
+        return false;
+    }
+    writeLe32(out, static_cast<uint32_t>(size));
+    if (size > 0) {
+        out.write(data, static_cast<std::streamsize>(size));
+    }
+    if (size % 2 == 1) {
+        out.put('\0');
+    }
+    return static_cast<bool>(out);
+}
+
+bool rewriteMetadataPostData(
+        const std::string& path,
+        const std::string& xmlString,
+        const bw64::ChnaChunk& chnaChunk,
+        const std::vector<char>& dbmdData,
+        std::string& error
+) {
+    std::map<std::string, ChunkLocation> locations;
+    if (!readChunkLocations(path, locations, error)) {
+        return false;
+    }
+
+    const std::string tmpPath = path + ".postdata";
+    std::ifstream in(path, std::ios::binary);
+    std::ofstream out(tmpPath, std::ios::binary);
+    if (!in.is_open() || !out.is_open()) {
+        error = "Failed to open files for metadata post-data rewrite";
+        return false;
+    }
+
+    std::ostringstream chnaPayload;
+    chnaChunk.write(chnaPayload);
+    const std::string chnaData = chnaPayload.str();
+
+    const uint64_t junkSize = locations.count("JUNK") ? locations["JUNK"].size + 8 + (locations["JUNK"].size % 2) : 0;
+    const uint64_t totalSize =
+        4 +
+        junkSize +
+        8 + locations["fmt "].size + (locations["fmt "].size % 2) +
+        8 + locations["data"].size + (locations["data"].size % 2) +
+        8 + xmlString.size() + (xmlString.size() % 2) +
+        8 + chnaData.size() + (chnaData.size() % 2) +
+        (dbmdData.empty() ? 0 : 8 + dbmdData.size() + (dbmdData.size() % 2));
+
+    if (totalSize > std::numeric_limits<uint32_t>::max()) {
+        error = "Metadata post-data rewrite does not support RF64 output";
+        return false;
+    }
+
+    out.write("RIFF", 4);
+    writeLe32(out, static_cast<uint32_t>(totalSize));
+    out.write("WAVE", 4);
+    if (locations.count("JUNK")) {
+        if (!writeChunkFromSource(in, out, "JUNK", locations["JUNK"], error)) return false;
+    }
+    if (!writeChunkFromSource(in, out, "fmt ", locations["fmt "], error)) return false;
+    if (!writeChunkFromSource(in, out, "data", locations["data"], error)) return false;
+    if (!writeChunkFromBytes(out, "axml", xmlString.data(), xmlString.size(), error)) return false;
+    if (!writeChunkFromBytes(out, "chna", chnaData.data(), chnaData.size(), error)) return false;
+    if (!dbmdData.empty()) {
+        if (!writeChunkFromBytes(out, "dbmd", dbmdData.data(), dbmdData.size(), error)) return false;
+    }
+
+    out.close();
+    in.close();
+    if (!out) {
+        error = "Failed to finalize metadata post-data rewrite";
+        std::remove(tmpPath.c_str());
+        return false;
+    }
+
+    if (std::rename(tmpPath.c_str(), path.c_str()) != 0) {
+        error = "Failed to replace WAV after metadata post-data rewrite";
+        std::remove(tmpPath.c_str());
+        return false;
+    }
+    return true;
+}
 
 std::string to_string_fixed(double val, int precision) {
     std::ostringstream out;
@@ -580,7 +778,8 @@ AdmWriterResult AdmWriter::writeAdmBw64(
         uint32_t targetSampleRate,
         uint64_t expectedFrames,
         const ProgressCallback& onProgress,
-        const std::vector<char>& dbmdData
+        const std::vector<char>& dbmdData,
+        bool metadataPostData
 ) {
     AdmWriterResult result;
 
@@ -751,6 +950,14 @@ AdmWriterResult AdmWriter::writeAdmBw64(
     } catch (const std::exception& e) {
         result.errorMessage = std::string("Bw64Writer error: ") + e.what();
         return result;
+    }
+
+    if (metadataPostData) {
+        std::string rewriteError;
+        if (!rewriteMetadataPostData(tmpWavPath, xmlString, *chnaChunk, dbmdData, rewriteError)) {
+            result.errorMessage = rewriteError;
+            return result;
+        }
     }
 
     // 5. Rename files safely

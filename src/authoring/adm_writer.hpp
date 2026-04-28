@@ -53,7 +53,8 @@ public:
         uint32_t targetSampleRate,
         uint64_t expectedFrames,
         const ProgressCallback& onProgress = nullptr,
-        const std::vector<char>& dbmdData = {}
+        const std::vector<char>& dbmdData = {},
+        bool metadataPostData = false
     );
 
 private:

@@ -5,7 +5,7 @@
 ### Context Reset Prompt — adm-author Tests & Validation
 
 ```
-You are continuing CULT Transcoder adm-author and package-generation work. The export-side `adm-author` pipeline writes Logic-compatible ADM XML plus ADM BWF/WAV via `libbw64`; `exported/lusid_package_logic_shaped.wav` has imported successfully in Logic Pro. A separate `package-adm-wav` command converts ADM BWF/WAV source material into a LUSID package by extracting embedded ADM metadata and splitting interleaved audio into mono float32 stems. All 72/72 current ingest/parity/CLI/authoring/packaging tests pass as of 2026-04-27. Do NOT regress the parity-critical ingest path. Keep authoring compatibility fixes separate from LUSID package generation work.
+You are continuing CULT Transcoder adm-author and package-generation work. The export-side `adm-author` pipeline writes Logic-compatible ADM XML plus ADM BWF/WAV via `libbw64`; `exported/lusid_package_logic_shaped.wav` has imported successfully in Logic Pro. A separate `package-adm-wav` command converts ADM BWF/WAV source material into a LUSID package by extracting embedded ADM metadata and splitting interleaved audio into mono float32 stems. All 73/73 current ingest/parity/CLI/authoring/packaging tests pass as of 2026-04-27. Do NOT regress the parity-critical ingest path. Keep authoring compatibility fixes separate from LUSID package generation work.
 ```
 
 Goal: implement the final mapping and integration tests for the new export-side `adm-author` path, and perform strict Logic Pro Atmos manual validation.
@@ -62,7 +62,7 @@ Status update (2026-04-27): Steps 1-6 are covered by automated tests. `adm-autho
 
 ### Refactor Task List — DRY + Module Re-Organization (April 2026)
 
-Status 2026-04-27: complete through structure stabilization plus ADM package generation. Module ownership is now under `src/authoring/`, `src/parsing/`, `src/reporting/`, and `src/packaging/`; root-level transitional shims were removed; `ctest --test-dir build --output-on-failure` passes 72/72.
+Status 2026-04-27: complete through structure stabilization plus ADM package generation. Module ownership is now under `src/authoring/`, `src/parsing/`, `src/reporting/`, and `src/packaging/`; root-level transitional shims were removed; `ctest --test-dir build --output-on-failure` passes 73/73.
 
 This list is retained as the completion record. Each task included a matching markdown/doc update in the same PR.
 
@@ -113,7 +113,7 @@ Execution order is mandatory: complete in sequence and keep ingest/parity behavi
 
 - Run focused authoring tests + full existing ingest/parity tests for every refactor slice.
 - No merge if parity tests regress.
-- Status 2026-04-27: full test gate passes 72/72 after package-generation integration, including parity, authoring, and packaging tests.
+- Status 2026-04-27: full test gate passes 73/73 after package-generation integration, including parity, authoring, and packaging tests.
 - **Required doc update in same PR:**
   - `internalDocsMD/audit.md` (what was moved, evidence of non-regression)
   - `internalDocsMD/CHANGELOG.md` (test/status note)
@@ -209,6 +209,7 @@ Observed in the current submodule (no assumptions beyond code/tests in this repo
 - `adm-author` accepts experimental `--dbmd-source <source.wav|dbmd.bin>`.
 - When the source is WAVE-like, CULT extracts the source `dbmd` chunk and writes it as a post-data `dbmd` chunk in the authored output.
 - When the source is not WAVE-like, CULT treats the file as a raw `dbmd` payload.
+- `adm-author` accepts experimental `--metadata-post-data`, which rewrites authored WAV chunk order to `JUNK`, `fmt `, `data`, `axml`, `chna`, and optional `dbmd`.
 - Authored ADM XML writes nonzero `end` attributes alongside `start` and `duration` on `audioProgramme` and `audioObject`.
 - This is for Dolby Atmos Conversion Tool compatibility testing. It is separate from the already passing Logic import target.
 
@@ -385,7 +386,8 @@ cult-transcoder adm-author \
   [--report <path>] \
   [--stdout-report] \
   [--quiet] \
-  [--dbmd-source <source.wav|dbmd.bin>]
+  [--dbmd-source <source.wav|dbmd.bin>] \
+  [--metadata-post-data]
 
 # alternate input
 cult-transcoder adm-author \
@@ -395,7 +397,8 @@ cult-transcoder adm-author \
   [--report <path>] \
   [--stdout-report] \
   [--quiet] \
-  [--dbmd-source <source.wav|dbmd.bin>]
+  [--dbmd-source <source.wav|dbmd.bin>] \
+  [--metadata-post-data]
 ```
 
 Exit codes for both commands:

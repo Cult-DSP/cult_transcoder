@@ -13,6 +13,7 @@ All notable changes to cult_transcoder are documented here. This file is scoped 
 - Recorded Logic Pro validation success for `exported/lusid_package_logic_shaped.wav`.
 - Added experimental `adm-author --dbmd-source <source.wav|dbmd.bin>` for Dolby `dbmd` copy testing.
 - Added explicit ADM `end` timing on authored `audioProgramme` and `audioObject` elements.
+- Added experimental `adm-author --metadata-post-data` for Dolby approval-warning testing; it rewrites authored WAV chunk order so `axml`, `chna`, and optional `dbmd` appear after `data`.
 - Added Dolby Conversion Tool candidate notes for `exported/eden_dolby_candidate.wav`; the tool converts the file successfully, and the converted output opens in Logic, while the Dolby-approved-master warning remains.
 - Validation evidence: `cmake --build build && ctest --test-dir build --output-on-failure` passes 73/73 tests.
 

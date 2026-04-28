@@ -216,6 +216,9 @@ AdmAuthorResult admAuthor(const AdmAuthorRequest& req) {
         }
         report.warnings.push_back("adm-author: copied experimental dbmd chunk from " + req.dbmdSourcePath);
     }
+    if (req.metadataPostData) {
+        report.warnings.push_back("adm-author: wrote experimental post-data axml/chna/dbmd chunk order");
+    }
 
     if (hasPackage && !fs::exists(req.lusidPackage)) {
         report.errors.push_back("adm-author: LUSID package not found: '" + req.lusidPackage + "'");
@@ -419,7 +422,8 @@ AdmAuthorResult admAuthor(const AdmAuthorRequest& req) {
         targetSampleRate,
         expectedFrames,
         req.onProgress,
-        dbmdData
+        dbmdData,
+        req.metadataPostData
     );
 
     if (!wRes.success) {

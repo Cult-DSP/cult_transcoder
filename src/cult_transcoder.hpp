@@ -65,6 +65,7 @@ struct AdmAuthorRequest {
     std::string outXmlPath;     // authored ADM XML output path
     std::string outWavPath;     // authored ADM BW64 output path
     std::string dbmdSourcePath;  // optional experimental dbmd source WAV/bin
+    bool        metadataPostData = false; // optional experimental Dolby-style chunk order
     std::string reportPath;     // resolved path for the report file
     bool        stdoutReport = false;
     bool        quiet = false;

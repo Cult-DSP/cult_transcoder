@@ -106,6 +106,30 @@ bool outputHasChunk(const fs::path& path, const std::string& wantedId) {
     return false;
 }
 
+std::vector<std::string> chunkOrder(const fs::path& path) {
+    std::ifstream in(path, std::ios::binary);
+    REQUIRE(in.is_open());
+    char tag[4];
+    in.read(tag, 4);
+    REQUIRE((std::string(tag, 4) == "RIFF" || std::string(tag, 4) == "BW64" || std::string(tag, 4) == "RF64"));
+    (void)readU32(in);
+    in.read(tag, 4);
+    REQUIRE(std::string(tag, 4) == "WAVE");
+
+    std::vector<std::string> ids;
+    while (in) {
+        in.read(tag, 4);
+        if (in.gcount() != 4) break;
+        const uint32_t size = readU32(in);
+        ids.emplace_back(tag, 4);
+        in.seekg(static_cast<std::streamoff>(size), std::ios::cur);
+        if (size % 2 == 1) {
+            in.seekg(1, std::ios::cur);
+        }
+    }
+    return ids;
+}
+
 } // namespace
 
 TEST_CASE("admAuthor writes ADM XML and BW64 with matching embedded axml",
@@ -247,12 +271,14 @@ TEST_CASE("admAuthor can copy an experimental dbmd chunk into authored output",
     req.outXmlPath = outXml.string();
     req.outWavPath = outWav.string();
     req.dbmdSourcePath = dbmd.string();
+    req.metadataPostData = true;
 
     auto result = cult::admAuthor(req);
     INFO(result.report.toJson());
     REQUIRE(result.success);
     REQUIRE(outputHasChunk(outWav, "dbmd"));
-    REQUIRE(result.report.warnings.size() == 1);
+    REQUIRE(result.report.warnings.size() == 2);
+    REQUIRE(chunkOrder(outWav) == std::vector<std::string>{"JUNK", "fmt ", "data", "axml", "chna", "dbmd"});
 }
 
 TEST_CASE("admAuthor tolerates one trailing sample mismatch by truncating to shortest length",
