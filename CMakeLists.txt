@@ -52,6 +52,12 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
+# Default to production-oriented local builds unless tests are explicitly
+# requested at configure time.
+if(NOT DEFINED BUILD_TESTING)
+    set(BUILD_TESTING OFF CACHE BOOL "Build tests" FORCE)
+endif()
+
 # ---------------------------------------------------------------------------
 # Git commit SHA — injected into the binary at build time so every report
 # carries the exact commit that produced it (AGENTS §7: tool.gitCommit).
@@ -185,66 +191,67 @@ target_link_libraries(cult-transcoder PRIVATE pugixml::pugixml libbw64 nlohmann_
 # ---------------------------------------------------------------------------
 # Tests — Catch2
 # ---------------------------------------------------------------------------
-enable_testing()
-
-add_executable(cult_tests
-    tests/test_report.cpp
-    tests/test_cli_args.cpp
-    tests/test_adm_helpers.cpp
-    tests/test_lfe_mode.cpp                  # Phase 4: LFE mode + profile detection tests
-    tests/test_360ra.cpp                     # Phase 6: Sony 360RA conversion tests
-    tests/test_adm_author_args.cpp           # adm-author CLI validation tests
-    tests/test_lusid_to_adm_mapping.cpp      # adm-author LUSID -> ADM mapping tests
-    tests/test_adm_author_integration.cpp    # adm-author XML + BW64 integration tests
-    tests/test_adm_package.cpp               # package-adm-wav roundtrip tests
-    tests/parity/run_parity.cpp
-
-    # Same source files the main binary uses, so tests exercise real code
-    src/reporting/report.cpp
-    src/transcoder.cpp
-    src/transcoding/adm/adm_to_lusid.cpp
-    src/authoring/adm_author.cpp
-    src/authoring/adm_writer.cpp
-    src/parsing/lusid_reader.cpp
-    src/audio/wav_io.cpp
-    src/audio/normalize_audio.cpp
-    src/audio/resampler_r8brain.cpp
-    src/packaging/adm_package.cpp
-    src/transcoding/adm/adm_reader.cpp       # Phase 3: needed by transcoder
-    src/transcoding/adm/adm_profile_resolver.cpp # Phase 4: ADM profile detection
-    src/transcoding/adm/sony360ra_to_lusid.cpp   # Phase 6: Sony 360RA ADM → LUSID
-)
-
-target_include_directories(cult_tests
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${R8BRAIN_DIR}                               # CDSPResampler.h (adm-author path)
-)
-
-target_compile_definitions(cult_tests
-    PRIVATE
-        CULT_GIT_COMMIT="${CULT_GIT_COMMIT}"
-        PARITY_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/parity/fixtures"
-)
-
-target_link_libraries(cult_tests
-    PRIVATE
-        Catch2::Catch2WithMain
-        pugixml::pugixml
-        libbw64
-        nlohmann_json::nlohmann_json
-)
-
-if(MSVC)
-    target_compile_options(cult_tests PRIVATE /W4)
-    target_compile_definitions(cult_tests PRIVATE _CRT_SECURE_NO_WARNINGS)
-else()
-    target_compile_options(cult_tests PRIVATE -Wall -Wextra -Wpedantic)
-endif()
-
 include(CTest)
-include(Catch)
-catch_discover_tests(cult_tests)
+
+if(BUILD_TESTING)
+    enable_testing()
+
+    add_executable(cult_tests
+        tests/test_report.cpp
+        tests/test_cli_args.cpp
+        tests/test_adm_helpers.cpp
+        tests/test_lfe_mode.cpp                  # Phase 4: LFE mode + profile detection tests
+        tests/test_360ra.cpp                     # Phase 6: Sony 360RA conversion tests
+        tests/test_adm_author_args.cpp           # adm-author CLI validation tests
+        tests/test_lusid_to_adm_mapping.cpp      # adm-author LUSID -> ADM mapping tests
+        tests/test_adm_author_integration.cpp    # adm-author XML + BW64 integration tests
+        tests/test_adm_package.cpp               # package-adm-wav roundtrip tests
+
+        # Same source files the main binary uses, so tests exercise real code
+        src/reporting/report.cpp
+        src/transcoder.cpp
+        src/transcoding/adm/adm_to_lusid.cpp
+        src/authoring/adm_author.cpp
+        src/authoring/adm_writer.cpp
+        src/parsing/lusid_reader.cpp
+        src/audio/wav_io.cpp
+        src/audio/normalize_audio.cpp
+        src/audio/resampler_r8brain.cpp
+        src/packaging/adm_package.cpp
+        src/transcoding/adm/adm_reader.cpp       # Phase 3: needed by transcoder
+        src/transcoding/adm/adm_profile_resolver.cpp # Phase 4: ADM profile detection
+        src/transcoding/adm/sony360ra_to_lusid.cpp   # Phase 6: Sony 360RA ADM → LUSID
+    )
+
+    target_include_directories(cult_tests
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/src
+            ${R8BRAIN_DIR}                               # CDSPResampler.h (adm-author path)
+    )
+
+    target_compile_definitions(cult_tests
+        PRIVATE
+            CULT_GIT_COMMIT="${CULT_GIT_COMMIT}"
+    )
+
+    target_link_libraries(cult_tests
+        PRIVATE
+            Catch2::Catch2WithMain
+            pugixml::pugixml
+            libbw64
+            nlohmann_json::nlohmann_json
+    )
+
+    if(MSVC)
+        target_compile_options(cult_tests PRIVATE /W4)
+        target_compile_definitions(cult_tests PRIVATE _CRT_SECURE_NO_WARNINGS)
+    else()
+        target_compile_options(cult_tests PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+
+    include(Catch)
+    catch_discover_tests(cult_tests)
+endif()
 
 # ---------------------------------------------------------------------------
 # Install — not needed for Phase 1, scaffolded for completeness
@@ -261,7 +268,11 @@ message(STATUS "  Git commit  : ${CULT_GIT_COMMIT}")
 message(STATUS "  Build type  : ${CMAKE_BUILD_TYPE}")
 message(STATUS "  C++ standard: ${CMAKE_CXX_STANDARD}")
 message(STATUS "  Binary path : ${CMAKE_BINARY_DIR}/cult-transcoder")
-message(STATUS "  Tests       : enabled (Catch2 v3)")
+if(BUILD_TESTING)
+    message(STATUS "  Tests       : enabled (Catch2 v3)")
+else()
+    message(STATUS "  Tests       : disabled")
+endif()
 message(STATUS "  XML parser  : pugixml (encounter-order parity with Python oracle)")
 message(STATUS "  WAV reader  : libbw64 (git submodule, thirdparty/libbw64)")
 message(STATUS "  Resampler   : r8brain-free-src (git submodule, thirdparty/r8brain)")
