@@ -164,7 +164,7 @@ Implemented:
 
 Historical importance:
 
-- this aligns CULT with the SpatialSeed-local schema-only LUSID repo at `LUSID/SCHEMA/lusid_scene_v1.0.schema.json`
+- this aligns CULT with the SpatialSeed-local schema-only LUSID repo at `internal/LUSID/SCHEMA/lusid_scene_v1.0.schema.json`
 - it preserves the existing CULT responsibilities: source-format conversion, package creation, validation, and ADM authoring stay in CULT rather than moving into LUSID
 
 ### 2026-04-28: ADM Transcoding Memory and Organization Cleanup

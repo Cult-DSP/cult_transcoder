@@ -172,7 +172,7 @@ Invocation: CLI-first. Spatial Root calls `spatialroot/cult-transcoder/build/cul
 Build: CMake. C++17. Cross-platform (macOS + Windows required; Linux later).  
 Test framework: Catch2 (via CMake FetchContent; no install required).  
 License: Apache-2.0. All source files carry an Apache-2.0 header with Cult-DSP copyright.  
-Canonical: LUSID Scene v1.0 JSON (`version: "1.0"`), validated against the SpatialSeed-local LUSID schema at `LUSID/SCHEMA/lusid_scene_v1.0.schema.json`.
+Canonical: LUSID Scene v1.0 JSON (`version: "1.0"`), validated against the SpatialSeed-local LUSID schema at `internal/LUSID/SCHEMA/lusid_scene_v1.0.schema.json`.
 
 This file is designed to be executable and non-destructive. Do not guess.
 
@@ -311,7 +311,7 @@ Deferred cleanup notes:
 
 Authority order (resolve conflicts in this order):
 
-1. `LUSID/internalDocs/toolchain_AGENTS.md` (contract authority)
+1. `internal/LUSID/internalDocs/toolchain_AGENTS.md` (contract authority)
 2. LUSID schema + LUSID scene semantics
 3. Spatial Root pipeline docs
 4. CULT docs
@@ -331,8 +331,8 @@ If you change any of:
 then update, in the same PR:
 
 - `spatialroot/AGENTS.md` (pipeline + GUI wiring)
-- `LUSID/LUSID_AGENTS.md`
-- if and only if the toolchain contract changes: update `LUSID/internalDocs/toolchain_AGENTS.md` and `LUSID/internalDocs/CHANGELOG_TOOLCHAIN.md`
+- `internal/LUSID/LUSID_AGENTS.md`
+- if and only if the toolchain contract changes: update `internal/LUSID/internalDocs/toolchain_AGENTS.md` and `internal/LUSID/internalDocs/CHANGELOG_TOOLCHAIN.md`
 
 No behavior change without doc change.
 
@@ -341,7 +341,7 @@ No behavior change without doc change.
 ## 1. Repo Layout (current state + planned authoring additions)
 
 ```text
-cult_transcoder/
+internal/cult_transcoder/
 ├── .gitignore
 ├── .gitmodules
 ├── CMakeLists.txt
@@ -489,7 +489,7 @@ Phase 2 must mirror the existing working system.
 
 Oracle file (do not modify to match C++):
 
-- `LUSID/src/xml_etree_parser.py`
+- `internal/LUSID/src/xml_etree_parser.py`
 
 Rule:
 
