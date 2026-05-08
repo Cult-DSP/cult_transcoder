@@ -141,7 +141,7 @@ In Sony's Spatial Content Creation workflow, 360RA mix metadata is embedded in a
 
 ```xml
 <conformance_point_document>
-  <File name="sourceData/360RA.wav">
+  <File name="data/sourceData/360RA.wav">
     <Technical> ... </Technical>
     <aXML>
       <format>
@@ -231,7 +231,7 @@ Required fields:
 - Phase 1: repo skeleton + CMake + CLI scaffold + report schema.
 - Phase 2: ADM XML → LUSID JSON in C++ using libadm; match Python oracle output; stable ordering; timeUnit seconds; hard-fail parity.
   - Note: `containsAudio.json` is removed/commented out from pipeline in Phase 2.
-- Phase 3: move ADM WAV ingestion/extraction into CULT, but keep writing `processedData/currentMetaData.xml` as a debug artifact; output LUSID + report.
+- Phase 3: move ADM WAV ingestion/extraction into CULT, but keep writing `data/processedData/currentMetaData.xml` as the Spatial Root debug artifact when that parent-workspace layout exists (falling back to `processedData/currentMetaData.xml` for older layouts); output LUSID + report.
 - Phase 4: ADM profile resolver (Sony 360RA export patterns + Atmos variants) + improved LFE detection behind flags; defaults preserve Phase 2 behavior.
 - Phase 5: GUI transcoding tab (open report).
 - Phase 6: MPEG-H support first (Sony priority), then IAMF; support both Fraunhofer (optional) and Ittiam (default) behind build flags.

@@ -19,12 +19,14 @@
 //
 // Provides extractAxmlFromWav(): opens a BW64/RF64/WAV file, reads the
 // embedded <axml> chunk, writes a debug copy to the fixed artifact path
-// (processedData/currentMetaData.xml), and returns the raw XML string for
+// (default resolved at runtime), and returns the raw XML string for
 // in-memory parsing by adm_to_lusid.
 //
 // Design decisions (AGENTS-CULT §8, DEV-PLAN Phase 3):
-//   - Path of debug artifact is HARDCODED to "processedData/currentMetaData.xml"
-//     relative to the working directory (i.e. the spatialroot repo root).
+//   - Default debug artifact path is resolved relative to the working directory:
+//       1. data/processedData/currentMetaData.xml if data/processedData exists
+//       2. data/processedData/currentMetaData.xml if data/ exists
+//       3. processedData/currentMetaData.xml otherwise
 //   - Debug XML is ALWAYS written (enabled by default per D2).
 //   - Parsing happens directly from the returned buffer — no re-read.
 //   - libbw64 is a git submodule at cult_transcoder/thirdparty/libbw64.
@@ -58,12 +60,12 @@ struct AxmlResult {
 // writes the debug artifact to debugXmlPath, and returns the XML in
 // result.xmlData for immediate in-memory parsing.
 //
-// debugXmlPath defaults to "processedData/currentMetaData.xml" (D2).
-// Callers should not override this unless testing.
+// debugXmlPath defaults to runtime resolution (D2). Callers should not
+// override this unless testing or explicitly controlling artifact location.
 // ---------------------------------------------------------------------------
 AxmlResult extractAxmlFromWav(
     const std::string& wavPath,
-    const std::string& debugXmlPath = "processedData/currentMetaData.xml"
+    const std::string& debugXmlPath = ""
 );
 
 } // namespace cult

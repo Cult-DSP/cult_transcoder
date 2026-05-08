@@ -22,7 +22,7 @@
 //      thirdparty/libbw64, Apache-2.0, header-only).
 //   2. Extract the raw axml chunk bytes.
 //   3. Write bytes verbatim to the debug artifact path
-//      (default: processedData/currentMetaData.xml, hardcoded per D2).
+//      (default: resolved at runtime per D2 compatibility rules).
 //      A warning is emitted if the write fails but processing continues.
 //   4. Return the XML string to the caller (transcoder.cpp) for immediate
 //      in-memory parsing by convertAdmToLusid() — no disk re-read.
@@ -44,6 +44,22 @@
 #include <stdexcept>
 
 namespace cult {
+
+namespace {
+
+std::string resolveDefaultDebugXmlPath() {
+    namespace fs = std::filesystem;
+    const fs::path cwd = fs::current_path();
+    const fs::path dataDir = cwd / "data";
+    const fs::path dataProcessedDir = dataDir / "processedData";
+
+    if (fs::exists(dataProcessedDir) || fs::exists(dataDir)) {
+        return (dataProcessedDir / "currentMetaData.xml").string();
+    }
+    return (cwd / "processedData/currentMetaData.xml").string();
+}
+
+} // namespace
 
 AxmlResult extractAxmlFromWav(
     const std::string& wavPath,
@@ -89,13 +105,13 @@ AxmlResult extractAxmlFromWav(
     }
 
     // --- Write debug XML artifact (D2 — always written by default) ---
-    // Path is hardcoded to processedData/currentMetaData.xml relative to CWD
-    // (the spatialroot repo root). This preserves the artifact that downstream
-    // tools and humans rely on for debugging. Failure to write is a warning,
-    // not a hard error — in-memory parsing proceeds regardless.
-    if (!debugXmlPath.empty()) {
+    // Preserve compatibility with both the new SpatialRoot data layout and
+    // older parent workspaces that still expect processedData/ at repo root.
+    const std::string effectiveDebugXmlPath =
+        debugXmlPath.empty() ? resolveDefaultDebugXmlPath() : debugXmlPath;
+    if (!effectiveDebugXmlPath.empty()) {
         try {
-            std::filesystem::path xmlOut(debugXmlPath);
+            std::filesystem::path xmlOut(effectiveDebugXmlPath);
             // Create parent directory if it does not exist
             if (xmlOut.has_parent_path()) {
                 std::filesystem::create_directories(xmlOut.parent_path());
@@ -104,14 +120,14 @@ AxmlResult extractAxmlFromWav(
             if (!outFile) {
                 result.warnings.push_back(
                     "Could not open debug XML artifact for writing: '" +
-                    debugXmlPath + "' — in-memory parsing will still proceed.");
+                    effectiveDebugXmlPath + "' — in-memory parsing will still proceed.");
             } else {
                 outFile.write(result.xmlData.data(),
                               static_cast<std::streamsize>(result.xmlData.size()));
                 if (!outFile) {
                     result.warnings.push_back(
                         "Write failed for debug XML artifact: '" +
-                        debugXmlPath + "' — in-memory parsing will still proceed.");
+                        effectiveDebugXmlPath + "' — in-memory parsing will still proceed.");
                 }
             }
         } catch (const std::exception& e) {

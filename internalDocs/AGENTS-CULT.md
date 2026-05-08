@@ -505,8 +505,8 @@ This rule applies only to the existing ADM ingest/parity path, not to the new au
 
 Inputs/outputs (pipeline convention, not enforced by the CLI):
 
-- Pipeline commonly uses input ADM XML at `processedData/currentMetaData.xml`.
-- Pipeline commonly writes output LUSID to `processedData/stageForRender/scene.lusid.json`.
+- In the Spatial Root parent workspace, the pipeline commonly uses input ADM XML at `data/processedData/currentMetaData.xml`, with fallback support for older `processedData/currentMetaData.xml` layouts.
+- In the Spatial Root parent workspace, the pipeline commonly writes output LUSID to `data/processedData/stageForRender/scene.lusid.json`.
 - CLI accepts any `--in` and `--out` paths and does not enforce these locations.
 
 Time model:
@@ -925,7 +925,7 @@ The full suite runs as 40 test cases / 150 assertions (was 28/105).
 
 **Fixtures needed** (must be committed to `tests/parity/fixtures/`):
 
-- `sony_360ra_example.xml` — copy of `processedData/sony360RA_example.xml`
+- `sony_360ra_example.xml` — copy of `data/processedData/sony360RA_example.xml` in the Spatial Root parent workspace
   (already confirmed present in the workspace). Do not modify the source file.
   Use this file directly for profile detection tests; its `audioProgrammeName`
   is `"Gem_OM_360RA_3"` which contains `"360RA"` — the unambiguous detection
@@ -1005,7 +1005,7 @@ here once resolved.
    as a reference for this format.
 
 2. **Sony 360RA speakerLabel / LFE convention (RESOLVED — not applicable in Phase 4)**
-   Confirmed by file inspection: `processedData/sony360RA_example.xml` contains
+   Confirmed by file inspection: `data/processedData/sony360RA_example.xml` in the Spatial Root parent workspace contains
    no `speakerLabel` elements and no LFE channels. It is a 13-channel object-only
    360RA file (no DirectSpeakers bed). The `--lfe-mode speaker-label` branch
    therefore cannot be tested against this file; a synthetic fixture is used
@@ -1108,7 +1108,7 @@ cult-transcoder transcode
   --lfe-mode   <lfe_mode>
 ```
 
-`out_path` defaults to `processedData/stageForRender/scene.lusid.json` (relative to project root) if not specified by the user.
+In the Spatial Root parent workspace, `out_path` commonly defaults to `data/processedData/stageForRender/scene.lusid.json` (with legacy fallback support for `processedData/stageForRender/scene.lusid.json`) if not specified by the user.
 
 Drains stdout and stderr on `_on_finished()` before emitting `finished`.
 

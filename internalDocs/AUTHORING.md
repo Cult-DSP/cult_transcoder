@@ -198,7 +198,7 @@ Open items:
 
 ## 4. Logic Pro Import Finding (April 2026)
 
-Manual validation with the authored `sourceData/lusid_package` output showed that the generated BW64 was readable by CULT and probeable as audio, but did not open in Logic Pro.
+Manual validation with the authored `data/sourceData/lusid_package` output showed that the generated BW64 was readable by CULT and probeable as audio, but did not open in Logic Pro.
 
 Observed facts:
 
@@ -253,7 +253,7 @@ Current validation candidate:
 
 Reference source:
 
-- Original BWF: `/Users/lucian/projects/spatialroot/sourceData/CANYON-ATMOS-LFE.wav`
+- Original BWF: `/Users/lucian/projects/spatialroot/data/sourceData/CANYON-ATMOS-LFE.wav`
 - Extracted XML: `build/authoring_validation/original_canyon.axml.xml`
 - Extracted chunks:
   - `build/authoring_validation/original_canyon.chna.bin`
@@ -263,7 +263,7 @@ Extraction command:
 
 ```bash
 build/cult-transcoder transcode \
-  --in /Users/lucian/projects/spatialroot/sourceData/CANYON-ATMOS-LFE.wav \
+  --in /Users/lucian/projects/spatialroot/data/sourceData/CANYON-ATMOS-LFE.wav \
   --in-format adm_wav \
   --out build/authoring_validation/original_canyon.lusid.json \
   --out-format lusid_json \
@@ -599,7 +599,7 @@ Candidate:
 - `exported/eden_dolby_postdata_candidate.adm.xml`
 - `exported/eden_dolby_postdata_candidate.report.json`
 
-These candidates use `dbmd` extracted from `/Users/lucian/projects/spatialroot/sourceData/EDEN-ATMOS-MIX-LFE.wav`. The post-data candidate additionally writes the observed source-style order `JUNK`, `fmt `, `data`, `axml`, `chna`, `dbmd`.
+These candidates use `dbmd` extracted from `/Users/lucian/projects/spatialroot/data/sourceData/EDEN-ATMOS-MIX-LFE.wav`. The post-data candidate additionally writes the observed source-style order `JUNK`, `fmt `, `data`, `axml`, `chna`, `dbmd`.
 
 Validation result:
 
@@ -677,7 +677,7 @@ Future transcoding tasks should reuse this callback contract instead of inventin
 
 Source:
 
-- `/Users/lucian/projects/spatialroot/sourceData/EDEN-ATMOS-MIX-LFE.wav`
+- `/Users/lucian/projects/spatialroot/data/sourceData/EDEN-ATMOS-MIX-LFE.wav`
 
 Validated flow:
 
