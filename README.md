@@ -3,7 +3,7 @@
 C++17 CLI tool that transcodes ADM XML/WAV to LUSID Scene JSON, authors LUSID packages back to ADM BWF/WAV, and can package ADM BWF/WAV source material into self-contained LUSID packages.  
 Submodule of [spatialroot](https://github.com/Cult-DSP/spatialroot), branch `devel`.
 
-CULT reads and writes LUSID Scene v1.0 JSON (`version: "1.0"`), matching the schema in `../internal/LUSID/SCHEMA/lusid_scene_v1.0.schema.json` when run from the SpatialSeed workspace.
+CULT reads and writes LUSID Scene v1.0 JSON (`version: "1.0"`), matching the schema in `../LUSID/SCHEMA/lusid_scene_v1.0.schema.json` when run from the SpatialSeed workspace.
 
 ## Quick start
 
@@ -22,7 +22,7 @@ build/cult-transcoder <command> ...
 From the parent `spatialSeed` repo root, run it as:
 
 ```bash
-internal/cult_transcoder/build/cult-transcoder <command> ...
+cult_transcoder/build/cult-transcoder <command> ...
 ```
 
 ## Run tests

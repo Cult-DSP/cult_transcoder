@@ -27,7 +27,7 @@
 //     relative to the working directory (i.e. the spatialroot repo root).
 //   - Debug XML is ALWAYS written (enabled by default per D2).
 //   - Parsing happens directly from the returned buffer — no re-read.
-//   - libbw64 is a git submodule at internal/cult_transcoder/thirdparty/libbw64.
+//   - libbw64 is a git submodule at cult_transcoder/thirdparty/libbw64.
 //     It is header-only (Apache-2.0). Never use spatialroot's copy.
 //
 // Error handling:

@@ -57,7 +57,7 @@ Accepted inputs:
 LUSID scene contract:
 
 - accepted scene metadata is LUSID Scene v1.0 (`version: "1.0"`)
-- the canonical schema is `internal/LUSID/SCHEMA/lusid_scene_v1.0.schema.json` in the SpatialSeed workspace
+- the canonical schema is `LUSID/SCHEMA/lusid_scene_v1.0.schema.json` in the SpatialSeed workspace
 - `duration`, when present, is top-level seconds and must match normalized audio duration
 - authoring accepts frame timestamps in `seconds`/`s`, `milliseconds`/`ms`, or `samples`/`samp`; sample timestamps require `sampleRate`
 - authoring converts accepted frame timestamps to seconds before ADM block generation
@@ -540,7 +540,7 @@ Highest priority:
 1. Test `exported/lusid_package_logic_bedmodel.wav` in Logic.
 2. Preserve/synthesize Dolby `dbmd` metadata, or at least determine whether Logic rejects ADM BWF without it.
 3. Decide whether chunk order must follow the source file pattern (`data`, then `axml`, `chna`, `dbmd`) for Logic import compatibility.
-4. Re-author from the full original extracted internal/LUSID/audio set only if the goal is a faithful round trip. For fresh source authoring, the reduced 78-channel package remains a valid target now that the Atmos bed profile shape is corrected.
+4. Re-author from the full original extracted LUSID/audio set only if the goal is a faithful round trip. For fresh source authoring, the reduced 78-channel package remains a valid target now that the Atmos bed profile shape is corrected.
 
 Lower priority:
 
