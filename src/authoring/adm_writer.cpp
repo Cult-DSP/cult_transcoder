@@ -560,7 +560,7 @@ void AdmWriter::populateAdmDocument(pugi::xml_document& doc,
                                     uint32_t& outObjectCount) {
     (void)monoWavs;
 
-    std::vector<std::string> ids;
+    std::vector<std::string> nodeIds;
     std::map<std::string, NodeTimeline> timelines;
     for (const auto& frame : scene.frames) {
         for (const auto& node : frame.nodes) {
@@ -571,7 +571,7 @@ void AdmWriter::populateAdmDocument(pugi::xml_document& doc,
             if (timeline.id.empty()) {
                 timeline.id = node.id;
                 timeline.type = node.type;
-                ids.push_back(node.id);
+                nodeIds.push_back(node.id);
             }
             timeline.nodes.push_back(&node);
             timeline.times.push_back(frame.time);
@@ -600,7 +600,7 @@ void AdmWriter::populateAdmDocument(pugi::xml_document& doc,
         timeline.times = sortedTimes;
     }
 
-    const auto sortedIds = sortNodeIds(ids);
+    const auto sortedIds = sortNodeIds(nodeIds);
     outChannelCount = static_cast<uint32_t>(sortedIds.size());
     outObjectCount = 0;
 
@@ -674,17 +674,17 @@ void AdmWriter::populateAdmDocument(pugi::xml_document& doc,
     for (size_t objectIndex = 0; objectIndex < objectIds.size(); ++objectIndex) {
         const std::string& id = objectIds[objectIndex];
         const size_t trackIndex = bedIds.size() + objectIndex + 1;
-        const AdmIds ids = makeObjectIds(objectIndex, trackIndex);
+        const AdmIds objectAdmIds = makeObjectIds(objectIndex, trackIndex);
         ++outObjectCount;
 
         auto audioObject = admFormat.append_child("audioObject");
-        audioObject.append_attribute("audioObjectID") = ids.audioObjectId.c_str();
+        audioObject.append_attribute("audioObjectID") = objectAdmIds.audioObjectId.c_str();
         audioObject.append_attribute("audioObjectName") = id.c_str();
         audioObject.append_attribute("start") = formatAdmTime(0.0, targetSampleRate).c_str();
         audioObject.append_attribute("end") = formatAdmTime(totalDuration, targetSampleRate).c_str();
         audioObject.append_attribute("duration") = formatAdmTime(totalDuration, targetSampleRate).c_str();
-        appendText(audioObject, "audioPackFormatIDRef", ids.packId);
-        appendText(audioObject, "audioTrackUIDRef", ids.trackUid);
+        appendText(audioObject, "audioPackFormatIDRef", objectAdmIds.packId);
+        appendText(audioObject, "audioTrackUIDRef", objectAdmIds.trackUid);
     }
 
     if (!bedIds.empty()) {
@@ -704,14 +704,14 @@ void AdmWriter::populateAdmDocument(pugi::xml_document& doc,
     for (size_t objectIndex = 0; objectIndex < objectIds.size(); ++objectIndex) {
         const std::string& id = objectIds[objectIndex];
         const size_t trackIndex = bedIds.size() + objectIndex + 1;
-        const AdmIds ids = makeObjectIds(objectIndex, trackIndex);
+        const AdmIds objectAdmIds = makeObjectIds(objectIndex, trackIndex);
 
         auto pack = admFormat.append_child("audioPackFormat");
-        pack.append_attribute("audioPackFormatID") = ids.packId.c_str();
+        pack.append_attribute("audioPackFormatID") = objectAdmIds.packId.c_str();
         pack.append_attribute("audioPackFormatName") = id.c_str();
         pack.append_attribute("typeLabel") = "0003";
         pack.append_attribute("typeDefinition") = "Objects";
-        appendText(pack, "audioChannelFormatIDRef", ids.channelId);
+        appendText(pack, "audioChannelFormatIDRef", objectAdmIds.channelId);
     }
 
     for (size_t i = 0; i < bedIds.size(); ++i) {
@@ -719,9 +719,9 @@ void AdmWriter::populateAdmDocument(pugi::xml_document& doc,
         if (!spec) {
             continue;
         }
-        const AdmIds ids = makeBedIds(*spec, i + 1);
+        const AdmIds bedAdmIds = makeBedIds(*spec, i + 1);
         auto channel = admFormat.append_child("audioChannelFormat");
-        channel.append_attribute("audioChannelFormatID") = ids.channelId.c_str();
+        channel.append_attribute("audioChannelFormatID") = bedAdmIds.channelId.c_str();
         channel.append_attribute("audioChannelFormatName") = spec->channelName.c_str();
         channel.append_attribute("typeLabel") = "0001";
         channel.append_attribute("typeDefinition") = "DirectSpeakers";
@@ -743,10 +743,10 @@ void AdmWriter::populateAdmDocument(pugi::xml_document& doc,
 
         const auto& timeline = timelineIt->second;
         const size_t trackIndex = bedIds.size() + objectIndex + 1;
-        const AdmIds ids = makeObjectIds(objectIndex, trackIndex);
+        const AdmIds objectAdmIds = makeObjectIds(objectIndex, trackIndex);
 
         auto channel = admFormat.append_child("audioChannelFormat");
-        channel.append_attribute("audioChannelFormatID") = ids.channelId.c_str();
+        channel.append_attribute("audioChannelFormatID") = objectAdmIds.channelId.c_str();
         channel.append_attribute("audioChannelFormatName") = id.c_str();
         channel.append_attribute("typeLabel") = "0003";
         channel.append_attribute("typeDefinition") = "Objects";
@@ -766,7 +766,7 @@ void AdmWriter::populateAdmDocument(pugi::xml_document& doc,
 
             auto block = channel.append_child("audioBlockFormat");
             block.append_attribute("audioBlockFormatID") =
-                ("AB_" + ids.typeDescriptor + ids.elementValue + "_" + blockOrdinal(b + 1)).c_str();
+                ("AB_" + objectAdmIds.typeDescriptor + objectAdmIds.elementValue + "_" + blockOrdinal(b + 1)).c_str();
             block.append_attribute("rtime") = formatAdmTime(start, targetSampleRate).c_str();
             block.append_attribute("duration") = formatAdmTime(duration, targetSampleRate).c_str();
             appendText(block, "cartesian", "1");
