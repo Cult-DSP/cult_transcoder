@@ -121,6 +121,8 @@ build/cult-transcoder package-adm-wav \
 
 `package-adm-wav` is separate from authoring. It extracts embedded ADM XML, converts metadata to LUSID, splits interleaved audio into mono float32 stems, and writes `scene.lusid.json`, `channel_order.txt`, stems, and `scene_report.json`. Stereo-pair reconstruction is not implemented yet; object tracks are preserved as mono stems.
 
+For large Atmos sources, package generation can require several GiB of free disk space because it writes one mono float32 stem per output node. Current CULT performs a best-effort free-space preflight and will fail early with an estimated `need/have` message when the destination volume is obviously too full.
+
 Options:
 
 | Option                                  | Required | Description                                                                                                   |

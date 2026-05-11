@@ -638,6 +638,11 @@ Package outputs:
 - `channel_order.txt`
 - `scene_report.json`
 
+Operational note:
+
+- Large Atmos package generation can require several GiB of free disk space because the command writes one mono float32 stem per generated node.
+- Current CULT now performs a best-effort disk-space preflight against the destination volume and fails early with an estimated `need/have` message instead of only surfacing a late generic stem-write failure.
+
 The command is self-contained. It extracts embedded ADM XML through CULT/libbw64, converts ADM metadata to LUSID, and splits the interleaved audio data with an internal streaming RIFF/BW64 reader. It does not require ffmpeg, libsndfile, or host-project audio utilities.
 
 ### 6.2 Stem Splitting Policy

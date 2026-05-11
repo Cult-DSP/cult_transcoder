@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cerrno>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
@@ -47,6 +48,53 @@ using packaging_helpers::decodeSample;
 using packaging_helpers::readWavSourceInfo;
 using packaging_helpers::stemNameForNode;
 using packaging_helpers::writeFloat32MonoHeader;
+
+std::string formatBytes(uint64_t bytes) {
+    static const char* kUnits[] = {"B", "KiB", "MiB", "GiB", "TiB"};
+    double value = static_cast<double>(bytes);
+    size_t unit = 0;
+    while (value >= 1024.0 && unit + 1 < std::size(kUnits)) {
+        value /= 1024.0;
+        ++unit;
+    }
+    std::ostringstream out;
+    out.setf(std::ios::fixed, std::ios::floatfield);
+    out.precision(unit == 0 ? 0 : 1);
+    out << value << ' ' << kUnits[unit];
+    return out.str();
+}
+
+fs::path nearestExistingPath(fs::path path) {
+    std::error_code ec;
+    if (path.empty()) path = fs::current_path(ec);
+    while (!path.empty() && !fs::exists(path, ec)) {
+        path = path.parent_path();
+    }
+    return path.empty() ? fs::current_path(ec) : path;
+}
+
+bool ensureSufficientDiskSpace(const fs::path& packageDir,
+                               size_t stemCount,
+                               uint64_t frameCount,
+                               std::string& error) {
+    const uint64_t perStemBytes = 44u + frameCount * sizeof(float);
+    const uint64_t estimatedStemBytes = perStemBytes * static_cast<uint64_t>(stemCount);
+    const uint64_t metadataBudget = 4u * 1024u * 1024u;
+    const uint64_t requiredBytes = estimatedStemBytes + metadataBudget;
+
+    std::error_code ec;
+    const fs::path probePath = nearestExistingPath(packageDir.parent_path());
+    const auto spaceInfo = fs::space(probePath, ec);
+    if (ec) return true;
+
+    if (spaceInfo.available < requiredBytes) {
+        error = "Insufficient disk space for package stems at '" + probePath.string() +
+                "' (need about " + formatBytes(requiredBytes) +
+                ", have " + formatBytes(spaceInfo.available) + ")";
+        return false;
+    }
+    return true;
+}
 
 bool splitInterleavedToMono(
         const std::string& inWavPath,
@@ -73,8 +121,10 @@ bool splitInterleavedToMono(
     in.seekg(static_cast<std::streamoff>(info.dataOffset), std::ios::beg);
 
     std::vector<std::ofstream> outs(orderedIds.size());
+    std::vector<fs::path> outPaths(orderedIds.size());
     for (size_t i = 0; i < orderedIds.size(); ++i) {
         const fs::path outPath = packageDir / stemNameForNode(orderedIds[i]);
+        outPaths[i] = outPath;
         outs[i].open(outPath, std::ios::binary);
         if (!outs[i].is_open()) {
             error = "Failed to create package stem: " + outPath.string();
@@ -104,6 +154,12 @@ bool splitInterleavedToMono(
                 const char* samplePtr = input.data() + frameOffset + ch * bytesPerSample;
                 const float value = decodeSample(samplePtr, info.audioFormat, info.bitsPerSample);
                 outs[ch].write(reinterpret_cast<const char*>(&value), sizeof(float));
+                if (!outs[ch]) {
+                    error = "Failed while writing package stem '" + outPaths[ch].string() +
+                            "' near frame " + std::to_string(processed + frame) +
+                            " (likely disk full or I/O error)";
+                    return false;
+                }
             }
         }
 
@@ -114,10 +170,12 @@ bool splitInterleavedToMono(
         }
     }
 
-    for (auto& out : outs) {
+    for (size_t i = 0; i < outs.size(); ++i) {
+        auto& out = outs[i];
         out.close();
         if (!out) {
-            error = "Failed while writing package stems";
+            error = "Failed while finalizing package stem '" + outPaths[i].string() +
+                    "' (likely disk full or I/O error)";
             return false;
         }
     }
@@ -256,6 +314,11 @@ PackageAdmWavResult packageAdmWav(const PackageAdmWavRequest& req) {
 
     const fs::path packageDir(req.outPackageDir);
     const fs::path tmpDir(req.outPackageDir + ".tmp");
+    std::string spaceError;
+    if (!ensureSufficientDiskSpace(packageDir, orderedIds.size(), wavInfo.frameCount, spaceError)) {
+        report.errors.push_back("package-adm-wav: " + spaceError);
+        return result;
+    }
     std::error_code ec;
     fs::remove_all(tmpDir, ec);
     fs::create_directories(tmpDir, ec);
