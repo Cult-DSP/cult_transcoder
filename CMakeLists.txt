@@ -206,6 +206,7 @@ if(BUILD_TESTING)
         tests/test_lusid_to_adm_mapping.cpp      # adm-author LUSID -> ADM mapping tests
         tests/test_adm_author_integration.cpp    # adm-author XML + BW64 integration tests
         tests/test_adm_package.cpp               # package-adm-wav roundtrip tests
+        tests/test_packaging_helper.cpp          # RF64/BW64 packaging helper regression tests
 
         # Same source files the main binary uses, so tests exercise real code
         src/reporting/report.cpp

@@ -152,6 +152,20 @@ Historical importance:
 - this was the point where the export-side authoring path became practical enough to call a functional v1 target
 - packaging and progress reporting were intentionally kept separate from authoring fixes, which prevented conceptual drift
 
+### 2026-05-11: RF64 ds64 Fix for package-adm-wav
+
+Implemented:
+
+- updated `src/packaging/packagingHelper.hpp` so `readWavSourceInfo()` reads the `ds64` chunk on `RF64`/`BW64` package input
+- switched package split sizing from the placeholder 32-bit `data` chunk length to the effective 64-bit `data` size when `ds64` is present
+- preserved the existing lightweight streaming package reader design instead of replacing it with a broader reader refactor
+- added `tests/test_packaging_helper.cpp` with an RF64 fixture asserting that `frameCount` and `dataSize` come from `ds64`
+
+Historical importance:
+
+- this fixed a real Sony 360RA packaging failure that reproduced as `Short read while splitting source WAV` after disk-space and GUI-invocation issues were removed from the equation
+- it records an important invariant for future package work: accepting `RF64`/`BW64` headers is not sufficient unless the split path also honors `ds64`
+
 ### 2026-04-28: LUSID Scene v1.0 Contract Update
 
 Implemented:

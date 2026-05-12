@@ -316,6 +316,7 @@ The package path keeps metadata conversion and audio splitting separate:
 - metadata comes from ADM `axml`
 - audio samples come from the source WAV `data` chunk
 - stems are decoded to mono float32 WAV files
+- on `RF64`/`BW64` sources, split length must come from the effective 64-bit payload size (`ds64` when present), not the placeholder 32-bit `data` chunk length
 
 Important ownership rule:
 
@@ -346,6 +347,10 @@ Implementation note:
 - generic package conversion now follows the same single-parse metadata path as
   `transcode`: extract `axml`, parse once, detect profile, and convert from the
   already-loaded document
+- the lightweight package input reader in `src/packaging/packagingHelper.hpp`
+  is intentionally separate from broader audio readers, but it must stay
+  `RF64`/`BW64`-aware; a May 11, 2026 fix restored `ds64` handling after a
+  real 360RA package split reproduced `Short read while splitting source WAV`
 
 ## Flow 4: LUSID JSON or Package to ADM XML and ADM BWF/WAV
 

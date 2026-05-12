@@ -231,9 +231,11 @@ Observed in the current submodule (no assumptions beyond code/tests in this repo
 - `src/packaging/adm_package.cpp` — ADM BWF/WAV -> LUSID package generation.
 - Extracts embedded `axml`, converts ADM metadata to LUSID, and writes `scene.lusid.json`.
 - Splits interleaved source audio into mono float32 package stems with a self-contained streaming WAV/BW64 reader. No ffmpeg, libsndfile, or host-project utility dependency.
+- That lightweight split path must honor `ds64` on `RF64`/`BW64` input. A May 11, 2026 regression fix restored this after Sony 360RA package generation reproduced `Short read while splitting source WAV`.
 - Writes `channel_order.txt` and package-local `scene_report.json`.
 - Does not reconstruct stereo pairs; adjacent mono L/R object inference is an explicit future task.
 - `tests/test_adm_package.cpp` covers ADM author -> package roundtrip and split progress events.
+- `tests/test_packaging_helper.cpp` covers `RF64` `ds64` sizing for package input.
 
 **progress callback contract (Implemented):**
 

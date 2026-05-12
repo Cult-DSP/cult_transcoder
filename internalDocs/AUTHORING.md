@@ -642,6 +642,7 @@ Operational note:
 
 - Large Atmos package generation can require several GiB of free disk space because the command writes one mono float32 stem per generated node.
 - Current CULT now performs a best-effort disk-space preflight against the destination volume and fails early with an estimated `need/have` message instead of only surfacing a late generic stem-write failure.
+- `RF64`/`BW64` package input must honor the `ds64` true-size fields during the split pass. A May 11, 2026 regression fix updated the lightweight package splitter reader to use the 64-bit `data` size instead of the placeholder 32-bit `data` chunk length. If `package-adm-wav` on a large Sony 360RA/RF64 source fails with `Short read while splitting source WAV`, suspect a stale pre-fix build.
 
 The command is self-contained. It extracts embedded ADM XML through CULT/libbw64, converts ADM metadata to LUSID, and splits the interleaved audio data with an internal streaming RIFF/BW64 reader. It does not require ffmpeg, libsndfile, or host-project audio utilities.
 
@@ -654,6 +655,7 @@ Current package-generation behavior:
 - Write `channel_order.txt` so the package records the exact generated node order.
 - Use existing LFE detection policy from ingest (`hardcoded` by default, `speaker-label` opt-in).
 - Validate `chna` presence/count/contiguity where possible and warn if CULT falls back to canonical LUSID order.
+- For `RF64`/`BW64` sources, derive split length from the effective 64-bit payload size (`ds64` when present), not the placeholder `0xffffffff` 32-bit `data` chunk size.
 
 Open issue:
 
@@ -708,3 +710,35 @@ Observed facts:
 - Re-authored summary counted 9 direct speakers, 1 LFE, and 36 audio objects.
 
 The generated files are validation artifacts only. The useful findings are captured here, so the artifacts may be deleted when no longer needed for manual DAW inspection.
+
+### 6.5 Sony 360RA RF64 Packaging Validation
+
+Source:
+
+- `/Users/lucian/Projects/spatialroot/data/sourceData/360RA_test.wav`
+
+Validated flow:
+
+1. `package-adm-wav` initially reproduced a backend failure after the GUI invocation bug was removed from the equation.
+2. The failure signature was `package-adm-wav: Short read while splitting source WAV`.
+3. Root cause was an `RF64` package-input parsing bug: the lightweight splitter reader accepted `RF64`/`BW64` headers but ignored `ds64`, so large-file split length was computed from the placeholder 32-bit `data` size.
+4. After the `ds64` fix in `src/packaging/packagingHelper.hpp`, the same command completed successfully.
+
+Validated command:
+
+```bash
+build/cult-transcoder package-adm-wav \
+  --in /Users/lucian/Projects/spatialroot/data/sourceData/360RA_test.wav \
+  --out-package /private/tmp/sr_360ra_cli_pkg \
+  --report /private/tmp/sr_360ra_cli_pkg_report.json \
+  --stdout-report \
+  --lfe-mode hardcoded
+```
+
+Observed outputs:
+
+- package report status = `success`
+- summary sampleRate = `48000`
+- summary duration ≈ `153.71` seconds
+- summary counts = `13 audio_object`
+- output package contains `scene.lusid.json`, `scene_report.json`, `channel_order.txt`, and 13 mono stems

@@ -54,6 +54,19 @@ inline uint32_t readU32(std::ifstream& f) {
            (static_cast<uint32_t>(b[3]) << 24);
 }
 
+inline uint64_t readU64(std::ifstream& f) {
+    std::array<unsigned char, 8> b{};
+    f.read(reinterpret_cast<char*>(b.data()), b.size());
+    return static_cast<uint64_t>(b[0]) |
+           (static_cast<uint64_t>(b[1]) << 8) |
+           (static_cast<uint64_t>(b[2]) << 16) |
+           (static_cast<uint64_t>(b[3]) << 24) |
+           (static_cast<uint64_t>(b[4]) << 32) |
+           (static_cast<uint64_t>(b[5]) << 40) |
+           (static_cast<uint64_t>(b[6]) << 48) |
+           (static_cast<uint64_t>(b[7]) << 56);
+}
+
 inline bool readTag(std::ifstream& f, char out[4]) {
     f.read(out, 4);
     return f.gcount() == 4;
@@ -86,14 +99,30 @@ inline bool readWavSourceInfo(const std::string& path, WavSourceInfo& info, std:
 
     bool foundFmt = false;
     bool foundData = false;
+    uint64_t ds64DataSize = 0;
+    bool hasDs64DataSize = false;
     while (f && !(foundFmt && foundData)) {
         char chunkId[4];
         if (!readTag(f, chunkId)) break;
         const uint32_t chunkSize = readU32(f);
         const std::string id(chunkId, 4);
         const std::streamoff payloadOffset = f.tellg();
+        uint64_t chunkDataSize64 = chunkSize;
 
-        if (id == "fmt ") {
+        if (id == "ds64") {
+            if (chunkSize >= 28) {
+                (void)readU64(f);  // riffSize64
+                ds64DataSize = readU64(f);
+                (void)readU64(f);  // sampleCount64
+                (void)readU32(f);  // tableLength
+                hasDs64DataSize = true;
+                if (chunkSize > 28) {
+                    f.seekg(static_cast<std::streamoff>(chunkSize - 28), std::ios::cur);
+                }
+            } else {
+                f.seekg(static_cast<std::streamoff>(chunkSize), std::ios::cur);
+            }
+        } else if (id == "fmt ") {
             info.audioFormat = readU16(f);
             info.channels = readU16(f);
             info.sampleRate = readU32(f);
@@ -105,15 +134,18 @@ inline bool readWavSourceInfo(const std::string& path, WavSourceInfo& info, std:
             }
             foundFmt = true;
         } else if (id == "data") {
+            if (chunkSize == 0xffffffffu && hasDs64DataSize) {
+                chunkDataSize64 = ds64DataSize;
+            }
             info.dataOffset = static_cast<uint64_t>(payloadOffset);
-            info.dataSize = chunkSize;
-            f.seekg(static_cast<std::streamoff>(chunkSize), std::ios::cur);
+            info.dataSize = chunkDataSize64;
+            f.seekg(static_cast<std::streamoff>(chunkDataSize64), std::ios::cur);
             foundData = true;
         } else {
             f.seekg(static_cast<std::streamoff>(chunkSize), std::ios::cur);
         }
 
-        if (chunkSize % 2 == 1) {
+        if (chunkDataSize64 % 2 == 1) {
             f.seekg(1, std::ios::cur);
         }
     }
