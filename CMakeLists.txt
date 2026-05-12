@@ -259,10 +259,18 @@ endif()
 # ---------------------------------------------------------------------------
 # Install — staged package/runtime support
 # ---------------------------------------------------------------------------
-install(TARGETS cult-transcoder
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    COMPONENT SpatialRootRuntime
-)
+if(WIN32)
+    # Flat Windows portable package: all runtime binaries at package root.
+    install(TARGETS cult-transcoder
+        RUNTIME DESTINATION .
+        COMPONENT SpatialRootRuntime
+    )
+else()
+    install(TARGETS cult-transcoder
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        COMPONENT SpatialRootRuntime
+    )
+endif()
 
 if(APPLE AND SPATIALROOT_BUILD_GUI AND DEFINED SPATIALROOT_MACOS_APP_RESOURCES_DESTINATION)
     install(TARGETS cult-transcoder
