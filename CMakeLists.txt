@@ -37,6 +37,8 @@ project(cult_transcoder
     LANGUAGES CXX
 )
 
+include(GNUInstallDirs)
+
 # ---------------------------------------------------------------------------
 # C++ standard — C++17 pinned (AGENTS §0.5)
 # ---------------------------------------------------------------------------
@@ -255,9 +257,19 @@ if(BUILD_TESTING)
 endif()
 
 # ---------------------------------------------------------------------------
-# Install — not needed for Phase 1, scaffolded for completeness
+# Install — staged package/runtime support
 # ---------------------------------------------------------------------------
-install(TARGETS cult-transcoder DESTINATION bin)
+install(TARGETS cult-transcoder
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    COMPONENT SpatialRootRuntime
+)
+
+if(APPLE AND SPATIALROOT_BUILD_GUI AND DEFINED SPATIALROOT_MACOS_APP_RESOURCES_DESTINATION)
+    install(TARGETS cult-transcoder
+        RUNTIME DESTINATION "${SPATIALROOT_MACOS_APP_RESOURCES_DESTINATION}/bin"
+        COMPONENT SpatialRootRuntime
+    )
+endif()
 
 # ---------------------------------------------------------------------------
 # Summary
