@@ -85,13 +85,18 @@ message(STATUS "cult-transcoder git commit: ${CULT_GIT_COMMIT}")
 include(FetchContent)
 
 # --- Catch2 (test framework, Phase 1+) -----------------------------------
-FetchContent_Declare(
-    Catch2
-    GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-    GIT_TAG        v3.5.3
-    GIT_SHALLOW    TRUE
-)
-FetchContent_MakeAvailable(Catch2)
+# Only fetch/build Catch2 when tests are explicitly enabled. Otherwise a normal
+# app build pays for the full Catch2 configure+compile cost even though the
+# summary reports "Tests: disabled".
+if(BUILD_TESTING)
+    FetchContent_Declare(
+        Catch2
+        GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+        GIT_TAG        v3.5.3
+        GIT_SHALLOW    TRUE
+    )
+    FetchContent_MakeAvailable(Catch2)
+endif()
 
 # --- pugixml (lightweight XML parser, MIT license) ------------------------
 # Used instead of libadm so that C++ mirrors the Python oracle's raw XML
